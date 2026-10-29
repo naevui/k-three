@@ -13,8 +13,8 @@ about a hardware implementation.
 | State | Size | Notes |
 |---|---|---|
 | General registers | `r0`..`r7`, 8 x 9 trits | All are general; no hardwired zero register |
-| Program counter | one 9-trit value | Next fetch address; valid fetch range `0..2186` |
-| Memory | 2187 words x 9 trits | Flat, word-addressed, shared code/data (3 pages of 729) |
+| Program counter | one 9-trit value | Next fetch address; valid fetch range `0..6560` |
+| Memory | 6561 words x 9 trits | Flat, word-addressed, shared code/data (9 pages of 729) |
 | Status | running / halted / trapped | VM-level state; not a program-visible register |
 
 There are no condition-code flags. The ISA has no architectural stack pointer
@@ -32,9 +32,9 @@ as encoded fields (section 3).
 
 ## 2. Memory and addresses
 
-* 2187 words, numbered `0..2186` (`3^7`, three pages of 729 words).
-* An address is the numerical value of a 9-trit word. Only `0..2186` are valid.
-  A negative address or an address `>= 2187` is a memory fault.
+* 6561 words, numbered `0..6560` (`3^8`, nine pages of 729 words).
+* An address is the numerical value of a 9-trit word. Only `0..6560` are valid.
+  A negative address or an address `>= 6561` is a memory fault.
 * Memory is word-addressed. There is no byte addressing and no alignment rule.
 * Program and data share the same memory. Instruction fetch reads the word at
   the PC.
@@ -193,16 +193,16 @@ forms.
 
 ### 5.3 Memory
 
-* `LOAD rd, [ra]`: address is `value(ra)`. If it is outside `0..2186`, memory
+* `LOAD rd, [ra]`: address is `value(ra)`. If it is outside `0..6560`, memory
   fault. Otherwise `rd = memory[address]`.
-* `STORE rd, [ra]`: address is `value(ra)`. If it is outside `0..2186`, memory
+* `STORE rd, [ra]`: address is `value(ra)`. If it is outside `0..6560`, memory
   fault. Otherwise `memory[address] = value(rd)`.
 * If `rd` and `ra` are the same register, the address is computed from the old
   register value before the load/store takes effect.
 
 ### 5.4 Control flow
 
-* `JMP ra`: `PC = value(ra)`. If the target is outside `0..2186`, memory fault.
+* `JMP ra`: `PC = value(ra)`. If the target is outside `0..6560`, memory fault.
   Otherwise execution continues at that word.
 * Branches are PC-relative. Let `next` be the address of the word after the
   branch instruction. For a branch at address `p`, `next = p + 1`. The target
@@ -210,7 +210,7 @@ forms.
 * `BRZ` branches if the register value is zero; `BRNZ` if nonzero; `BRN` if
   negative; `BRP` if positive.
 * If the condition is false, the branch is not taken and no target check is
-  performed. If it is taken and the target is outside `0..2186`, memory fault.
+  performed. If it is taken and the target is outside `0..6560`, memory fault.
 * `HALT` stops execution with status halted. In user mode `HALT` is an illegal
   instruction and traps instead.
 * `TRAP #code` invokes the host `on_syscall` callback if one is installed;
@@ -223,7 +223,7 @@ forms.
 ### 5.6 Privilege and trap return
 
 * `SETVEC ra` is privileged: in user mode it traps as illegal. In kernel mode
-  it sets the trap vector to `value(ra)`. A target outside `0..2186` is a
+  it sets the trap vector to `value(ra)`. A target outside `0..6560` is a
   memory fault.
 * `ERET` is privileged: in user mode it traps as illegal. In kernel mode it
   restores `PC` and privilege from the values saved when the trap was taken.
@@ -236,7 +236,7 @@ forms.
 `LI rd, #i9` is a two-word instruction:
 
 1. Fetch and decode the `LI` word at `p`.
-2. Fetch the literal word at `p + 1`. If `p + 1` is outside `0..2186`, memory
+2. Fetch the literal word at `p + 1`. If `p + 1` is outside `0..6560`, memory
    fault and `rd` is unchanged.
 3. Write the literal word to `rd`.
 4. Continue at `p + 2`.
@@ -256,7 +256,7 @@ halted and no trap reason.
 | Reason | Cause |
 |---|---|
 | `overflow` | `ADD`, `ADDI`, `SUB`, `SUBI`, `MUL`, `SHL` or `SHLI` result does not fit in 9 trits |
-| `memory` | Fetch, load, store, jump or taken-branch target outside `0..2186`; `LI` literal fetch outside memory |
+| `memory` | Fetch, load, store, jump or taken-branch target outside `0..6560`; `LI` literal fetch outside memory |
 | `illegal_instruction` | Opcode outside `0..26`, privileged instruction in user mode, or a used register field encoding 8 |
 | `shift_range` | Shift amount outside `0..8` |
 | `explicit` | `TRAP #code` executed; carries the 4-trit code |
@@ -269,8 +269,8 @@ with an invalid address, memory is unchanged.
 When execution stops, the reference VM reports the address of the instruction
 that caused the stop. For a fetch fault, it reports the attempted fetch
 address. During normal execution the PC points at the next instruction to
-fetch. Whenever the next fetch address becomes 2187 (for example, after a
-non-branch instruction at address 2186), the next step reports a memory fault
+fetch. Whenever the next fetch address becomes 6561 (for example, after a
+non-branch instruction at address 6560), the next step reports a memory fault
 at that attempted fetch before executing anything. A taken branch or `JMP` may
 of course replace the PC with a valid target. The VM API and callback behavior
 are defined in `vm.h`.
@@ -287,16 +287,16 @@ On reset:
 
 One instruction step is:
 
-1. If `PC` is outside `0..2186`, memory fault at the attempted address.
+1. If `PC` is outside `0..6560`, memory fault at the attempted address.
 2. Fetch the word at `PC`; increment `PC`.
 3. Decode and validate the instruction fields.
 4. Execute. `JMP` and taken branches replace `PC`; `LI` advances `PC` once
    more after fetching its literal; `HALT`/faults stop.
 5. If no stop occurred, repeat.
 
-After fetching address 2186, the PC becomes 2187 unless execution stops or a
+After fetching address 6560, the PC becomes 6561 unless execution stops or a
 taken branch/`JMP` replaces it. A step that executes a non-branch instruction at
-address 2186 can therefore return with status running and `PC = 2187`; step 1
+address 6560 can therefore return with status running and `PC = 6561`; step 1
 reports the fault on the next step. There is no instruction cache and no delay
 slot. A memory write affects the next fetch of that word.
 
@@ -339,7 +339,7 @@ comment     := ";" { any character except newline }
   (`#0t+0-`), `.word`, `.equ`, `.include`, `.string` and `.space`, and expands
   `jmp label`, `clr`, `inc`, `dec`, `push`, `pop` and `ret`.
 * The assembler's software ABI uses `r7` as a downward stack pointer (initial
-  value 2186) and `r6` as the link register. `call` stores the return address
+  value 6560) and `r6` as the link register. `call` stores the return address
   through `r7`; `ret` loads it back. These are conventions, not ISA
   instructions.
 
@@ -373,7 +373,7 @@ These are **not** settled. The reference VM currently implements the v0 choice;
 each can be changed before the ISA is frozen.
 
 1. **Address encoding.** v0 uses the numerical value of a 9-trit word, valid
-   `0..2186`. Alternative: use seven trits as unsigned base-3 digits for the
+   `0..6560`. Alternative: use eight trits as unsigned base-3 digits for the
    address, or a biased value. The 9-trit form costs address range but avoids a
    second address encoding.
 2. **Register field width.** v0 uses two trits per register and reserves
