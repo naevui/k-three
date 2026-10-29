@@ -138,6 +138,7 @@ Key Syscall Codes:
 * `35`: `SYS_RAW_MODE` - Enable/disable raw unbuffered terminal mode
 * `36`: `SYS_RENAME` - Rename a file (`r0` = old path, `r1` = new path)
 * `37`: `SYS_FILE_SIZE` - File size in bytes (`r0` = path, returns size in `r0`)
+* `38`: `SYS_FILE_EXISTS` - Check file existence (`r0` = path, returns 1/0)
 
 ---
 
