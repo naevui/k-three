@@ -1191,6 +1191,7 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "SYS_RENAME", 36);
     add_predefined_equ(as, "SYS_FILE_SIZE", 37);
     add_predefined_equ(as, "SYS_FILE_EXISTS", 38);
+    add_predefined_equ(as, "SYS_BANK_SWITCH", 39);
 }
 
 int main(int argc, char **argv)
