@@ -24,9 +24,9 @@ shell_loop:
     li r0, str_prompt
     trap #SYS_PUTS
 
-    ; Read command line into buf_io (max 32 words)
+    ; Read command line into buf_io (max 64 words)
     li r0, buf_io
-    ldi r1, #32
+    li r1, #64
     trap #SYS_GETS
 
     ; Check if stdin reached EOF (-1)
@@ -154,6 +154,24 @@ not_c:
     call cmd_exec
     jmp shell_loop
 not_x:
+
+    ; 'k' (107 - 100 = 7): calc
+    mov r1, r0
+    subi r1, #7
+    brnz r1, not_k
+    mov r0, r2
+    call cmd_calc
+    jmp shell_loop
+not_k:
+
+    ; 's' (115 - 100 = 15): save/write file
+    mov r1, r0
+    subi r1, #15
+    brnz r1, not_s
+    mov r0, r2
+    call cmd_save
+    jmp shell_loop
+not_s:
 
     ; 'g' (103 - 100 = 3): GUI Desktop
     mov r1, r0
@@ -377,6 +395,130 @@ cmd_gui:
     pop r6
     ret
 
+cmd_calc:
+    push r6
+    call skip_cmd_word
+    call parse_int      ; r0 = num1, r1 -> rest
+    push r0             ; save num1 (skip_spaces clobbers r2)
+    mov r0, r1
+    call skip_spaces
+    load r3, [r0]       ; r3 = op char ('+', '-', '*')
+    addi r0, #1
+    push r3             ; save op (parse_int clobbers r3)
+    call parse_int      ; returns num2 in r0
+    mov r4, r0          ; r4 = num2
+    pop r3              ; restore op
+    pop r2              ; restore num1
+
+    ; '+' is 43
+    mov r0, r3
+    subi r0, #40
+    subi r0, #3
+    brnz r0, calc_not_add
+    add r2, r2, r4
+    jmp calc_print
+calc_not_add:
+    ; '-' is 45
+    mov r0, r3
+    subi r0, #40
+    subi r0, #5
+    brnz r0, calc_not_sub
+    sub r2, r2, r4
+    jmp calc_print
+calc_not_sub:
+    ; '*' is 42
+    mov r0, r3
+    subi r0, #40
+    subi r0, #2
+    brnz r0, calc_err
+    mul r2, r2, r4
+
+calc_print:
+    li r0, str_eq_pfx
+    trap #SYS_PUTS
+    mov r0, r2
+    trap #SYS_PUTNUM
+    li r0, str_trits_prefix
+    trap #SYS_PUTS
+    mov r0, r2
+    trap #SYS_PUTTRITS_COLOR
+    li r0, str_trits_suffix
+    trap #SYS_PUTS
+    pop r6
+    ret
+calc_err:
+    li r0, str_unknown
+    trap #SYS_PUTS
+    pop r6
+    ret
+
+cmd_save:
+    push r6
+    call skip_cmd_word
+    call skip_spaces
+    mov r3, r0          ; r3 = path (r1/r2 scratch, r5-r7 reserved)
+    load r0, [r3]
+    brz r0, bad_save
+
+    mov r4, r3
+save_scan_space:
+    load r0, [r4]
+    brz r0, bad_save
+    subi r0, #32        ; ' '
+    brz r0, save_found_space
+    addi r4, #1
+    jmp save_scan_space
+
+bad_save:
+    jmp save_err
+
+save_found_space:
+    ldi r0, #0
+    store r0, [r4]
+    addi r4, #1
+    mov r0, r4
+    call skip_spaces
+    mov r4, r0          ; r4 = text
+
+    mov r0, r3
+    ldi r1, #1          ; write mode
+    trap #SYS_OPEN
+    brn r0, bad_save
+    mov r3, r0          ; r3 = fd (path no longer needed)
+
+    mov r0, r4
+    call strlen_fast
+    mov r2, r0          ; r2 = length
+
+    mov r0, r3
+    mov r1, r4
+    trap #SYS_WRITE_FD
+
+    mov r0, r3
+    trap #SYS_CLOSE
+
+    li r0, str_ok
+    trap #SYS_PUTS
+    pop r6
+    ret
+save_err:
+    li r0, str_err_file
+    trap #SYS_PUTS
+    pop r6
+    ret
+
+strlen_fast:
+    ldi r1, #0
+strlen_loop:
+    load r2, [r0]
+    brz r2, strlen_done
+    addi r0, #1
+    addi r1, #1
+    jmp strlen_loop
+strlen_done:
+    mov r0, r1
+    ret
+
 ; ==============================================================================
 ; Utility Routines
 ; ==============================================================================
@@ -498,6 +640,8 @@ str_nl:
     .string "\n"
 str_ok:
     .string "ok\n"
+str_eq_pfx:
+    .string "= "
 
 str_rand:
     .string "R:"
@@ -521,4 +665,4 @@ str_err_file:
 cmd_counter:
     .word 0
 buf_io:
-    .space 32
+    .space 64
