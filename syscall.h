@@ -7,7 +7,7 @@
 #include "vm.h"
 
 /*
- * Standard K-Three Syscall codes (0..36).
+ * Standard K-Three Syscall codes (0..37).
  * All codes fit in the 4-trit immediate [-40..+40] of TRAP #code.
  *
  * Calling convention:
@@ -75,6 +75,7 @@
 
 /* Extended File I/O */
 #define K3_SYS_RENAME       36  /* Rename file: r0 = old path, r1 = new path. Returns 0 or -1 */
+#define K3_SYS_FILE_SIZE    37  /* File size: r0 = path. Returns size in bytes in r0 (-1 on error) */
 
 #define K3_MAX_HOST_FDS     16
 
