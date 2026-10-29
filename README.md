@@ -2,11 +2,11 @@
 
 An experimental balanced-ternary processor architecture, virtual machine, toolchain, and operating system.
 
-**Status: deliverables 1, 2, 3 plus the toolchain and debugger.** The
-ternary/word library, its tests, the ISA v0 proposal, the VM core, a shared
-instruction decoder, and the assembler/loader/disassembler/debugger toolchain
-with example programs exist. Everything here is a reference model; there are
-no performance claims.
+**Status: architecture, VM, toolchain, OS and debugger.** The ternary/word
+library, its tests, the ISA v0 proposal, the VM core, a shared instruction
+decoder, the assembler/loader/disassembler/debugger toolchain, a 35-call host
+syscall layer and a small interactive operating system with example programs
+exist. Everything here is a reference model; there are no performance claims.
 
 See [`ISA.md`](ISA.md) for the proposed instruction set, encoding, traps and
 assembly syntax. The VM core implements ISA v0; the ISA still remains a
@@ -30,16 +30,26 @@ The build uses `-std=c11 -Wall -Wextra -Wpedantic`. `make debug` uses
 
 ## Tools
 
-All four tools read or write a simple text word image: one or more signed
-decimal 9-trit words per line, separated by whitespace or commas. `;`, `#` at
-the start of a token, and `//` start comments. This is a debugging format, not
-part of the ISA. The shared reader/writer lives in `image.h`/`image.c`.
+All four tools read or write a word image. The default text image holds one or
+more signed decimal 9-trit words per line, separated by whitespace or commas.
+`;`, `#` at the start of a token, and `//` start comments. This is a debugging
+format, not part of the ISA. The shared reader/writer lives in
+`image.h`/`image.c`.
+
+Assembler output can also be written as a compact binary `.k3b` image: a
+16-byte header (`\x7FK3B`, version, entry point, word count, payload size)
+followed by the 2-bit-per-trit packed stream from `packed.c` (4 words per 9
+bytes). `k3vm`, `k3dis` and `k3dbg` detect the magic and load either format
+transparently.
 
 ```sh
 # Assemble in.s to in.k3 (default output replaces .s with .k3). -l writes a
 # simple address/word/trit listing.
 build/k3asm examples/factorial.s -o build/factorial.k3
 build/k3asm examples/factorial.s -o build/factorial.k3 -l build/factorial.lst
+
+# Emit a compact binary image instead (or name the output *.k3b).
+build/k3asm -b examples/factorial.s -o build/factorial.k3b
 
 # Disassemble; -t also prints the raw trits of each word, -l marks branch
 # targets with synthetic Lnnnn labels.
@@ -58,10 +68,13 @@ printf 'break 5\ncontinue\nregs\ndis 5 3\nquit\n' |
 ```
 
 `k3asm` supports `label:` definitions, labels as branch targets, forward
-references, the `.word N` directive, and reports errors with `file:line`.
-Out-of-range immediates, reserved register `r8`, unknown labels and unknown
-mnemonics are rejected and no output file is written. `-l`/`--list`
-writes an address/word/trit listing to a file.
+references, the `.word N`, `.equ NAME, VALUE`, `.include "file"`, `.string
+"text"` and `.space N` directives, plus the `jmp label`, `clr`, `inc`, `dec`,
+`push`, `pop` and `ret` pseudoinstructions. It reports errors with
+`file:line`. Out-of-range immediates, reserved register `r8`, unknown labels
+and unknown mnemonics are rejected and no output file is written.
+`-l`/`--list` writes an address/word/trit listing to a file; `-b`/`--binary`
+selects the compact `.k3b` output.
 
 `k3dbg` commands are `step [N]`, `continue`, `regs`, `reg rN`, `set rN VALUE`,
 `set pc ADDR`, `mem ADDR [N]`, `setmem ADDR VALUE`, `dis [ADDR [N]]`,
@@ -80,6 +93,10 @@ Example programs live in `examples/`:
 | `memtest.s` | `STORE`/`LOAD` round trip | `mem[10] = 123` |
 | `isa_example.s` | the example from `ISA.md` section 8 | `r1 = 728` |
 | `overflow.s` | overflow trap | exits 2, reason `overflow` |
+| `primes.s` | trial-division prime finder up to 41 | `r1 = 13`, `r2 = 41`, `r3 = 238` |
+| `syscall_demo.s` | host syscalls and OS interface | prints telemetry |
+| `k3os.s` | interactive K3-OS shell (`calc`, `save`, `cat`, `exec`, GUI) | prompts until `q` |
+| `snake.s` | real-time ternary Snake game | `q` quits |
 
 `k3vm` exit status: `0` halted, `2` trapped, `3` step limit, `1` usage/load
 error.
@@ -90,22 +107,33 @@ error.
 ```
 ternary.h            public arithmetic API
 ternary.c            implementation
+packed.h             packed 2-bit-per-trit word/stream API
+packed.c             implementation
 isa.h                instruction layout, opcode enum and decoder API
 isa.c                decoder implementation (core library, no I/O)
-vm.h                 VM core state, status/trap API and callbacks
+vm.h                 VM core state, privilege modes, status/trap API, callbacks
 vm.c                 VM execution core (uses isa.h)
-image.h              word-image reader/writer (host tools, uses stdio)
+image.h              text and .k3b word-image reader/writer (host tools)
 image.c              implementation
 disasm.h             instruction formatting (host tools, uses stdio)
 disasm.c             implementation
-k3asm.c              assembler (labels, branches, .word, error reporting)
+syscall.h            host syscall numbers and ABI
+syscall.c            syscall layer, terminal control and GUI desktop
+k3asm.c              assembler (labels, directives, pseudoinstructions)
 k3vm.c               command-line loader/runner
 k3dis.c              disassembler
 k3dbg.c              scriptable interactive debugger
+k3forth.c            Forth compiler for the K-Three VM
+arch/k3/             Linux-style architecture layer (boot, setup, process, entry)
+kernel/vmlinux.s     bootable kernel image source
+userspace/init.s     PID 1 init process
 tests/test_ternary.c exhaustive, edge-case and random arithmetic tests
 tests/test_vm.c      opcode, trap, control-flow and callback tests
 tests/test_isa.c     decoder field, opcode and immediate tests
+tests/test_packed.c  packed word/stream round-trip tests
+tests/test_syscall.c host syscall ABI tests
 tests/test_asm.sh    assembler encoding and error-handling tests
+tests/test_asm_extended.sh literals, directives, pseudoinstructions and .k3b
 tests/test_examples.sh assembles and runs every example program
 tests/test_dbg.sh    scripted debugger command tests
 examples/*.s         K-Three assembly examples
@@ -184,7 +212,7 @@ Aliasing: `bt_add`, `bt_sub` and `bt_neg` may write into their input. `bt_mul`,
 
 ## VM core
 
-`vm.h` defines the complete architectural state (`r0..r7`, PC, 729-word memory,
+`vm.h` defines the complete architectural state (`r0..r7`, PC, 2187-word memory,
 status, trap reason/code and instruction count) plus a small callback table.
 The state is public so a caller can allocate the VM on the stack and inspect it;
 the accessors add range/trit validation for writes. The core is deliberately
@@ -199,12 +227,13 @@ through `on_step`/`on_stop` callbacks, which receive a `const k3_vm *`.
 * `k3_vm_step` executes one instruction; `k3_vm_run(max_steps, &executed)`
   executes up to a budget and reports the status after the call. A return of
   `K3_VM_RUNNING` means the budget was exhausted.
-* If an instruction leaves the next fetch address at 729 (for example, a
-  non-branch instruction at address 728), the next step reports a memory fault
+* If an instruction leaves the next fetch address at 2187 (for example, a
+  non-branch instruction at address 2186), the next step reports a memory fault
   at the attempted fetch. This matches the ISA's fetch rule; no instruction at
-  729 is executed.
-* ISA v0 has no architectural I/O, stack or trap handler. The callbacks are a
-  host interface only, not a program-visible I/O mechanism.
+  2187 is executed.
+* The core tracks kernel/user privilege, a trap vector (`SETVEC`) and returns
+  from traps (`ERET`). Host I/O is still delivered through the callback table,
+  not through program-visible registers.
 
 ## Test coverage
 
@@ -230,7 +259,7 @@ VM suite:
 * Arithmetic/shift overflow and range traps, memory faults, illegal
   instructions and explicit traps, including no-write atomicity checks.
 * Branch conditions and offsets, invalid taken targets, valid/invalid absolute
-  jumps, two-word `LI`, the fetch edge at address 728, a missing `LI` literal,
+  jumps, two-word `LI`, the fetch edge at address 2186, a missing `LI` literal,
   and a self-modifying write to the next instruction.
 * Callback ordering/counts, `run` budgets, reset/init behavior, state accessors
   and atomic loader validation.
@@ -245,11 +274,15 @@ Decoder suite (`tests/test_isa.c`):
 * Reserved opcodes, mnemonic lookup and 4-trit range rejection.
 
 Assembler, example and debugger suites (`tests/test_asm.sh`,
-`tests/test_examples.sh`, `tests/test_dbg.sh`):
+`tests/test_asm_extended.sh`, `tests/test_examples.sh`, `tests/test_dbg.sh`):
 
 * The four `ISA.md` encodings, re-assembled and checked trit-for-trit.
 * Comment forms, `#imm` handling, case-insensitivity, forward labels, label
-  aliases in the same line, `LI` size and literal range, `.word`.
+  aliases in the same line, `LI` size and literal range, `.word`, `.equ`,
+  `.include`, `.string`, `.space`, character/ternary literals and
+  pseudoinstructions.
+* `.k3b` binary images: magic bytes, packed round-trip through `k3dis`/`k3vm`,
+  and the default output name selected by `-b`.
 * Rejection of reserved `r8`, out-of-range immediates, shift counts, unknown
   labels/mnemonics, wrong operand counts and duplicate labels, with no output
   file written on error.
@@ -264,14 +297,13 @@ All suites also run under AddressSanitizer and UndefinedBehaviorSanitizer via
 
 Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `1,555`
 checks and `test_isa` has 253 checks, all 0 failures; `test_asm` has 23 checks,
-`test_examples` has 8 and `test_dbg` has 34, all 0 failures. The exact counts
-are printed by the test binaries and scripts.
+`test_asm_extended` has 7, `test_examples` has 12 and `test_dbg` has 34, all 0
+failures. The exact counts are printed by the test binaries and scripts.
 
-## Proposed 2-bit-per-trit encoding (not implemented)
+## 2-bit-per-trit packing (implemented for images)
 
-This is a design note for a future packed/HDL representation. **It is not
-implemented or verified by this code.** No compatibility with the current
-one-byte-per-trit layout is implied.
+`packed.h`/`packed.c` implement this layout for `.k3b` images and for
+memory-image packing; the VM core still keeps one `int8_t` trit per element.
 
 | Bits | Trit |
 |---|---|
@@ -280,13 +312,15 @@ one-byte-per-trit layout is implied.
 | `10` | -1 |
 | `11` | invalid / reserved |
 
-* Word width would be 18 bits; trit 0 occupies the least significant bit pair.
+* Word width is 18 bits; trit 0 occupies the least significant bit pair.
 * Negation is a swap of `01` and `10`; `00` stays `00`. `11` has no defined
   negation.
-* Arithmetic must either guarantee that `11` never enters a datapath or define
-  a canonicalization/trap policy. That policy is unresolved and unverified.
-* Any future packed implementation must be tested independently; the current
-  tests do not cover it.
+* `bt_pack_stream` writes four words into nine bytes (72 bits, no padding) and
+  `bt_unpack_stream` rejects invalid `11` pairs through `bt_word_unpack`.
+* Arithmetic still runs on the unpacked one-byte-per-trit representation; the
+  packed form is an interchange/storage format, not the datapath.
+* The packing round-trip is covered by `tests/test_packed.c` and the `.k3b`
+  tests in `tests/test_asm_extended.sh`.
 
 ## Decisions proposed for review
 
@@ -318,5 +352,5 @@ These are host-API choices, not new ISA semantics:
 3. `k3_vm_load` is atomic with respect to range and trit validation.
 4. `k3_vm_reset` preserves memory and callbacks, while `k3_vm_init` zeroes
    memory.
-5. An instruction that does not replace PC at address 728 may leave PC at 729
+5. An instruction that does not replace PC at address 2186 may leave PC at 2187
    and status running; the next step traps before executing anything.
