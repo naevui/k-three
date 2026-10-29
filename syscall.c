@@ -923,7 +923,7 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
                 /* Tab 0: System Telemetry */
                 printf("\033[1;36m┌──[ System Telemetry ]─────────────────────────────────────────┐\033[0m\n");
                 printf("\033[1;36m│\033[0m  Architecture: \033[1;33mTernary (9-trit balanced)\033[0m                      \033[1;36m│\033[0m\n");
-                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m%d words (3^7 addressing)\033[0m                      \033[1;36m│\033[0m\n", K3_VM_MEMORY_WORDS);
+                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m%d words (3^8 addressing)\033[0m                      \033[1;36m│\033[0m\n", K3_VM_MEMORY_WORDS);
                 printf("\033[1;36m│\033[0m  Host Kernel:  \033[1;37m%s %s (%d cores)\033[0m                        \033[1;36m│\033[0m\n", u.sysname, u.machine, cores);
                 printf("\033[1;36m│\033[0m  Host RAM:     \033[1;37m%ld MiB Physical Memory\033[0m                         \033[1;36m│\033[0m\n", total_mb);
                 printf("\033[1;36m│\033[0m  Uptime:       \033[1;35m%02u:%02u:%02u\033[0m                                         \033[1;36m│\033[0m\n", hr, min, sec);
