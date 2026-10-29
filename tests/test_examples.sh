@@ -83,6 +83,14 @@ if expect factorial "r0 = 0" && expect factorial "r1 = 5040" && \
     good
 fi
 
+# primes: 13 primes <= 41, largest 41, sum 238.
+run primes
+if expect primes "r0 = 0" && expect primes "r1 = 13" && \
+   expect primes "r2 = 41" && expect primes "r3 = 238" && \
+   expect_rc primes 0; then
+    good
+fi
+
 # memtest: the stored value survives the round trip.
 run memtest
 if expect memtest "r1 = 123" && expect memtest "r2 = 123" && \
