@@ -735,6 +735,8 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
         printf("  w, poke <a> <val>    Write decimal value to address <a>\n");
         printf("  c, cat <path>        Read and display host file\n");
         printf("  x, exec <path>       Load and execute an external .k3 program\n");
+        printf("  k, calc <x> <op> <y> Calculate ternary arithmetic (+, -, *)\n");
+        printf("  s, save <f> <text>   Write text directly to host file\n");
         printf("  r, rand              Generate random balanced-ternary word\n");
         printf("  g, gui               Launch Graphical Desktop Environment\n");
         printf("  l, cls               Clear terminal display\n");
