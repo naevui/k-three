@@ -91,6 +91,14 @@ if expect primes "r0 = 0" && expect primes "r1 = 13" && \
     good
 fi
 
+# fib: 20 Fibonacci numbers up to F(19) = 4181, F(18) = 2584.
+run fib
+if expect fib "r0 = 0" && expect fib "r1 = 20" && \
+   expect fib "r2 = 4181" && expect fib "r3 = 2584" && \
+   expect_rc fib 0; then
+    good
+fi
+
 # memtest: the stored value survives the round trip.
 run memtest
 if expect memtest "r1 = 123" && expect memtest "r2 = 123" && \
