@@ -219,11 +219,36 @@ static void test_file_io(void)
     CHECK(handled);
     CHECK(helper_get_reg(&vm, 0) == 0);
 
-    /* 7. Remove file */
+    /* 7. Rename the file */
+    const char *renamed_path = "/tmp/k3_test_syscall_renamed.tmp";
+    helper_write_mem_str(&vm, 400, renamed_path);
     helper_set_reg(&vm, 0, 100);
+    helper_set_reg(&vm, 1, 400);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_RENAME);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == 0);
+    {
+        FILE *f = fopen(test_path, "r");
+        CHECK(f == NULL);
+        f = fopen(renamed_path, "r");
+        CHECK(f != NULL);
+        if (f != NULL) {
+            fclose(f);
+        }
+    }
+
+    /* 8. Remove the renamed file */
+    helper_set_reg(&vm, 0, 400);
     handled = k3_host_syscall(NULL, &vm, K3_SYS_REMOVE);
     CHECK(handled);
     CHECK(helper_get_reg(&vm, 0) == 0);
+
+    /* 9. Renaming a missing path fails */
+    helper_set_reg(&vm, 0, 100);
+    helper_set_reg(&vm, 1, 400);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_RENAME);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == -1);
 
     /* Clean up */
     k3_syscall_reset();
