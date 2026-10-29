@@ -2,8 +2,8 @@
  * K-Three VM core state, status, traps and public API.
  *
  * The core has no I/O, no filesystem calls and no memory allocation beyond its
- * own structure.  Architecture v0: 8 general registers, one 9-trit PC, 2187
- * words of memory (3 pages of 729 words).
+ * own structure.  Architecture v0: 8 general registers, one 9-trit PC, 6561
+ * words of memory (9 pages of 729 words, 3^8 addressing).
  */
 
 #ifndef K3_VM_H
@@ -16,7 +16,7 @@
 #include "ternary.h"
 
 #define K3_VM_REGISTER_COUNT 8
-#define K3_VM_MEMORY_WORDS 2187
+#define K3_VM_MEMORY_WORDS 6561
 #define K3_VM_MAX_ADDRESS (K3_VM_MEMORY_WORDS - 1)
 
 typedef enum k3_vm_status {
