@@ -8,6 +8,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 K3ASM=${K3ASM:-"$ROOT/build/k3asm"}
+K3DIS=${K3DIS:-"$ROOT/build/k3dis"}
 K3DBG=${K3DBG:-"$ROOT/build/k3dbg"}
 TMP=${TMP:-"$ROOT/build/dbg-tests"}
 
@@ -139,6 +140,18 @@ check reset_r0 "$out" 'r0 = 0'
 # Help is available.
 out=$(run counter '' 'help\nquit\n')
 check help "$out" 'step [N]'
+check help_save "$out" 'save PATH'
+
+# Save memory image as text and binary.
+out=$(run counter '' "setmem 50 1234\nsave $TMP/dump.k3 text\nsave $TMP/dump.k3b bin\nquit\n")
+check save_text "$out" "saved $TMP/dump.k3"
+check save_bin "$out" "saved $TMP/dump.k3b"
+if grep -Fxq '1234' "$TMP/dump.k3" && \
+   "$K3DIS" "$TMP/dump.k3b" >/dev/null 2>&1; then
+    ok
+else
+    bad save_files "saved image files are missing or invalid"
+fi
 
 # A missing image is a load error with exit status 1.
 if "$K3DBG" -q "$TMP/does-not-exist.k3" >/dev/null \
