@@ -276,10 +276,67 @@ static void test_file_io(void)
     k3_syscall_reset();
 }
 
+static void test_bank_switching(void)
+{
+    k3_vm vm;
+    k3_vm_callbacks cb = { .on_syscall = k3_host_syscall };
+    k3_vm_init(&vm, &cb);
+    k3_syscall_reset();
+
+    /* Slot 7 is at memory address 7 * 729 = 5103 .. 5831 */
+    uint16_t slot7_addr = (uint16_t)(7 * 729);
+
+    /* Write a unique value in slot 7 (bank 7) */
+    bt_word val1;
+    bt_word_from_i64(1234, &val1);
+    CHECK(k3_vm_set_mem(&vm, slot7_addr, &val1));
+
+    /* Map bank 50 into slot 7 */
+    helper_set_reg(&vm, 0, 7);  /* slot */
+    helper_set_reg(&vm, 1, 50); /* new bank ID */
+    bool handled = k3_host_syscall(NULL, &vm, K3_SYS_BANK_SWITCH);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == 7); /* old bank was 7 */
+
+    /* Slot 7 should now be zeroed (bank 50 is freshly allocated) */
+    bt_word read_val;
+    int64_t num = -1;
+    CHECK(k3_vm_get_mem(&vm, slot7_addr, &read_val));
+    CHECK(bt_word_to_i64(&read_val, &num));
+    CHECK(num == 0);
+
+    /* Write a new value into bank 50 */
+    bt_word val2;
+    bt_word_from_i64(5678, &val2);
+    CHECK(k3_vm_set_mem(&vm, slot7_addr, &val2));
+
+    /* Map bank 7 back into slot 7 */
+    helper_set_reg(&vm, 0, 7);
+    helper_set_reg(&vm, 1, 7);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_BANK_SWITCH);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == 50); /* old bank was 50 */
+
+    /* Previous bank 7 content (1234) must be restored */
+    CHECK(k3_vm_get_mem(&vm, slot7_addr, &read_val));
+    CHECK(bt_word_to_i64(&read_val, &num));
+    CHECK(num == 1234);
+
+    /* Out of bounds slot returns -1 */
+    helper_set_reg(&vm, 0, 8);
+    helper_set_reg(&vm, 1, 10);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_BANK_SWITCH);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == -1);
+
+    k3_syscall_reset();
+}
+
 int main(void)
 {
     test_system_info_and_math();
     test_file_io();
+    test_bank_switching();
 
     printf("test_syscall: %d checks, %d failures\n", g_checks, g_failures);
     return (g_failures == 0) ? 0 : 1;
