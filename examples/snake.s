@@ -10,7 +10,7 @@
 ; ==============================================================================
 
 start:
-    li r7, #2186            ; Initialize stack pointer at top of memory
+    li r7, #6560            ; Initialize stack pointer at top of memory (6561 words)
 
     ; 1. Enter raw terminal mode
     ldi r0, #1
