@@ -49,11 +49,11 @@ static void init_fds(void)
     g_fds_initialized = true;
 }
 
-#define K3_MAX_BANKS 1438900
+#define K3_MAX_BANKS 5755600
 #define K3_BANK_SIZE 729
 #define K3_BANK_SLOTS 8
 
-/* Sparse dynamic bank lookup table (1 GB virtual pool: ~1.43M banks of 729 words) */
+/* Sparse dynamic bank lookup table (4 GB virtual pool: ~5.75M banks of 729 words for FPGA DDR4) */
 #define K3_BANK_HASH_SIZE 4096
 typedef struct k3_bank_entry {
     int bank_id;
@@ -984,7 +984,7 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
                 /* Tab 0: System Telemetry */
                 printf("\033[1;36m┌──[ System Telemetry ]─────────────────────────────────────────┐\033[0m\n");
                 printf("\033[1;36m│\033[0m  Architecture: \033[1;33mTernary (9-trit balanced)\033[0m                      \033[1;36m│\033[0m\n");
-                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m1 GB Virtual Pool (MMU: %d banks x 729w)\033[0m    \033[1;36m│\033[0m\n", K3_MAX_BANKS);
+                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m4 GB FPGA Pool (MMU: %d banks x 729w)\033[0m       \033[1;36m│\033[0m\n", K3_MAX_BANKS);
                 printf("\033[1;36m│\033[0m  Active Window:\033[1;37m %d words (3^8 addressing, 8 slots)\033[0m            \033[1;36m│\033[0m\n", K3_VM_MEMORY_WORDS);
                 printf("\033[1;36m│\033[0m  Host Kernel:  \033[1;37m%s %s (%d cores)\033[0m                        \033[1;36m│\033[0m\n", u.sysname, u.machine, cores);
                 printf("\033[1;36m│\033[0m  Host RAM:     \033[1;37m%ld MiB Physical Memory\033[0m                         \033[1;36m│\033[0m\n", total_mb);
