@@ -49,6 +49,26 @@ static void init_fds(void)
     g_fds_initialized = true;
 }
 
+#define K3_MAX_BANKS 2048
+#define K3_BANK_SIZE 729
+#define K3_BANK_SLOTS 8
+
+static bt_word *g_bank_storage[K3_MAX_BANKS] = {0};
+static int g_slot_to_bank[K3_BANK_SLOTS] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+static void reset_banks(void)
+{
+    for (int i = 0; i < K3_BANK_SLOTS; ++i) {
+        g_slot_to_bank[i] = i;
+    }
+    for (int i = 0; i < K3_MAX_BANKS; ++i) {
+        if (g_bank_storage[i] != NULL) {
+            free(g_bank_storage[i]);
+            g_bank_storage[i] = NULL;
+        }
+    }
+}
+
 static struct termios g_orig_termios;
 static bool g_in_raw_mode = false;
 
@@ -69,6 +89,7 @@ static void set_raw_mode(bool enable)
 void k3_syscall_reset(void)
 {
     set_raw_mode(false);
+    reset_banks();
     init_fds();
     g_boot_millis = host_now_ms();
     g_boot_initialized = true;
@@ -1095,6 +1116,52 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
     case K3_SYS_RAW_MODE: {
         int64_t enable = reg_val(vm, 0);
         set_raw_mode(enable != 0);
+        return true;
+    }
+
+    case K3_SYS_BANK_SWITCH: {
+        int64_t slot = reg_val(vm, 0);
+        int64_t new_bank = reg_val(vm, 1);
+        if (slot < 0 || slot >= K3_BANK_SLOTS || new_bank < 0 || new_bank >= K3_MAX_BANKS) {
+            set_reg_val(vm, 0, -1);
+            return true;
+        }
+
+        int old_bank = g_slot_to_bank[slot];
+        if (old_bank == new_bank) {
+            set_reg_val(vm, 0, (int64_t)old_bank);
+            return true;
+        }
+
+        /* 1. Flush current slot contents back to old bank storage */
+        if (g_bank_storage[old_bank] == NULL) {
+            g_bank_storage[old_bank] = (bt_word *)calloc(K3_BANK_SIZE, sizeof(bt_word));
+        }
+        if (g_bank_storage[old_bank] != NULL) {
+            for (int i = 0; i < K3_BANK_SIZE; ++i) {
+                uint16_t addr = (uint16_t)(slot * K3_BANK_SIZE + i);
+                (void)k3_vm_get_mem(vm, addr, &g_bank_storage[old_bank][i]);
+            }
+        }
+
+        /* 2. Map new bank into slot */
+        g_slot_to_bank[slot] = (int)new_bank;
+        if (g_bank_storage[new_bank] != NULL) {
+            for (int i = 0; i < K3_BANK_SIZE; ++i) {
+                uint16_t addr = (uint16_t)(slot * K3_BANK_SIZE + i);
+                (void)k3_vm_set_mem(vm, addr, &g_bank_storage[new_bank][i]);
+            }
+        } else {
+            /* Unallocated bank initializes to zeroes on first map */
+            bt_word zero;
+            bt_word_zero(&zero);
+            for (int i = 0; i < K3_BANK_SIZE; ++i) {
+                uint16_t addr = (uint16_t)(slot * K3_BANK_SIZE + i);
+                (void)k3_vm_set_mem(vm, addr, &zero);
+            }
+        }
+
+        set_reg_val(vm, 0, (int64_t)old_bank);
         return true;
     }
 
