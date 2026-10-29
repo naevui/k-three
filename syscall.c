@@ -49,24 +49,64 @@ static void init_fds(void)
     g_fds_initialized = true;
 }
 
-#define K3_MAX_BANKS 2048
+#define K3_MAX_BANKS 1438900
 #define K3_BANK_SIZE 729
 #define K3_BANK_SLOTS 8
 
-static bt_word *g_bank_storage[K3_MAX_BANKS] = {0};
+/* Sparse dynamic bank lookup table (1 GB virtual pool: ~1.43M banks of 729 words) */
+#define K3_BANK_HASH_SIZE 4096
+typedef struct k3_bank_entry {
+    int bank_id;
+    bt_word *data;
+    struct k3_bank_entry *next;
+} k3_bank_entry;
+
+static k3_bank_entry *g_bank_hash[K3_BANK_HASH_SIZE] = {0};
 static int g_slot_to_bank[K3_BANK_SLOTS] = {0, 1, 2, 3, 4, 5, 6, 7};
+static int g_allocated_banks_count = 0;
+
+static bt_word *get_or_create_bank(int bank_id, bool create)
+{
+    unsigned hash = (unsigned)bank_id % K3_BANK_HASH_SIZE;
+    k3_bank_entry *curr = g_bank_hash[hash];
+    while (curr != NULL) {
+        if (curr->bank_id == bank_id) {
+            return curr->data;
+        }
+        curr = curr->next;
+    }
+    if (!create) return NULL;
+
+    k3_bank_entry *e = (k3_bank_entry *)malloc(sizeof(k3_bank_entry));
+    if (e == NULL) return NULL;
+    e->data = (bt_word *)calloc(K3_BANK_SIZE, sizeof(bt_word));
+    if (e->data == NULL) {
+        free(e);
+        return NULL;
+    }
+    e->bank_id = bank_id;
+    e->next = g_bank_hash[hash];
+    g_bank_hash[hash] = e;
+    g_allocated_banks_count++;
+    return e->data;
+}
 
 static void reset_banks(void)
 {
     for (int i = 0; i < K3_BANK_SLOTS; ++i) {
         g_slot_to_bank[i] = i;
     }
-    for (int i = 0; i < K3_MAX_BANKS; ++i) {
-        if (g_bank_storage[i] != NULL) {
-            free(g_bank_storage[i]);
-            g_bank_storage[i] = NULL;
+    for (int i = 0; i < K3_BANK_HASH_SIZE; ++i) {
+        k3_bank_entry *curr = g_bank_hash[i];
+        while (curr != NULL) {
+            k3_bank_entry *next = curr->next;
+            if (curr->data != NULL) free(curr->data);
+            free(curr);
+            curr = next;
         }
+        g_bank_hash[i] = NULL;
     }
+    g_allocated_banks_count = 0;
 }
 
 static struct termios g_orig_termios;
@@ -944,7 +984,8 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
                 /* Tab 0: System Telemetry */
                 printf("\033[1;36m┌──[ System Telemetry ]─────────────────────────────────────────┐\033[0m\n");
                 printf("\033[1;36m│\033[0m  Architecture: \033[1;33mTernary (9-trit balanced)\033[0m                      \033[1;36m│\033[0m\n");
-                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m%d words (3^8 addressing)\033[0m                      \033[1;36m│\033[0m\n", K3_VM_MEMORY_WORDS);
+                printf("\033[1;36m│\033[0m  Memory Space: \033[1;32m1 GB Virtual Pool (MMU: %d banks x 729w)\033[0m    \033[1;36m│\033[0m\n", K3_MAX_BANKS);
+                printf("\033[1;36m│\033[0m  Active Window:\033[1;37m %d words (3^8 addressing, 8 slots)\033[0m            \033[1;36m│\033[0m\n", K3_VM_MEMORY_WORDS);
                 printf("\033[1;36m│\033[0m  Host Kernel:  \033[1;37m%s %s (%d cores)\033[0m                        \033[1;36m│\033[0m\n", u.sysname, u.machine, cores);
                 printf("\033[1;36m│\033[0m  Host RAM:     \033[1;37m%ld MiB Physical Memory\033[0m                         \033[1;36m│\033[0m\n", total_mb);
                 printf("\033[1;36m│\033[0m  Uptime:       \033[1;35m%02u:%02u:%02u\033[0m                                         \033[1;36m│\033[0m\n", hr, min, sec);
@@ -1134,22 +1175,21 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
         }
 
         /* 1. Flush current slot contents back to old bank storage */
-        if (g_bank_storage[old_bank] == NULL) {
-            g_bank_storage[old_bank] = (bt_word *)calloc(K3_BANK_SIZE, sizeof(bt_word));
-        }
-        if (g_bank_storage[old_bank] != NULL) {
+        bt_word *old_storage = get_or_create_bank(old_bank, true);
+        if (old_storage != NULL) {
             for (int i = 0; i < K3_BANK_SIZE; ++i) {
                 uint16_t addr = (uint16_t)(slot * K3_BANK_SIZE + i);
-                (void)k3_vm_get_mem(vm, addr, &g_bank_storage[old_bank][i]);
+                (void)k3_vm_get_mem(vm, addr, &old_storage[i]);
             }
         }
 
         /* 2. Map new bank into slot */
         g_slot_to_bank[slot] = (int)new_bank;
-        if (g_bank_storage[new_bank] != NULL) {
+        bt_word *new_storage = get_or_create_bank((int)new_bank, false);
+        if (new_storage != NULL) {
             for (int i = 0; i < K3_BANK_SIZE; ++i) {
                 uint16_t addr = (uint16_t)(slot * K3_BANK_SIZE + i);
-                (void)k3_vm_set_mem(vm, addr, &g_bank_storage[new_bank][i]);
+                (void)k3_vm_set_mem(vm, addr, &new_storage[i]);
             }
         } else {
             /* Unallocated bank initializes to zeroes on first map */
