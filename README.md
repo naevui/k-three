@@ -213,7 +213,7 @@ Aliasing: `bt_add`, `bt_sub` and `bt_neg` may write into their input. `bt_mul`,
 
 ## VM core
 
-`vm.h` defines the complete architectural state (`r0..r7`, PC, 2187-word memory,
+`vm.h` defines the complete architectural state (`r0..r7`, PC, 6561-word memory,
 status, trap reason/code and instruction count) plus a small callback table.
 The state is public so a caller can allocate the VM on the stack and inspect it;
 the accessors add range/trit validation for writes. The core is deliberately
@@ -228,10 +228,10 @@ through `on_step`/`on_stop` callbacks, which receive a `const k3_vm *`.
 * `k3_vm_step` executes one instruction; `k3_vm_run(max_steps, &executed)`
   executes up to a budget and reports the status after the call. A return of
   `K3_VM_RUNNING` means the budget was exhausted.
-* If an instruction leaves the next fetch address at 2187 (for example, a
-  non-branch instruction at address 2186), the next step reports a memory fault
+* If an instruction leaves the next fetch address at 6561 (for example, a
+  non-branch instruction at address 6560), the next step reports a memory fault
   at the attempted fetch. This matches the ISA's fetch rule; no instruction at
-  2187 is executed.
+  6561 is executed.
 * The core tracks kernel/user privilege, a trap vector (`SETVEC`) and returns
   from traps (`ERET`). Host I/O is still delivered through the callback table,
   not through program-visible registers.
@@ -260,7 +260,7 @@ VM suite:
 * Arithmetic/shift overflow and range traps, memory faults, illegal
   instructions and explicit traps, including no-write atomicity checks.
 * Branch conditions and offsets, invalid taken targets, valid/invalid absolute
-  jumps, two-word `LI`, the fetch edge at address 2186, a missing `LI` literal,
+  jumps, two-word `LI`, the fetch edge at address 6560, a missing `LI` literal,
   and a self-modifying write to the next instruction.
 * Callback ordering/counts, `run` budgets, reset/init behavior, state accessors
   and atomic loader validation.
@@ -355,5 +355,5 @@ These are host-API choices, not new ISA semantics:
 3. `k3_vm_load` is atomic with respect to range and trit validation.
 4. `k3_vm_reset` preserves memory and callbacks, while `k3_vm_init` zeroes
    memory.
-5. An instruction that does not replace PC at address 2186 may leave PC at 2187
+5. An instruction that does not replace PC at address 6560 may leave PC at 6561
    and status running; the next step traps before executing anything.
