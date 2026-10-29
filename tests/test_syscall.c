@@ -237,11 +237,16 @@ static void test_file_io(void)
         }
     }
 
-    /* 8. Query file size before removal */
+    /* 8. Query file size and existence before removal */
     helper_set_reg(&vm, 0, 400);
     handled = k3_host_syscall(NULL, &vm, K3_SYS_FILE_SIZE);
     CHECK(handled);
     CHECK(helper_get_reg(&vm, 0) == (int64_t)msg_len);
+
+    helper_set_reg(&vm, 0, 400);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_FILE_EXISTS);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == 1);
 
     /* 9. Remove the renamed file */
     helper_set_reg(&vm, 0, 400);
@@ -256,11 +261,16 @@ static void test_file_io(void)
     CHECK(handled);
     CHECK(helper_get_reg(&vm, 0) == -1);
 
-    /* 11. Size of missing file returns -1 */
+    /* 11. Size of missing file returns -1, existence returns 0 */
     helper_set_reg(&vm, 0, 400);
     handled = k3_host_syscall(NULL, &vm, K3_SYS_FILE_SIZE);
     CHECK(handled);
     CHECK(helper_get_reg(&vm, 0) == -1);
+
+    helper_set_reg(&vm, 0, 400);
+    handled = k3_host_syscall(NULL, &vm, K3_SYS_FILE_EXISTS);
+    CHECK(handled);
+    CHECK(helper_get_reg(&vm, 0) == 0);
 
     /* Clean up */
     k3_syscall_reset();
