@@ -9,7 +9,7 @@ This document provides architectural context, commands, and rules for AI assista
 K-Three is a software reference model and operating system ecosystem for a **balanced-ternary processor**:
 * **Radix:** Base-3 balanced ternary with trits: `-1` (`-`), `0` (`0`), and `+1` (`+`).
 * **Word Size:** 9 trits per word ($3^9 = 19683$ states, symmetric range `[-9841 .. +9841]`).
-* **Memory Architecture:** Word-addressed flat memory of $3^7 = 2187$ words (`0 .. 2186`).
+* **Memory Architecture:** Word-addressed flat memory of $3^8 = 6561$ words (`0 .. 6560`).
 * **Registers:** 8 general-purpose 9-trit registers (`r0..r7`).
   * By convention: `r6` is Link Register (return address), `r7` is Data Stack Pointer, `r4` is Return Stack Pointer (Forth).
 * **Privilege Levels:** `K3_MODE_KERNEL` (0) and `K3_MODE_USER` (1).
@@ -72,8 +72,8 @@ All instructions occupy **1 word (9 trits)**, except `LI` which takes **2 words*
 | 12 | `SHLI`| `ra, #imm` | Shift left by `imm` trits (0..8) |
 | 13 | `SHR` | `rd, ra, rc` | Shift right by `rc` trits (nearest division by $3^k$) |
 | 14 | `SHRI`| `ra, #imm` | Shift right by `imm` trits (0..8) |
-| 15 | `LOAD`| `rd, [ra]` | `rd = memory[ra]` (0..2186) |
-| 16 | `STORE`| `rd, [ra]`| `memory[ra] = rd` (0..2186) |
+| 15 | `LOAD`| `rd, [ra]` | `rd = memory[ra]` (0..6560) |
+| 16 | `STORE`| `rd, [ra]`| `memory[ra] = rd` (0..6560) |
 | 17 | `JMP` | `ra` / `label` | Jump to address in register or label (`LI r5; JMP r5`) |
 | 18 | `BRZ` | `ra, offset` | Branch if `ra == 0` (4-trit offset `[-40..+40]`) |
 | 19 | `BRNZ`| `ra, offset` | Branch if `ra != 0` |
@@ -128,7 +128,7 @@ Key Syscall Codes:
 * `19`: `SYS_CLEAR` - Clear terminal screen (`\e[2J\e[H`)
 * `20`: `SYS_SETCURSOR` - Move cursor to row `r0`, col `r1` (1-based)
 * `21`: `SYS_KEYHIT` - Non-blocking key check on stdin (1: key ready, 0: none)
-* `22`: `SYS_MEMSIZE` - Returns total memory words (2187) into `r0`
+* `22`: `SYS_MEMSIZE` - Returns total memory words (6561) into `r0`
 * `23`: `SYS_INSN_COUNT` - Total instructions executed
 * `26`: `SYS_EXEC` - Spawn & execute child `.k3` program at path `r0`
 * `27`: `SYS_PUTTRITS_COLOR` - Colored trits (`+` green, `-` red, `0` dim)
@@ -150,8 +150,8 @@ Key Syscall Codes:
 2. **String Escape Sequences:**
    * In `.string` directives and assembler strings, use `\e` for escape character (`27`). Avoid `\033` because `\0` will be parsed as a string-terminating null byte.
 3. **Memory Limits:**
-   * Maximum valid memory address is `K3_VM_MAX_ADDRESS = 2186` ($3^7 - 1$).
-   * Any fetch, load, store, or jump outside `0 .. 2186` triggers a `K3_TRAP_MEMORY` fault.
+   * Maximum valid memory address is `K3_VM_MAX_ADDRESS = 6560` ($3^8 - 1$).
+   * Any fetch, load, store, or jump outside `0 .. 6560` triggers a `K3_TRAP_MEMORY` fault.
 4. **C Standard Compliance:**
    * Strictly `-std=c11 -Wall -Wextra -Wpedantic`. Never use non-standard extensions or implicit function declarations.
    * Do not introduce external library dependencies.
