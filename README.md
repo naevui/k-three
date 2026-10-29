@@ -1,0 +1,322 @@
+# K-Three (Kord-Three)
+
+An experimental balanced-ternary processor architecture, virtual machine, toolchain, and operating system.
+
+**Status: deliverables 1, 2, 3 plus the toolchain and debugger.** The
+ternary/word library, its tests, the ISA v0 proposal, the VM core, a shared
+instruction decoder, and the assembler/loader/disassembler/debugger toolchain
+with example programs exist. Everything here is a reference model; there are
+no performance claims.
+
+See [`ISA.md`](ISA.md) for the proposed instruction set, encoding, traps and
+assembly syntax. The VM core implements ISA v0; the ISA still remains a
+proposal.
+
+## Build and test
+
+Requires a C11 compiler and `make`; no external libraries. POSIX `sh` and
+`grep` are used by the script-based test suites.
+
+```sh
+make          # build build/libk3.a and the tools in build/
+make test     # ternary, VM and decoder suites, then the tool/example scripts
+make debug    # the same under ASan + UBSan
+make examples # only assemble examples/*.s into build/examples/
+make clean
+```
+
+The build uses `-std=c11 -Wall -Wextra -Wpedantic`. `make debug` uses
+`-O0 -g3 -fsanitize=address,undefined`.
+
+## Tools
+
+All four tools read or write a simple text word image: one or more signed
+decimal 9-trit words per line, separated by whitespace or commas. `;`, `#` at
+the start of a token, and `//` start comments. This is a debugging format, not
+part of the ISA. The shared reader/writer lives in `image.h`/`image.c`.
+
+```sh
+# Assemble in.s to in.k3 (default output replaces .s with .k3). -l writes a
+# simple address/word/trit listing.
+build/k3asm examples/factorial.s -o build/factorial.k3
+build/k3asm examples/factorial.s -o build/factorial.k3 -l build/factorial.lst
+
+# Disassemble; -t also prints the raw trits of each word, -l marks branch
+# targets with synthetic Lnnnn labels.
+build/k3dis -t build/factorial.k3
+build/k3dis -l build/factorial.k3
+
+# Run; -d dumps registers, -m dumps non-zero memory, -t traces each decoded
+# instruction to stderr.
+build/k3vm -d -m build/factorial.k3
+build/k3vm -t build/factorial.k3
+
+# Scriptable debugger.  Prompts and diagnostics go to stderr, so stdout is
+# clean for scripts; -q suppresses the banner and prompts.
+printf 'break 5\ncontinue\nregs\ndis 5 3\nquit\n' |
+    build/k3dbg -q build/factorial.k3
+```
+
+`k3asm` supports `label:` definitions, labels as branch targets, forward
+references, the `.word N` directive, and reports errors with `file:line`.
+Out-of-range immediates, reserved register `r8`, unknown labels and unknown
+mnemonics are rejected and no output file is written. `-l`/`--list`
+writes an address/word/trit listing to a file.
+
+`k3dbg` commands are `step [N]`, `continue`, `regs`, `reg rN`, `set rN VALUE`,
+`set pc ADDR`, `mem ADDR [N]`, `setmem ADDR VALUE`, `dis [ADDR [N]]`,
+`break ADDR`, `delete [ADDR]`, `info`, `reset`, `help` and `quit`. `break`
+with no argument lists breakpoints; `delete` with no argument clears all of
+them. `-l` enables labels in `dis`, and `-s N` sets the `continue` step limit
+(default 1,000,000). `reset` reinitialises the CPU and reloads the image.
+
+Example programs live in `examples/`:
+
+| File | What it demonstrates | Expected result |
+|---|---|---|
+| `counter.s` | countdown loop | `r0 = 0` |
+| `factorial.s` | `MUL` loop, 7! | `r1 = 5040` |
+| `loop_label.s` | label branch target, sum 1..6 | `r1 = 21` |
+| `memtest.s` | `STORE`/`LOAD` round trip | `mem[10] = 123` |
+| `isa_example.s` | the example from `ISA.md` section 8 | `r1 = 728` |
+| `overflow.s` | overflow trap | exits 2, reason `overflow` |
+
+`k3vm` exit status: `0` halted, `2` trapped, `3` step limit, `1` usage/load
+error.
+
+
+## Layout
+
+```
+ternary.h            public arithmetic API
+ternary.c            implementation
+isa.h                instruction layout, opcode enum and decoder API
+isa.c                decoder implementation (core library, no I/O)
+vm.h                 VM core state, status/trap API and callbacks
+vm.c                 VM execution core (uses isa.h)
+image.h              word-image reader/writer (host tools, uses stdio)
+image.c              implementation
+disasm.h             instruction formatting (host tools, uses stdio)
+disasm.c             implementation
+k3asm.c              assembler (labels, branches, .word, error reporting)
+k3vm.c               command-line loader/runner
+k3dis.c              disassembler
+k3dbg.c              scriptable interactive debugger
+tests/test_ternary.c exhaustive, edge-case and random arithmetic tests
+tests/test_vm.c      opcode, trap, control-flow and callback tests
+tests/test_isa.c     decoder field, opcode and immediate tests
+tests/test_asm.sh    assembler encoding and error-handling tests
+tests/test_examples.sh assembles and runs every example program
+tests/test_dbg.sh    scripted debugger command tests
+examples/*.s         K-Three assembly examples
+ISA.md               ISA v0 proposal and open questions
+Makefile
+```
+
+## Representation
+
+* One balanced trit per `int8_t`, value `-1`, `0` or `+1`. No packing.
+* Trit order is least significant first: `t[0]` has weight `3^0`.
+* An `n`-trit value represents exactly the integers in
+  `[-(3^n - 1) / 2, +(3^n - 1) / 2]`.
+* A K-Three word is `K3_TRITS = 9` trits, range `-9841 .. +9841`.
+* The API is generic over `n` so the same code can be exhaustively tested at
+  4 trits and used at 9 trits.
+
+The functions assume every input trit is valid (`-1`, `0`, `+1`) unless stated
+otherwise. `bt_valid()` checks that precondition.
+
+## Arithmetic semantics
+
+All results are written as canonical balanced-ternary trits, not as host
+integers.
+
+| Operation | Result | Overflow indication |
+|---|---|---|
+| `bt_add` | low `n` trits of `a + b` | carry trit `c`, `BT_OVERFLOW` iff `c != 0` |
+| `bt_sub` | low `n` trits of `a - b` | carry trit `c`, `BT_OVERFLOW` iff `c != 0` |
+| `bt_neg` | exact `-a` | never overflows (range is symmetric) |
+| `bt_mul` | exact product split into low/high `n` trits | `BT_OVERFLOW` iff the high half is nonzero |
+| `bt_shl` | low `n` trits of `a * 3^amount` | `BT_OVERFLOW` iff nonzero trits were shifted out |
+| `bt_shr` | `a` with `amount` low trits dropped | never overflows |
+
+Exact relations:
+
+```
+add:  value(a) + value(b) = value(out) + c * 3^n
+sub:  value(a) - value(b) = value(out) + c * 3^n
+mul:  value(a) * value(b) = value(out) + value(high) * 3^n
+```
+
+Addition/subtraction **wrap** to the low `n` trits and report the carry; they
+do not saturate and do not trap. Example at 4 trits:
+
+```
+40 + 40 = 80 = (-1) + 1*3^4  ->  out = -1, carry = +1, BT_OVERFLOW
+```
+
+`bt_mul` always writes the complete exact product, split into two `n`-trit
+halves. `high` is required and must not overlap the inputs or `out`.
+
+`bt_shl` is a pure digit shift, so it corresponds to multiplication by a power
+of three. `bt_shr` is **not** truncation toward zero; dropping low balanced
+trits is division rounded to nearest (ties are impossible because `3^k` is
+odd):
+
+```
+ 5 >> 1 =  2
+-5 >> 1 = -2
+ 4 >> 1 =  1
+```
+
+For `amount >= n`, both shifts produce zero; `bt_shl` reports overflow iff the
+input was nonzero.
+
+Conversion behavior:
+
+* `bt_from_i64` returns `false` and zeroes the output if the value does not fit
+  in `n` trits.
+* `bt_to_i64` returns `false` and writes `0` if the trit array is invalid or
+  the value does not fit in `int64_t`.
+
+Aliasing: `bt_add`, `bt_sub` and `bt_neg` may write into their input. `bt_mul`,
+`bt_shl` and `bt_shr` require non-overlapping buffers.
+
+## VM core
+
+`vm.h` defines the complete architectural state (`r0..r7`, PC, 729-word memory,
+status, trap reason/code and instruction count) plus a small callback table.
+The state is public so a caller can allocate the VM on the stack and inspect it;
+the accessors add range/trit validation for writes. The core is deliberately
+free of `stdio`, file and OS calls. Host tracing and stop notification go
+through `on_step`/`on_stop` callbacks, which receive a `const k3_vm *`.
+
+* `k3_vm_init` performs power-on initialization and zeroes memory.
+* `k3_vm_reset` clears the CPU state (registers, PC, status, traps and counters)
+  but preserves memory and callbacks.
+* `k3_vm_load` validates the whole destination range and every trit before
+  copying, so a rejected load leaves memory unchanged.
+* `k3_vm_step` executes one instruction; `k3_vm_run(max_steps, &executed)`
+  executes up to a budget and reports the status after the call. A return of
+  `K3_VM_RUNNING` means the budget was exhausted.
+* If an instruction leaves the next fetch address at 729 (for example, a
+  non-branch instruction at address 728), the next step reports a memory fault
+  at the attempted fetch. This matches the ISA's fetch rule; no instruction at
+  729 is executed.
+* ISA v0 has no architectural I/O, stack or trap handler. The callbacks are a
+  host interface only, not a program-visible I/O mechanism.
+
+## Test coverage
+
+`make test` currently performs:
+
+Arithmetic suite:
+
+* Exhaustive conversion round-trips for all 81 representable 4-trit values and
+  all 19,683 representable 9-trit values.
+* Exhaustive 4-trit operand pairs (81 x 81) for add, sub, mul, compare and neg,
+  checked against an independent integer reference.
+* Exhaustive 4-trit shifts for shift counts 0..5.
+* All pairs from a 9-trit edge-value set containing zero, +/-1, powers of three,
+  powers-of-three boundaries, and the word limits +/-9841.
+* 50,000 deterministic random 9-trit operand pairs (including shifts) checked
+  against the same integer reference.
+* Host-range edges: `INT64_MIN`, `INT64_MAX`, 40/41-trit boundaries, invalid
+  trits, zero-width operations, and huge shift counts.
+
+VM suite:
+
+* Every opcode, both reserved opcodes, and used register field 8.
+* Arithmetic/shift overflow and range traps, memory faults, illegal
+  instructions and explicit traps, including no-write atomicity checks.
+* Branch conditions and offsets, invalid taken targets, valid/invalid absolute
+  jumps, two-word `LI`, the fetch edge at address 728, a missing `LI` literal,
+  and a self-modifying write to the next instruction.
+* Callback ordering/counts, `run` budgets, reset/init behavior, state accessors
+  and atomic loader validation.
+* The four encoding examples in `ISA.md`, checked trit-for-trit.
+
+Decoder suite (`tests/test_isa.c`):
+
+* The four `ISA.md` encodings, including the unused field values that a raw
+  instruction word produces.
+* Every opcode value `0..26`, every register field value `0..8`, and every
+  4-trit immediate value `-40..40`.
+* Reserved opcodes, mnemonic lookup and 4-trit range rejection.
+
+Assembler, example and debugger suites (`tests/test_asm.sh`,
+`tests/test_examples.sh`, `tests/test_dbg.sh`):
+
+* The four `ISA.md` encodings, re-assembled and checked trit-for-trit.
+* Comment forms, `#imm` handling, case-insensitivity, forward labels, label
+  aliases in the same line, `LI` size and literal range, `.word`.
+* Rejection of reserved `r8`, out-of-range immediates, shift counts, unknown
+  labels/mnemonics, wrong operand counts and duplicate labels, with no output
+  file written on error.
+* Every example is assembled and run; expected register, memory and exit-status
+  values are checked, including the decoded `-t` trace.
+* Debugger initial state, stepping, breakpoints, continues, halt/trap status,
+  register/memory/pc edits, memory dumps, labeled disassembly, `LI` literal
+  skipping, the step limit, unknown commands, reset and image-load errors.
+
+All suites also run under AddressSanitizer and UndefinedBehaviorSanitizer via
+`make debug`.
+
+Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `1,555`
+checks and `test_isa` has 253 checks, all 0 failures; `test_asm` has 23 checks,
+`test_examples` has 8 and `test_dbg` has 34, all 0 failures. The exact counts
+are printed by the test binaries and scripts.
+
+## Proposed 2-bit-per-trit encoding (not implemented)
+
+This is a design note for a future packed/HDL representation. **It is not
+implemented or verified by this code.** No compatibility with the current
+one-byte-per-trit layout is implied.
+
+| Bits | Trit |
+|---|---|
+| `00` | 0 |
+| `01` | +1 |
+| `10` | -1 |
+| `11` | invalid / reserved |
+
+* Word width would be 18 bits; trit 0 occupies the least significant bit pair.
+* Negation is a swap of `01` and `10`; `00` stays `00`. `11` has no defined
+  negation.
+* Arithmetic must either guarantee that `11` never enters a datapath or define
+  a canonicalization/trap policy. That policy is unresolved and unverified.
+* Any future packed implementation must be tested independently; the current
+  tests do not cover it.
+
+## Decisions proposed for review
+
+These are library-level choices, not yet ISA decisions. They are called out
+here so they are not silent:
+
+1. **Generic `n`-trit API** in addition to the 9-trit word type, so 4-trit
+   exhaustive tests exercise the same code used for 9-trit words.
+2. **Wrapping add/sub with a carry trit** and a status enum, rather than
+   saturation or a hard trap.
+3. **Full 2n-trit multiply** split into `out`/`high`, with overflow defined as
+   a nonzero high half.
+4. **Balanced right shift** (drop low trits) rather than truncation toward
+   zero.
+5. **Failure zeroes outputs** for conversions, so callers never see a
+   partially converted value.
+6. **Aliasing rules** as listed above.
+
+The ISA resolves this at the architectural level by faulting on overflow (see
+`ISA.md` section 5); the library itself still wraps/reports a carry or overflow
+status so other callers can choose a different policy.
+
+## VM implementation choices
+
+These are host-API choices, not new ISA semantics:
+
+1. The full VM state is public so callers can allocate it without an allocator.
+2. Callback tables are copied by value; `NULL` means no callbacks.
+3. `k3_vm_load` is atomic with respect to range and trit validation.
+4. `k3_vm_reset` preserves memory and callbacks, while `k3_vm_init` zeroes
+   memory.
+5. An instruction that does not replace PC at address 728 may leave PC at 729
+   and status running; the next step traps before executing anything.

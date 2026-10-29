@@ -1,0 +1,34 @@
+# Build outputs
+build/
+bin/
+*.o
+*.d
+*.a
+*.so
+
+# Executables
+k3asm
+k3vm
+k3dis
+k3dbg
+k3forth
+k3linux
+
+# Compiled image and listing files in source directories
+*.k3
+*.lst
+*.k3b
+
+# Temporary and test artifacts
+*.tmp
+*.out
+*.err
+
+# Editor & OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+compile_commands.json
