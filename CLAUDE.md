@@ -136,6 +136,7 @@ Key Syscall Codes:
 * `33`: `SYS_DRAW_VRAM` - Render VRAM buffer at `r0` (w=`r1`, h=`r2`)
 * `34`: `SYS_GUI_DESKTOP` - Launch interactive 4-tab Desktop Environment
 * `35`: `SYS_RAW_MODE` - Enable/disable raw unbuffered terminal mode
+* `36`: `SYS_RENAME` - Rename a file (`r0` = old path, `r1` = new path)
 
 ---
 
