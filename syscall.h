@@ -7,7 +7,7 @@
 #include "vm.h"
 
 /*
- * Standard K-Three Syscall codes (0..24).
+ * Standard K-Three Syscall codes (0..36).
  * All codes fit in the 4-trit immediate [-40..+40] of TRAP #code.
  *
  * Calling convention:
@@ -52,7 +52,7 @@
 #define K3_SYS_KEYHIT       21  /* Non-blocking key check on stdin: 1 if key available, 0 if not into r0 */
 
 /* System Info & Diagnostics */
-#define K3_SYS_MEMSIZE      22  /* Total memory words (729) into r0 */
+#define K3_SYS_MEMSIZE      22  /* Total memory words (2187) into r0 */
 #define K3_SYS_INSN_COUNT   23  /* Instruction count executed: r0 = low 9 trits, r1 = high 9 trits */
 #define K3_SYS_PUTC_ERR     24  /* Output char in r0 to stderr */
 #define K3_SYS_PUTS_ERR     25  /* Output null-terminated string at address in r0 to stderr */
@@ -72,6 +72,9 @@
 #define K3_SYS_DRAW_VRAM    33  /* Render VRAM buffer at r0 (w=r1, h=r2) to terminal */
 #define K3_SYS_GUI_DESKTOP  34  /* Launch interactive K3-OS Graphical Desktop environment */
 #define K3_SYS_RAW_MODE     35  /* Set terminal raw unbuffered mode: r0=1 (raw), r0=0 (cooked) */
+
+/* Extended File I/O */
+#define K3_SYS_RENAME       36  /* Rename file: r0 = old path, r1 = new path. Returns 0 or -1 */
 
 #define K3_MAX_HOST_FDS     16
 
