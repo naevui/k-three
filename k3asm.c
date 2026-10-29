@@ -1188,6 +1188,7 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "SYS_DRAW_VRAM", 33);
     add_predefined_equ(as, "SYS_GUI_DESKTOP", 34);
     add_predefined_equ(as, "SYS_RAW_MODE", 35);
+    add_predefined_equ(as, "SYS_RENAME", 36);
 }
 
 int main(int argc, char **argv)
