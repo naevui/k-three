@@ -117,5 +117,35 @@ else
     bad include "failed to process .include directive"
 fi
 
+# Test 6: compact binary .k3b output, magic, and auto-detection
+cat << 'EOF' > "$TMP/binary.s"
+    ldi r0, #7
+    ldi r1, #1
+loop:
+    mul r1, r1, r0
+    addi r0, #-1
+    brnz r0, loop
+    halt
+EOF
+"$K3ASM" -b "$TMP/binary.s" -o "$TMP/binary.k3b"
+magic=$(od -An -tx1 -N4 "$TMP/binary.k3b" | tr -d ' \n')
+if [ "$magic" = "7f4b3342" ] && \
+   "$K3DIS" "$TMP/binary.k3b" | grep -Fq "MUL r1, r1, r0" && \
+   "$K3VM" -d "$TMP/binary.k3b" | grep -Fq "r1 = 5040"; then
+    ok
+else
+    bad binary "failed to write or read a compact binary image"
+fi
+
+# Test 7: -b picks a .k3b default output name
+cp "$TMP/binary.s" "$TMP/bin2.s"
+rm -f "$TMP/bin2.k3b"
+( cd "$TMP" && "$K3ASM" -b bin2.s >/dev/null )
+if [ -s "$TMP/bin2.k3b" ]; then
+    ok
+else
+    bad binary_default "missing default .k3b output"
+fi
+
 printf 'test_asm_extended: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
