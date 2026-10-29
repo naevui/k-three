@@ -12,7 +12,7 @@
 ; ==============================================================================
 
 start:
-    li r7, #2186            ; Initialize stack pointer at 2186
+    li r7, #6560            ; Initialize stack pointer at top of 6561-word memory
 
     ; Clear terminal and display boot banner
     trap #SYS_CLEAR
@@ -265,7 +265,7 @@ cmd_peek_addr:
     push r6
     brn r2, peek_err
     mov r1, r2
-    li r3, #-2186
+    li r3, #-6560
     add r1, r1, r3
     brp r1, peek_err
 
@@ -304,7 +304,7 @@ cmd_poke:
 
     brn r2, poke_err
     mov r1, r2
-    li r4, #-2186
+    li r4, #-6560
     add r1, r1, r4
     brp r1, poke_err
 
