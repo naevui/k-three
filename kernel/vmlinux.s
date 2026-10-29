@@ -7,7 +7,7 @@
 
 start:
     ; 1. Set kernel stack pointer
-    li r7, #2186
+    li r7, #6560
 
     ; 2. Register hardware trap vector
     li r0, kernel_trap_vector
