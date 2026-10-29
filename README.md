@@ -94,6 +94,7 @@ Example programs live in `examples/`:
 | `isa_example.s` | the example from `ISA.md` section 8 | `r1 = 728` |
 | `overflow.s` | overflow trap | exits 2, reason `overflow` |
 | `primes.s` | trial-division prime finder up to 41 | `r1 = 13`, `r2 = 41`, `r3 = 238` |
+| `fib.s` | 20 Fibonacci numbers up to F(19) | `r1 = 20`, `r2 = 4181`, `r3 = 2584` |
 | `syscall_demo.s` | host syscalls and OS interface | prints telemetry |
 | `k3os.s` | interactive K3-OS shell (`calc`, `save`, `cat`, `exec`, GUI) | prompts until `q` |
 | `snake.s` | real-time ternary Snake game | `q` quits |
@@ -295,10 +296,12 @@ Assembler, example and debugger suites (`tests/test_asm.sh`,
 All suites also run under AddressSanitizer and UndefinedBehaviorSanitizer via
 `make debug`.
 
-Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `1,555`
-checks and `test_isa` has 253 checks, all 0 failures; `test_asm` has 23 checks,
-`test_asm_extended` has 7, `test_examples` has 12 and `test_dbg` has 34, all 0
-failures. The exact counts are printed by the test binaries and scripts.
+Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `3,024`
+checks, `test_isa` has 257 checks, `test_packed` has `118,144` checks,
+`test_syscall` has 148 checks and `test_image` has 64 checks, all 0 failures;
+`test_asm` has 23 checks, `test_asm_extended` has 7, `test_examples` has 13
+and `test_dbg` has 38, all 0 failures. The exact counts are printed by the
+test binaries and scripts.
 
 ## 2-bit-per-trit packing (implemented for images)
 
