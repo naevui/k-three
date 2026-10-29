@@ -9,9 +9,9 @@ BUILD := build
 
 LIB := $(BUILD)/libk3.a
 
-TOOLS := $(BUILD)/k3asm $(BUILD)/k3vm $(BUILD)/k3dis $(BUILD)/k3dbg $(BUILD)/k3forth $(BUILD)/k3linux
+TOOLS := $(BUILD)/k3asm $(BUILD)/k3vm $(BUILD)/k3dis $(BUILD)/k3dbg $(BUILD)/k3forth $(BUILD)/k3linux $(BUILD)/k3cc
 DEBUG_TOOLS := $(BUILD)/k3asm_debug $(BUILD)/k3vm_debug \
-               $(BUILD)/k3dis_debug $(BUILD)/k3dbg_debug $(BUILD)/k3forth_debug
+               $(BUILD)/k3dis_debug $(BUILD)/k3dbg_debug $(BUILD)/k3forth_debug $(BUILD)/k3cc_debug
 
 TEST_TERNARY := $(BUILD)/test_ternary
 TEST_VM := $(BUILD)/test_vm
@@ -175,6 +175,9 @@ $(BUILD)/k3dbg: $(BUILD)/k3dbg.o $(BUILD)/image.o $(BUILD)/disasm.o $(LIB)
 $(BUILD)/k3forth: $(BUILD)/k3forth.o $(BUILD)/image.o $(LIB)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
+$(BUILD)/k3cc: k3cc.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
+
 $(BUILD)/boot.o: arch/k3/boot.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
@@ -237,6 +240,9 @@ $(BUILD)/k3dbg_debug: k3dbg.c vm.c isa.c ternary.c packed.c syscall.c image.c di
 
 $(BUILD)/k3forth_debug: k3forth.c vm.c isa.c ternary.c packed.c syscall.c image.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
+
+$(BUILD)/k3cc_debug: k3cc.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) $< -o $@
 
 examples: $(TOOLS)
 	@mkdir -p $(BUILD)/examples
