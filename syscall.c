@@ -500,6 +500,20 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
         return true;
     }
 
+    case K3_SYS_RENAME: {
+        int64_t old_addr = reg_val(vm, 0);
+        int64_t new_addr = reg_val(vm, 1);
+        char old_path[256];
+        char new_path[256];
+        if (!read_mem_string(vm, old_addr, old_path, sizeof(old_path)) ||
+            !read_mem_string(vm, new_addr, new_path, sizeof(new_path))) {
+            set_reg_val(vm, 0, -1);
+            return true;
+        }
+        set_reg_val(vm, 0, (rename(old_path, new_path) == 0) ? 0 : -1);
+        return true;
+    }
+
     case K3_SYS_TIME: {
         init_time();
         uint64_t elapsed = host_now_ms() - g_boot_millis;
