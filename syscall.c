@@ -514,6 +514,33 @@ bool k3_host_syscall(void *user, k3_vm *vm, int32_t code)
         return true;
     }
 
+    case K3_SYS_FILE_SIZE: {
+        int64_t path_addr = reg_val(vm, 0);
+        char path[256];
+        if (!read_mem_string(vm, path_addr, path, sizeof(path))) {
+            set_reg_val(vm, 0, -1);
+            return true;
+        }
+        FILE *f = fopen(path, "rb");
+        if (f == NULL) {
+            set_reg_val(vm, 0, -1);
+            return true;
+        }
+        if (fseek(f, 0, SEEK_END) != 0) {
+            fclose(f);
+            set_reg_val(vm, 0, -1);
+            return true;
+        }
+        long sz = ftell(f);
+        fclose(f);
+        if (sz < 0 || sz > K3_WORD_MAX) {
+            set_reg_val(vm, 0, (sz < 0) ? -1 : K3_WORD_MAX);
+            return true;
+        }
+        set_reg_val(vm, 0, (int64_t)sz);
+        return true;
+    }
+
     case K3_SYS_TIME: {
         init_time();
         uint64_t elapsed = host_now_ms() - g_boot_millis;
