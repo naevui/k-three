@@ -94,7 +94,7 @@ static void lex(const char *src)
             continue;
         }
 
-        /* Line comments // and block comments /* */
+        /* Line comments // and block comments */
         if (*p == '/' && *(p + 1) == '/') {
             p += 2;
             while (*p && *p != '\n') p++;
