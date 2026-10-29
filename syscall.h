@@ -52,7 +52,7 @@
 #define K3_SYS_KEYHIT       21  /* Non-blocking key check on stdin: 1 if key available, 0 if not into r0 */
 
 /* System Info & Diagnostics */
-#define K3_SYS_MEMSIZE      22  /* Total memory words (2187) into r0 */
+#define K3_SYS_MEMSIZE      22  /* Total memory words (6561) into r0 */
 #define K3_SYS_INSN_COUNT   23  /* Instruction count executed: r0 = low 9 trits, r1 = high 9 trits */
 #define K3_SYS_PUTC_ERR     24  /* Output char in r0 to stderr */
 #define K3_SYS_PUTS_ERR     25  /* Output null-terminated string at address in r0 to stderr */
