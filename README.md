@@ -296,7 +296,7 @@ Assembler, example and debugger suites (`tests/test_asm.sh`,
 All suites also run under AddressSanitizer and UndefinedBehaviorSanitizer via
 `make debug`.
 
-Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `3,024`
+Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `7,398`
 checks, `test_isa` has 257 checks, `test_packed` has `118,144` checks,
 `test_syscall` has 156 checks and `test_image` has 64 checks, all 0 failures;
 `test_asm` has 23 checks, `test_asm_extended` has 7, `test_examples` has 13
