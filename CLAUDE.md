@@ -139,6 +139,7 @@ Key Syscall Codes:
 * `36`: `SYS_RENAME` - Rename a file (`r0` = old path, `r1` = new path)
 * `37`: `SYS_FILE_SIZE` - File size in bytes (`r0` = path, returns size in `r0`)
 * `38`: `SYS_FILE_EXISTS` - Check file existence (`r0` = path, returns 1/0)
+* `39`: `SYS_BANK_SWITCH` - Bank switching (`r0` = slot 0..7, `r1` = bank ID 0..2047, returns old bank)
 
 ---
 
