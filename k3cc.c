@@ -275,7 +275,9 @@ static void parse_primary(FILE *out)
                     fprintf(out, "    pop r4\n");
                 }
             }
+            fprintf(out, "    push r6\n");
             fprintf(out, "    call fn_%s\n", name);
+            fprintf(out, "    pop r6\n");
         } else {
             /* Variable read */
             int loc = find_local(name);
