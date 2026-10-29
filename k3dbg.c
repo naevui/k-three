@@ -429,6 +429,30 @@ static void print_stack(const debugger *d, size_t count)
     }
 }
 
+static void do_save(const debugger *d, const char *path, bool binary)
+{
+    bt_word words[K3_VM_MEMORY_WORDS];
+    bool ok;
+
+    if (path == NULL) {
+        printf("error: usage: save PATH [text|bin]\n");
+        return;
+    }
+
+    for (size_t i = 0; i < K3_VM_MEMORY_WORDS; ++i) {
+        (void)k3_vm_get_mem(&d->vm, (uint16_t)i, &words[i]);
+    }
+
+    ok = binary ? k3_image_write_binary(path, words, K3_VM_MEMORY_WORDS, 0)
+                : k3_image_write(path, words, K3_VM_MEMORY_WORDS);
+    if (!ok) {
+        printf("error: cannot write '%s'\n", path);
+        return;
+    }
+    printf("saved %s (%u words, %s)\n", path,
+           (unsigned)K3_VM_MEMORY_WORDS, binary ? "binary" : "text");
+}
+
 static void help(void)
 {
     printf(
@@ -448,6 +472,7 @@ static void help(void)
         "  delete [ADDR]     clear one breakpoint, or all of them\n"
         "  info              show status, pc, steps and breakpoints\n"
         "  reset             reload the program and clear registers\n"
+        "  save PATH [bin]   dump VM memory to a text or .k3b binary image\n"
         "  quit              exit\n");
 }
 
@@ -700,6 +725,25 @@ int main(int argc, char **argv)
             print_breakpoints(&d);
         } else if (str_eq_ci(cmd, "reset")) {
             do_reset(&d);
+        } else if (str_eq_ci(cmd, "save")) {
+            if (arg1 == NULL) {
+                printf("error: usage: save PATH [text|bin]\n");
+                continue;
+            }
+            bool is_bin = false;
+            size_t len1 = strlen(arg1);
+            if (len1 >= 4 && strcmp(arg1 + len1 - 4, ".k3b") == 0) {
+                is_bin = true;
+            }
+            if (arg2 != NULL) {
+                if (str_eq_ci(arg2, "bin") || str_eq_ci(arg2, "binary") ||
+                    str_eq_ci(arg2, "-b")) {
+                    is_bin = true;
+                } else if (str_eq_ci(arg2, "text") || str_eq_ci(arg2, "txt")) {
+                    is_bin = false;
+                }
+            }
+            do_save(&d, arg1, is_bin);
         } else {
             printf("error: unknown command '%s' (try 'help')\n", cmd);
         }
