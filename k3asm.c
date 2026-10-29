@@ -1195,28 +1195,31 @@ int main(int argc, char **argv)
     const char *input = NULL;
     const char *output = NULL;
     const char *listing = NULL;
+    bool binary_mode = false;
     assembler_t as;
     long pc = 0;
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 >= argc) {
-                fprintf(stderr, "usage: %s [-o out.k3] [-l listing.lst] in.s\n",
+                fprintf(stderr, "usage: %s [-b] [-o out.k3|out.k3b] [-l listing.lst] in.s\n",
                         argv[0]);
                 return 1;
             }
             output = argv[++i];
+        } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--binary") == 0) {
+            binary_mode = true;
         } else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--list") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr,
-                        "usage: %s [-o out.k3] [-l listing.lst] in.s\n",
+                        "usage: %s [-b] [-o out.k3|out.k3b] [-l listing.lst] in.s\n",
                         argv[0]);
                 return 1;
             }
             listing = argv[++i];
         } else if (strcmp(argv[i], "-h") == 0 ||
                    strcmp(argv[i], "--help") == 0) {
-            printf("usage: %s [-o out.k3] [-l listing.lst] in.s\n", argv[0]);
+            printf("usage: %s [-b] [-o out.k3|out.k3b] [-l listing.lst] in.s\n", argv[0]);
             return 0;
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "%s: unknown option '%s'\n", argv[0], argv[i]);
@@ -1226,37 +1229,44 @@ int main(int argc, char **argv)
         } else if (output == NULL) {
             output = argv[i];
         } else {
-            fprintf(stderr, "usage: %s [-o out.k3] [-l listing.lst] in.s\n",
+            fprintf(stderr, "usage: %s [-b] [-o out.k3|out.k3b] [-l listing.lst] in.s\n",
                     argv[0]);
             return 1;
         }
     }
 
     if (input == NULL) {
-        fprintf(stderr, "usage: %s [-o out.k3] [-l listing.lst] in.s\n",
+        fprintf(stderr, "usage: %s [-b] [-o out.k3|out.k3b] [-l listing.lst] in.s\n",
                 argv[0]);
         return 1;
     }
 
     char default_output[4096];
     if (output == NULL) {
+        const char *ext = binary_mode ? ".k3b" : ".k3";
+        size_t ext_len = strlen(ext);
         size_t len = strlen(input);
         if (len > 2 && strcmp(input + len - 2, ".s") == 0) {
-            if (len - 2 + 3 + 1 > sizeof(default_output)) {
+            if (len - 2 + ext_len + 1 > sizeof(default_output)) {
                 fprintf(stderr, "%s: input path too long\n", argv[0]);
                 return 1;
             }
             memcpy(default_output, input, len - 2);
-            memcpy(default_output + len - 2, ".k3", 4);
+            memcpy(default_output + len - 2, ext, ext_len + 1);
         } else {
-            if (len + 3 + 1 > sizeof(default_output)) {
+            if (len + ext_len + 1 > sizeof(default_output)) {
                 fprintf(stderr, "%s: input path too long\n", argv[0]);
                 return 1;
             }
             memcpy(default_output, input, len);
-            memcpy(default_output + len, ".k3", 4);
+            memcpy(default_output + len, ext, ext_len + 1);
         }
         output = default_output;
+    }
+
+    size_t out_len = strlen(output);
+    if (out_len >= 4 && strcmp(output + out_len - 4, ".k3b") == 0) {
+        binary_mode = true;
     }
 
     init_assembler(&as, input);
@@ -1290,8 +1300,14 @@ int main(int argc, char **argv)
         fclose(g_list_file);
     }
 
-    if (!k3_image_write(output, as.words, (size_t)as.nwords)) {
-        return 1;
+    if (binary_mode) {
+        if (!k3_image_write_binary(output, as.words, (size_t)as.nwords, 0)) {
+            return 1;
+        }
+    } else {
+        if (!k3_image_write(output, as.words, (size_t)as.nwords)) {
+            return 1;
+        }
     }
 
     return 0;

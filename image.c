@@ -4,6 +4,71 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "packed.h"
+
+bool k3_image_is_binary(const char *path)
+{
+    if (path == NULL) return false;
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+    char magic[4];
+    size_t read_bytes = fread(magic, 1, 4, f);
+    fclose(f);
+    return (read_bytes == 4 && memcmp(magic, K3B_MAGIC, 4) == 0);
+}
+
+bool k3_image_write_binary(const char *path, const bt_word *words, size_t count, uint16_t entry_point)
+{
+    if (path == NULL || (words == NULL && count != 0)) {
+        return false;
+    }
+
+    FILE *f = fopen(path, "wb");
+    if (f == NULL) {
+        perror(path);
+        return false;
+    }
+
+    size_t buf_cap = (count / 4) * 9 + (count % 4) * 3 + 16;
+    uint8_t *payload = NULL;
+    size_t payload_bytes = 0;
+    if (count > 0) {
+        payload = (uint8_t *)calloc(buf_cap, 1);
+        if (payload == NULL) {
+            fclose(f);
+            return false;
+        }
+        payload_bytes = bt_pack_stream(words, count, payload, buf_cap);
+    }
+
+    k3b_header header;
+    memcpy(header.magic, K3B_MAGIC, 4);
+    header.version = K3B_VERSION;
+    header.entry_point = entry_point;
+    header.word_count = (uint32_t)count;
+    header.payload_bytes = (uint32_t)payload_bytes;
+
+    if (fwrite(&header, 1, sizeof(header), f) != sizeof(header)) {
+        perror(path);
+        free(payload);
+        fclose(f);
+        return false;
+    }
+
+    if (payload_bytes > 0) {
+        if (fwrite(payload, 1, payload_bytes, f) != payload_bytes) {
+            perror(path);
+            free(payload);
+            fclose(f);
+            return false;
+        }
+        free(payload);
+    }
+
+    fclose(f);
+    return true;
+}
+
 bool k3_image_read(const char *path, bt_word *words, size_t capacity,
                    size_t *count)
 {
@@ -16,11 +81,62 @@ bool k3_image_read(const char *path, bt_word *words, size_t capacity,
     }
     *count = 0;
 
-    f = fopen(path, "r");
+    f = fopen(path, "rb");
     if (f == NULL) {
         perror(path);
         return false;
     }
+
+    /* Check for .k3b binary format */
+    char magic[4];
+    if (fread(magic, 1, 4, f) == 4 && memcmp(magic, K3B_MAGIC, 4) == 0) {
+        k3b_header header;
+        memcpy(header.magic, magic, 4);
+        if (fread(((char *)&header) + 4, 1, sizeof(header) - 4, f) != sizeof(header) - 4) {
+            fprintf(stderr, "%s: truncated binary header\n", path);
+            fclose(f);
+            return false;
+        }
+        if (header.version != K3B_VERSION) {
+            fprintf(stderr, "%s: unsupported k3b version %u\n", path, header.version);
+            fclose(f);
+            return false;
+        }
+        if (header.word_count > capacity) {
+            fprintf(stderr, "%s: binary image (%u words) exceeds capacity (%zu words)\n",
+                    path, header.word_count, capacity);
+            fclose(f);
+            return false;
+        }
+
+        if (header.payload_bytes > 0) {
+            uint8_t *payload = (uint8_t *)malloc(header.payload_bytes);
+            if (payload == NULL) {
+                fclose(f);
+                return false;
+            }
+            if (fread(payload, 1, header.payload_bytes, f) != header.payload_bytes) {
+                fprintf(stderr, "%s: truncated binary payload\n", path);
+                free(payload);
+                fclose(f);
+                return false;
+            }
+            size_t unpacked = bt_unpack_stream(payload, header.payload_bytes, words, capacity);
+            free(payload);
+            fclose(f);
+            if (unpacked < header.word_count) {
+                fprintf(stderr, "%s: failed to unpack all words (%zu of %u)\n", path, unpacked, header.word_count);
+                return false;
+            }
+        } else {
+            fclose(f);
+        }
+        *count = header.word_count;
+        return true;
+    }
+
+    /* Not binary: rewind and read as text .k3 image */
+    rewind(f);
 
     while (fgets(line, sizeof(line), f) != NULL) {
         size_t len = strlen(line);
