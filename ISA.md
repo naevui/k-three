@@ -1,9 +1,9 @@
 # K-Three ISA v0
 
-Status: **proposal, implemented by the reference VM core.** The VM core exists
-and is tested; the assembler, CLI runner and example programs are not written
-yet. The open questions at the end are deliberate; they are not silent
-decisions.
+Status: **proposal, implemented by the reference VM core and toolchain.** The
+VM core, assembler, CLI runner, disassembler, debugger, host syscall layer and
+example operating system exist and are tested. The open questions at the end
+are deliberate; they are not silent decisions.
 
 This is a reference-model ISA. It makes no performance claims and says nothing
 about a hardware implementation.
@@ -13,12 +13,15 @@ about a hardware implementation.
 | State | Size | Notes |
 |---|---|---|
 | General registers | `r0`..`r7`, 8 x 9 trits | All are general; no hardwired zero register |
-| Program counter | one 9-trit value | Next fetch address; valid fetch range `0..728` |
-| Memory | 729 words x 9 trits | Flat, word-addressed, shared code/data |
+| Program counter | one 9-trit value | Next fetch address; valid fetch range `0..2186` |
+| Memory | 2187 words x 9 trits | Flat, word-addressed, shared code/data (3 pages of 729) |
 | Status | running / halted / trapped | VM-level state; not a program-visible register |
 
-There are no condition-code flags, no stack pointer, no link register, no
-privilege levels, and no program-visible I/O registers in v0.
+There are no condition-code flags. The ISA has no architectural stack pointer
+or link register; the assembler's `call`/`ret` convention uses `r7` as a
+software stack pointer and `r6` as the link register (section 8). The VM
+tracks kernel/user privilege, a trap vector and a saved PC/mode for `ERET`
+(sections 5.4 and 6).
 
 A data word is a balanced-ternary value in `-9841..+9841`. Trit 0 is the least
 significant trit throughout this document: word value is
@@ -29,9 +32,9 @@ as encoded fields (section 3).
 
 ## 2. Memory and addresses
 
-* 729 words, numbered `0..728`.
-* An address is the numerical value of a 9-trit word. Only `0..728` are valid.
-  A negative address or an address `>= 729` is a memory fault.
+* 2187 words, numbered `0..2186` (`3^7`, three pages of 729 words).
+* An address is the numerical value of a 9-trit word. Only `0..2186` are valid.
+  A negative address or an address `>= 2187` is a memory fault.
 * Memory is word-addressed. There is no byte addressing and no alignment rule.
 * Program and data share the same memory. Instruction fetch reads the word at
   the PC.
@@ -148,8 +151,8 @@ For `LOAD`/`STORE`, `ra` holds the memory address. For `JMP` and branches,
 | 22 | `TRAP` | I4/no-A | `trap #code` | Stop with an explicit trap code |
 | 23 | `LI` | W | `li rd, #i9` | `rd = next word`; two-word instruction |
 | 24 | `CMPI` | I4 | `cmpi rd, #i4` | `rd = compare(rd, i4)` |
-| 25 | reserved | - | - | Illegal instruction |
-| 26 | reserved | - | - | Illegal instruction |
+| 25 | `ERET` | N | `eret` | Kernel-only: return from a trap to the saved PC/mode |
+| 26 | `SETVEC` | J | `setvec ra` | Kernel-only: set the trap vector to `value(ra)` |
 
 `ADDI`, `SUBI`, `SHLI`, `SHRI` and `CMPI` use `rd` as both source and
 destination.
@@ -190,16 +193,16 @@ forms.
 
 ### 5.3 Memory
 
-* `LOAD rd, [ra]`: address is `value(ra)`. If it is outside `0..728`, memory
+* `LOAD rd, [ra]`: address is `value(ra)`. If it is outside `0..2186`, memory
   fault. Otherwise `rd = memory[address]`.
-* `STORE rd, [ra]`: address is `value(ra)`. If it is outside `0..728`, memory
+* `STORE rd, [ra]`: address is `value(ra)`. If it is outside `0..2186`, memory
   fault. Otherwise `memory[address] = value(rd)`.
 * If `rd` and `ra` are the same register, the address is computed from the old
   register value before the load/store takes effect.
 
 ### 5.4 Control flow
 
-* `JMP ra`: `PC = value(ra)`. If the target is outside `0..728`, memory fault.
+* `JMP ra`: `PC = value(ra)`. If the target is outside `0..2186`, memory fault.
   Otherwise execution continues at that word.
 * Branches are PC-relative. Let `next` be the address of the word after the
   branch instruction. For a branch at address `p`, `next = p + 1`. The target
@@ -207,18 +210,33 @@ forms.
 * `BRZ` branches if the register value is zero; `BRNZ` if nonzero; `BRN` if
   negative; `BRP` if positive.
 * If the condition is false, the branch is not taken and no target check is
-  performed. If it is taken and the target is outside `0..728`, memory fault.
-* `HALT` stops execution with status halted.
-* `TRAP #code` stops execution with status trapped and the 4-trit code
-  supplied by the instruction. Codes are user-defined; nonnegative codes
-  `0..40` are recommended.
+  performed. If it is taken and the target is outside `0..2186`, memory fault.
+* `HALT` stops execution with status halted. In user mode `HALT` is an illegal
+  instruction and traps instead.
+* `TRAP #code` invokes the host `on_syscall` callback if one is installed;
+  otherwise it raises an explicit trap. If a trap vector is set, any trap
+  (including an explicit one) enters kernel mode at the vector, saving the
+  current PC and mode for `ERET`. With no vector the machine stops with status
+  trapped and the 4-trit code supplied by the instruction. Codes are
+  user-defined; nonnegative codes `0..40` are recommended.
+
+### 5.6 Privilege and trap return
+
+* `SETVEC ra` is privileged: in user mode it traps as illegal. In kernel mode
+  it sets the trap vector to `value(ra)`. A target outside `0..2186` is a
+  memory fault.
+* `ERET` is privileged: in user mode it traps as illegal. In kernel mode it
+  restores `PC` and privilege from the values saved when the trap was taken.
+* When a trap vectors, an explicit `TRAP` saves the address after the trap
+  instruction, so `ERET` resumes after the call. Other faults save the
+  faulting instruction address, so `ERET` retries the instruction.
 
 ### 5.5 `LI`
 
 `LI rd, #i9` is a two-word instruction:
 
 1. Fetch and decode the `LI` word at `p`.
-2. Fetch the literal word at `p + 1`. If `p + 1` is outside `0..728`, memory
+2. Fetch the literal word at `p + 1`. If `p + 1` is outside `0..2186`, memory
    fault and `rd` is unchanged.
 3. Write the literal word to `rd`.
 4. Continue at `p + 2`.
@@ -229,16 +247,17 @@ as an instruction. See the open questions.
 
 ## 6. Traps and faults
 
-There is no trap handler, no trap vector, and no interrupt mechanism in v0. A
-fault stops the machine with status trapped. It is reported to the host/CLI,
-which may inspect registers and memory. `HALT` is not a fault: it stops with
-status halted and no trap reason.
+There is a trap vector, a kernel/user privilege mode and a resumable explicit
+trap path (`SETVEC`/`ERET`, section 5.6). When no vector is installed, a fault
+stops the machine with status trapped. It is reported to the host/CLI, which
+may inspect registers and memory. `HALT` is not a fault: it stops with status
+halted and no trap reason.
 
 | Reason | Cause |
 |---|---|
 | `overflow` | `ADD`, `ADDI`, `SUB`, `SUBI`, `MUL`, `SHL` or `SHLI` result does not fit in 9 trits |
-| `memory` | Fetch, load, store, jump or taken-branch target outside `0..728`; `LI` literal fetch outside memory |
-| `illegal_instruction` | Reserved opcode 25/26, or a used register field encoding 8 |
+| `memory` | Fetch, load, store, jump or taken-branch target outside `0..2186`; `LI` literal fetch outside memory |
+| `illegal_instruction` | Opcode outside `0..26`, privileged instruction in user mode, or a used register field encoding 8 |
 | `shift_range` | Shift amount outside `0..8` |
 | `explicit` | `TRAP #code` executed; carries the 4-trit code |
 
@@ -250,11 +269,11 @@ with an invalid address, memory is unchanged.
 When execution stops, the reference VM reports the address of the instruction
 that caused the stop. For a fetch fault, it reports the attempted fetch
 address. During normal execution the PC points at the next instruction to
-fetch. Whenever the next fetch address becomes 729 (for example, after a
-non-branch instruction at address 728), the next step reports a memory fault at
-that attempted fetch before executing anything. A taken branch or `JMP` may of
-course replace the PC with a valid target. The VM API and callback behavior are
-defined in `vm.h`.
+fetch. Whenever the next fetch address becomes 2187 (for example, after a
+non-branch instruction at address 2186), the next step reports a memory fault
+at that attempted fetch before executing anything. A taken branch or `JMP` may
+of course replace the PC with a valid target. The VM API and callback behavior
+are defined in `vm.h`.
 
 ## 7. Reset and instruction fetch
 
@@ -268,16 +287,16 @@ On reset:
 
 One instruction step is:
 
-1. If `PC` is outside `0..728`, memory fault at the attempted address.
+1. If `PC` is outside `0..2186`, memory fault at the attempted address.
 2. Fetch the word at `PC`; increment `PC`.
 3. Decode and validate the instruction fields.
 4. Execute. `JMP` and taken branches replace `PC`; `LI` advances `PC` once
    more after fetching its literal; `HALT`/faults stop.
 5. If no stop occurred, repeat.
 
-After fetching address 728, the PC becomes 729 unless execution stops or a
+After fetching address 2186, the PC becomes 2187 unless execution stops or a
 taken branch/`JMP` replaces it. A step that executes a non-branch instruction at
-address 728 can therefore return with status running and `PC = 729`; step 1
+address 2186 can therefore return with status running and `PC = 2187`; step 1
 reports the fault on the next step. There is no instruction cache and no delay
 slot. A memory write affects the next fetch of that word.
 
@@ -294,7 +313,8 @@ label       := [A-Za-z_][A-Za-z0-9_]*
 instruction := mnemonic [operand {"," operand}]
 mnemonic    := NOP | HALT | MOV | LDI | ADD | ADDI | SUB | SUBI | NEG |
                MUL | CMP | SHL | SHLI | SHR | SHRI | LOAD | STORE |
-               JMP | BRZ | BRNZ | BRN | BRP | TRAP | LI | CMPI
+               JMP | BRZ | BRNZ | BRN | BRP | TRAP | LI | CMPI |
+               ERET | SETVEC
 operand     := register | immediate | "[" register "]" | target
 register    := "r" ("0".."7")
 immediate   := "#" ["+"|"-"] decimal
@@ -315,8 +335,13 @@ comment     := ";" { any character except newline }
 * A label may be used as a branch target. For `LI`, an assembler may also
   accept a label where a full-word immediate is expected and substitute the
   label's address; this is an assembler convenience, not an ISA feature.
-* Directives (`.word`, `.org`, data sections, etc.) are assembler-defined and
-  are not part of ISA v0.
+* `k3asm` also accepts character literals (`#'A'`), balanced-ternary literals
+  (`#0t+0-`), `.word`, `.equ`, `.include`, `.string` and `.space`, and expands
+  `jmp label`, `clr`, `inc`, `dec`, `push`, `pop` and `ret`.
+* The assembler's software ABI uses `r7` as a downward stack pointer (initial
+  value 2186) and `r6` as the link register. `call` stores the return address
+  through `r7`; `ret` loads it back. These are conventions, not ISA
+  instructions.
 
 Example:
 
@@ -348,17 +373,17 @@ These are **not** settled. The reference VM currently implements the v0 choice;
 each can be changed before the ISA is frozen.
 
 1. **Address encoding.** v0 uses the numerical value of a 9-trit word, valid
-   `0..728`. Alternative: use six trits as unsigned base-3 digits for the
-   address, or a biased six-trit value. The 9-trit form costs address range
-   but avoids a second address encoding.
+   `0..2186`. Alternative: use seven trits as unsigned base-3 digits for the
+   address, or a biased value. The 9-trit form costs address range but avoids a
+   second address encoding.
 2. **Register field width.** v0 uses two trits per register and reserves
    encoding 8, allowing three register operands per word. Alternative: three
    trits per register with fewer operands per instruction.
 3. **Instruction-field bias.** v0 treats opcode/register fields as base-3
    digits (`trit = digit - 1`) while data words are balanced. Alternative:
    use balanced values directly for fields, or a different field packing.
-4. **Opcode space.** v0 reserves opcodes 25 and 26. Should they be assigned
-   (e.g. `MULH`, `JMPI`) or left reserved?
+4. **Opcode space.** v0 now assigns 25 (`ERET`) and 26 (`SETVEC`), filling the
+   3-trit opcode space. Further instructions require a wider opcode field.
 5. **Overflow policy.** v0 faults and writes no result. Alternatives: wrap and
    expose a carry/status register; saturate; or make overflow a sticky flag.
 6. **Multiply high half.** v0 traps when the product needs more than 9 trits
@@ -381,10 +406,14 @@ each can be changed before the ISA is frozen.
 13. **I/O.** v0 has no architectural I/O at all. Alternative: memory-mapped
     I/O, trap-based host calls, or a separate I/O instruction space. The VM's
     callback interface is not a program-visible I/O mechanism.
-14. **Calls and stack.** v0 has no `CALL`/`RET` and no stack. Alternative: a
-    link register, a software stack in memory, or a hardware stack.
-15. **Trap handling.** v0 stops on a fault with no handler. Alternative: a
-    trap vector, a handler mode, or a resumable exception model.
+14. **Calls and stack.** The ISA has no `CALL`/`RET` and no architectural
+    stack. `k3asm` provides a software convention: `r7` is a downward stack
+    pointer and `r6` is the link register. Alternative: a hardware stack or a
+    dedicated link register.
+15. **Trap handling.** v0 has a trap vector (`SETVEC`), kernel/user modes and a
+    resumable `ERET`. Open sub-questions: how a handler distinguishes fault
+    causes, whether the trap code is visible, and whether user mode can read
+    the saved PC.
 16. **Reset and loading.** v0 starts at address 0 with zeroed memory. Is
     address 0 always the entry point, or should there be a reset word/vector?
     What is the program-image format?
@@ -403,10 +432,12 @@ each can be changed before the ISA is frozen.
 ## 10. Verification status
 
 * The reference VM core implements this ISA v0. Its tests execute every
-  opcode, both reserved opcodes, used-register-field 8, every fault reason, the
-  fetch-edge cases, callbacks, and the encoding examples in this document.
+  opcode (including `ERET` and `SETVEC`), used-register-field 8, every fault
+  reason, the fetch-edge cases, callbacks, and the encoding examples in this
+  document.
 * The arithmetic semantics use the exhaustively tested `ternary.c` primitives.
   The VM trap and atomicity rules have separate tests.
-* The assembler, CLI runner and example programs do not exist yet. The assembly
-  syntax and program-image format remain unimplemented.
+* `k3asm`, `k3dis`, `k3dbg`, `k3vm`, the host syscall layer and the example
+  programs implement the assembly syntax and program-image formats described
+  here; the text image and compact `.k3b` image are both accepted.
 * The ISA remains a proposal; the open questions in section 9 are not settled.
