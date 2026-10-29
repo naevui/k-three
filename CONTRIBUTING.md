@@ -15,7 +15,7 @@ Whether you are fixing a bug, adding new ternary assembly programs, expanding th
 2. **Mathematical Purity:**
    * K-Three uses a **balanced-ternary** number system with trits: `-1` (`-`), `0` (`0`), and `+1` (`+`).
    * A data word is exactly 9 trits in the symmetric range `[-9841 .. +9841]`.
-   * Memory size is a power of three: $3^7 = 2187$ words (`0 .. 2186`).
+   * Memory size is a power of three: $3^8 = 6561$ words (`0 .. 6560`).
 
 3. **Zero-Warning & Zero-Leak Policy:**
    * The project builds with `-std=c11 -Wall -Wextra -Wpedantic`. Code must compile without warnings.
@@ -54,7 +54,7 @@ make debug
 * `ternary.h` / `ternary.c`: Public balanced ternary arithmetic API (addition, subtraction, multiplication, shifting).
 * `packed.h` / `packed.c`: 2-bit per trit compact binary encoding (18-bit words, 4 words per 9 bytes).
 * `isa.h` / `isa.c`: Instruction field layout, opcode definitions (0..26), and instruction decoder.
-* `vm.h` / `vm.c`: Processor architectural state (`r0..r7`, PC, 2187-word memory, trap vectors, privilege modes).
+* `vm.h` / `vm.c`: Processor architectural state (`r0..r7`, PC, 6561-word memory, trap vectors, privilege modes).
 * `syscall.h` / `syscall.c`: Standard K-Three host syscall dispatcher (I/O, files, telemetry, desktop).
 * `image.h` / `image.c`: Word-image text format reader and writer.
 * `disasm.h` / `disasm.c`: Instruction formatting and disassembler core.
@@ -78,7 +78,7 @@ make debug
   * Constants / Macros: `K3_<NAME>` in uppercase.
 * **Safety:**
   * Always validate buffer capacities and bounds before memory operations.
-  * Check memory addresses against `K3_VM_MAX_ADDRESS` (2186).
+  * Check memory addresses against `K3_VM_MAX_ADDRESS` (6560).
 * **Git Commits:**
   * Use clear, imperative commit messages (e.g., `vm: add privilege mode and trap vectoring`).
 
