@@ -137,6 +137,7 @@ Key Syscall Codes:
 * `34`: `SYS_GUI_DESKTOP` - Launch interactive 4-tab Desktop Environment
 * `35`: `SYS_RAW_MODE` - Enable/disable raw unbuffered terminal mode
 * `36`: `SYS_RENAME` - Rename a file (`r0` = old path, `r1` = new path)
+* `37`: `SYS_FILE_SIZE` - File size in bytes (`r0` = path, returns size in `r0`)
 
 ---
 
