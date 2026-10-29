@@ -132,7 +132,7 @@ fi
 # syscall_demo: runs and exits cleanly with rc 0.
 run syscall_demo
 if expect_match syscall_demo "K-Three Syscall & OS Interface Demo" && \
-   expect_match syscall_demo "Total memory words: 2187" && \
+   expect_match syscall_demo "Total memory words: 6561" && \
    expect_rc syscall_demo 0; then
     good
 fi
