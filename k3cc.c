@@ -26,6 +26,7 @@
 #define MAX_FUNCS 64
 #define MAX_IDENT 64
 #define MAX_ARGS 5 /* r0..r4 */
+#define K3_MAX_WORDS 6561 /* total VM memory words (3^8) */
 
 typedef enum {
     TOK_EOF = 0,
@@ -56,6 +57,8 @@ typedef enum {
     TOK_LBRACE,     /* { */
     TOK_RBRACE,     /* } */
     TOK_COMMA,      /* , */
+    TOK_LBRACKET,   /* [ */
+    TOK_RBRACKET,   /* ] */
     TOK_SEMI        /* ; */
 } token_type;
 
@@ -85,13 +88,16 @@ typedef struct {
     char name[MAX_IDENT];
     bool is_global;
     int index; /* 0 for 1st local, 1 for 2nd local, etc. */
+    int size;  /* 1 for a scalar, N for an array of N words */
 } var_symbol;
 
 static var_symbol g_locals[MAX_VARS];
-static size_t g_local_count = 0;
+static size_t g_local_count = 0; /* number of symbols */
+static size_t g_frame_words = 0; /* number of live frame words */
 
 static char g_globals[MAX_VARS][MAX_IDENT];
 static int64_t g_global_values[MAX_VARS];
+static int g_global_sizes[MAX_VARS];
 static size_t g_global_count = 0;
 
 static void loop_push(int break_label, int continue_label)
@@ -102,7 +108,7 @@ static void loop_push(int break_label, int continue_label)
     }
     g_break_labels[g_loop_depth] = break_label;
     g_continue_labels[g_loop_depth] = continue_label;
-    g_loop_locals[g_loop_depth] = g_local_count;
+    g_loop_locals[g_loop_depth] = g_frame_words;
     g_loop_depth++;
 }
 
@@ -123,6 +129,20 @@ static void gen_local_addr(FILE *out, int loc)
     int offset = -(g_locals[loc].index + 1);
     fprintf(out, "    li r1, #%d\n", offset);
     fprintf(out, "    add r1, r3, r1\n");
+}
+
+/* Emit the address of `name[index]` into r1.  The index expression is
+ * parsed by the caller into r0.  No bounds checking is performed. */
+static void gen_array_addr(FILE *out, const char *name, int loc)
+{
+    if (loc >= 0) {
+        int offset = -(g_locals[loc].index + g_locals[loc].size);
+        fprintf(out, "    li r1, #%d\n", offset);
+        fprintf(out, "    add r1, r3, r1\n");
+    } else {
+        fprintf(out, "    li r1, g_%s\n", name);
+    }
+    fprintf(out, "    add r1, r1, r0\n");
 }
 
 /* Lexer */
@@ -206,6 +226,8 @@ static void lex(const char *src)
         case '{': tok->type = TOK_LBRACE; p++; break;
         case '}': tok->type = TOK_RBRACE; p++; break;
         case ',': tok->type = TOK_COMMA; p++; break;
+        case '[': tok->type = TOK_LBRACKET; p++; break;
+        case ']': tok->type = TOK_RBRACKET; p++; break;
         case ';': tok->type = TOK_SEMI; p++; break;
         default:
             fprintf(stderr, "k3cc:%d: error: unexpected character '%c'\n", line, *p);
@@ -261,12 +283,17 @@ static int find_local(const char *name)
     return -1;
 }
 
-static bool is_global(const char *name)
+static int find_global(const char *name)
 {
     for (size_t i = 0; i < g_global_count; ++i) {
-        if (strcmp(g_globals[i], name) == 0) return true;
+        if (strcmp(g_globals[i], name) == 0) return (int)i;
     }
-    return false;
+    return -1;
+}
+
+static bool is_global(const char *name)
+{
+    return find_global(name) >= 0;
 }
 
 /* Primary Expression: numbers, identifiers, function calls, parens */
@@ -353,9 +380,33 @@ static void parse_primary(FILE *out)
             fprintf(out, "    pop r3\n");
             fprintf(out, "    pop r6\n");
         } else {
-            /* Variable read */
+            /* Variable or array element read */
             int loc = find_local(name);
-            if (loc >= 0) {
+            if (match_tok(TOK_LBRACKET)) {
+                int gl = find_global(name);
+                if (loc < 0 && gl < 0) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: undeclared array '%s'\n",
+                            tok->line, name);
+                    exit(1);
+                }
+                if (loc >= 0 && g_locals[loc].size <= 1) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: '%s' is not an array\n",
+                            tok->line, name);
+                    exit(1);
+                }
+                if (loc < 0 && g_global_sizes[gl] <= 1) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: '%s' is not an array\n",
+                            tok->line, name);
+                    exit(1);
+                }
+                parse_expression(out);
+                expect_tok(TOK_RBRACKET, "']' after array index");
+                gen_array_addr(out, name, loc);
+                fprintf(out, "    load r0, [r1]\n");
+            } else if (loc >= 0) {
                 gen_local_addr(out, loc);
                 fprintf(out, "    load r0, [r1]\n");
             } else if (is_global(name)) {
@@ -464,6 +515,29 @@ static void parse_relational(FILE *out)
     }
 }
 
+/* Return true when the tokens at the cursor are `IDENT [ ... ] =`, i.e. an
+ * assignment to an array element. */
+static bool is_array_assign(void)
+{
+    if (cur_tok()->type != TOK_IDENT ||
+        g_tokens[g_token_pos + 1].type != TOK_LBRACKET) {
+        return false;
+    }
+    size_t i = g_token_pos + 2;
+    int depth = 1;
+    while (g_tokens[i].type != TOK_EOF) {
+        if (g_tokens[i].type == TOK_LBRACKET) {
+            depth++;
+        } else if (g_tokens[i].type == TOK_RBRACKET) {
+            depth--;
+            if (depth == 0) break;
+        }
+        i++;
+    }
+    return g_tokens[i].type == TOK_RBRACKET &&
+           g_tokens[i + 1].type == TOK_ASSIGN;
+}
+
 /* Assignment and Full Expression */
 static void parse_expression(FILE *out)
 {
@@ -489,15 +563,46 @@ static void parse_expression(FILE *out)
         }
         return;
     }
+    if (is_array_assign()) {
+        char name[MAX_IDENT];
+        strncpy(name, cur_tok()->text, sizeof(name) - 1);
+        name[sizeof(name) - 1] = '\0';
+        advance_tok(); /* ident */
+        advance_tok(); /* [ */
+
+        int loc = find_local(name);
+        int gl = find_global(name);
+        if (loc < 0 && gl < 0) {
+            fprintf(stderr, "k3cc: error: assignment to undeclared array '%s'\n",
+                    name);
+            exit(1);
+        }
+        if ((loc >= 0 && g_locals[loc].size <= 1) ||
+            (loc < 0 && g_global_sizes[gl] <= 1)) {
+            fprintf(stderr, "k3cc: error: '%s' is not an array\n", name);
+            exit(1);
+        }
+
+        parse_expression(out); /* index in r0 */
+        expect_tok(TOK_RBRACKET, "']' after array index");
+        gen_array_addr(out, name, loc);
+        fprintf(out, "    push r1\n");   /* save element address */
+        expect_tok(TOK_ASSIGN, "'=' after array subscript");
+        parse_expression(out);           /* value in r0 */
+        fprintf(out, "    pop r1\n");
+        fprintf(out, "    store r0, [r1]\n");
+        return;
+    }
     parse_relational(out);
 }
 
 /* Statements */
 static void parse_statement(FILE *out);
 
-/* Local variable declaration: int name [= expr] ; (the 'int' token is already
- * consumed).  Declarations emit a zero word on the stack and register the
- * symbol so later references resolve through the frame pointer. */
+/* Local variable declaration: int name [N] [= expr] ; (the 'int' token is
+ * already consumed).  Scalars emit one zero word on the stack; arrays reserve
+ * N words.  Symbols are registered so later references resolve through the
+ * frame pointer. */
 static void parse_declaration(FILE *out)
 {
     token *id = cur_tok();
@@ -507,6 +612,28 @@ static void parse_declaration(FILE *out)
         fprintf(stderr, "k3cc: error: too many local variables\n");
         exit(1);
     }
+
+    int size = 1;
+    if (match_tok(TOK_LBRACKET)) {
+        token *n = cur_tok();
+        if (n->type != TOK_NUM || n->val <= 0 || n->val > K3_MAX_WORDS) {
+            fprintf(stderr,
+                    "k3cc:%d: error: array size must be a positive constant "
+                    "no larger than %d\n",
+                    n->line, K3_MAX_WORDS);
+            exit(1);
+        }
+        expect_tok(TOK_NUM, "array size");
+        size = (int)n->val;
+        expect_tok(TOK_RBRACKET, "']' after array size");
+        if (cur_tok()->type == TOK_ASSIGN) {
+            fprintf(stderr,
+                    "k3cc:%d: error: array initializers are not supported\n",
+                    cur_tok()->line);
+            exit(1);
+        }
+    }
+
     if (find_local(id->text) >= 0) {
         fprintf(stderr, "k3cc:%d: error: variable '%s' already declared\n",
                 id->line, id->text);
@@ -516,18 +643,26 @@ static void parse_declaration(FILE *out)
     strncpy(g_locals[g_local_count].name, id->text, MAX_IDENT - 1);
     g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
     g_locals[g_local_count].is_global = false;
-    g_locals[g_local_count].index = (int)g_local_count;
+    g_locals[g_local_count].index = (int)g_frame_words;
+    g_locals[g_local_count].size = size;
     g_local_count++;
+    g_frame_words += (size_t)size;
 
-    /* Allocate space on stack: push 0 */
-    fprintf(out, "    ldi r0, #0\n");
-    fprintf(out, "    push r0\n");
+    if (size == 1) {
+        /* Allocate one word on the stack and zero it. */
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, "    push r0\n");
 
-    if (match_tok(TOK_ASSIGN)) {
-        parse_expression(out);
-        int loc = find_local(id->text);
-        gen_local_addr(out, loc);
-        fprintf(out, "    store r0, [r1]\n");
+        if (match_tok(TOK_ASSIGN)) {
+            parse_expression(out);
+            int loc = find_local(id->text);
+            gen_local_addr(out, loc);
+            fprintf(out, "    store r0, [r1]\n");
+        }
+    } else {
+        /* Reserve `size` words; the base is the lowest of them. */
+        fprintf(out, "    li r1, #%d\n", size);
+        fprintf(out, "    sub r7, r7, r1\n");
     }
     expect_tok(TOK_SEMI, "';' after variable declaration");
 }
@@ -545,7 +680,7 @@ static void emit_frame_pop(FILE *out, size_t count)
 /* Pop the whole frame (parameters + locals) and return. */
 static void emit_function_return(FILE *out)
 {
-    emit_frame_pop(out, g_local_count);
+    emit_frame_pop(out, g_frame_words);
     fprintf(out, "    ret\n");
 }
 
@@ -663,7 +798,7 @@ static void parse_statement(FILE *out)
                     cur_tok()->line);
             exit(1);
         }
-        emit_frame_pop(out, g_local_count - g_loop_locals[g_loop_depth - 1]);
+        emit_frame_pop(out, g_frame_words - g_loop_locals[g_loop_depth - 1]);
         fprintf(out, "    jmp .L%d\n", g_break_labels[g_loop_depth - 1]);
     } else if (match_tok(TOK_CONTINUE)) {
         expect_tok(TOK_SEMI, "';' after continue");
@@ -672,7 +807,7 @@ static void parse_statement(FILE *out)
                     cur_tok()->line);
             exit(1);
         }
-        emit_frame_pop(out, g_local_count - g_loop_locals[g_loop_depth - 1]);
+        emit_frame_pop(out, g_frame_words - g_loop_locals[g_loop_depth - 1]);
         fprintf(out, "    jmp .L%d\n", g_continue_labels[g_loop_depth - 1]);
     } else if (match_tok(TOK_RETURN)) {
         if (cur_tok()->type != TOK_SEMI) {
@@ -694,6 +829,7 @@ static void parse_statement(FILE *out)
 static void parse_block(FILE *out)
 {
     size_t saved_locals = g_local_count;
+    size_t saved_words = g_frame_words;
 
     expect_tok(TOK_LBRACE, "'{' to start block");
     while (cur_tok()->type != TOK_RBRACE && cur_tok()->type != TOK_EOF) {
@@ -702,8 +838,9 @@ static void parse_block(FILE *out)
     expect_tok(TOK_RBRACE, "'}' to end block");
 
     /* Block scoping: release the locals declared in this block. */
-    emit_frame_pop(out, g_local_count - saved_locals);
+    emit_frame_pop(out, g_frame_words - saved_words);
     g_local_count = saved_locals;
+    g_frame_words = saved_words;
 }
 
 /* Parse Functions and Globals */
@@ -727,6 +864,7 @@ static void parse_program(FILE *out)
             func_name[sizeof(func_name) - 1] = '\0';
 
             g_local_count = 0;
+            g_frame_words = 0;
 
             /* Parse parameter list */
             int param_count = 0;
@@ -739,8 +877,9 @@ static void parse_program(FILE *out)
                     strncpy(g_locals[g_local_count].name, pid->text, MAX_IDENT - 1);
                     g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
                     g_locals[g_local_count].is_global = false;
-                    g_locals[g_local_count].index = (int)g_local_count;
+                    g_locals[g_local_count].index = (int)g_frame_words;
                     g_local_count++;
+                    g_frame_words++;
                     param_count++;
 
                     if (!match_tok(TOK_COMMA)) break;
@@ -779,11 +918,47 @@ static void parse_program(FILE *out)
                 fprintf(stderr, "k3cc: error: too many global variables\n");
                 exit(1);
             }
+            if (find_global(id->text) >= 0) {
+                fprintf(stderr,
+                        "k3cc:%d: error: global '%s' already declared\n",
+                        id->line, id->text);
+                exit(1);
+            }
             strncpy(g_globals[g_global_count], id->text, MAX_IDENT - 1);
             g_globals[g_global_count][MAX_IDENT - 1] = '\0';
 
+            int size = 1;
+            if (match_tok(TOK_LBRACKET)) {
+                token *n = cur_tok();
+                if (n->type != TOK_NUM || n->val <= 0 ||
+                    n->val > K3_MAX_WORDS) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: array size must be a positive "
+                            "constant no larger than %d\n",
+                            n->line, K3_MAX_WORDS);
+                    exit(1);
+                }
+                expect_tok(TOK_NUM, "array size");
+                size = (int)n->val;
+                expect_tok(TOK_RBRACKET, "']' after array size");
+                if (cur_tok()->type == TOK_ASSIGN) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: array initializers are not "
+                            "supported\n",
+                            cur_tok()->line);
+                    exit(1);
+                }
+            }
+
             int64_t init_val = 0;
             if (match_tok(TOK_ASSIGN)) {
+                if (size != 1) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: array initializers are not "
+                            "supported\n",
+                            id->line);
+                    exit(1);
+                }
                 int64_t sign = 1;
                 if (match_tok(TOK_MINUS)) {
                     sign = -1;
@@ -802,6 +977,7 @@ static void parse_program(FILE *out)
                 init_val = sign * val->val;
             }
             g_global_values[g_global_count] = init_val;
+            g_global_sizes[g_global_count] = size;
             g_global_count++;
 
             expect_tok(TOK_SEMI, "';' after global variable");
@@ -864,8 +1040,13 @@ static void parse_program(FILE *out)
     if (g_global_count > 0) {
         fprintf(out, "; --- global variables ---\n");
         for (size_t g = 0; g < g_global_count; ++g) {
-            fprintf(out, "g_%s: .word %lld\n",
-                    g_globals[g], (long long)g_global_values[g]);
+            if (g_global_sizes[g] > 1) {
+                fprintf(out, "g_%s: .space %d\n",
+                        g_globals[g], g_global_sizes[g]);
+            } else {
+                fprintf(out, "g_%s: .word %lld\n",
+                        g_globals[g], (long long)g_global_values[g]);
+            }
         }
         fprintf(out, "\n");
     }
