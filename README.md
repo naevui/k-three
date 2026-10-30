@@ -101,7 +101,7 @@ Supported language:
 | Types | `int` only (one 9-trit word, `-9841 .. +9841`) |
 | Variables | globals with constant initialisers, locals, block scoping |
 | Functions | up to 5 `int` parameters, `return`, recursion |
-| Statements | `if` / `else`, `while`, `for`, blocks, expression statements |
+| Statements | `if` / `else`, `while`, `for`, `break`, `continue`, blocks, expression statements |
 | Operators | `+ - * / %`, unary `-`, `=`, `< > <= >= == !=` |
 | Builtins | `print(x)`, `putc(c)`, `halt()` |
 | Comments | `// line` and `/* block */` |
@@ -113,6 +113,10 @@ downwards. The compiler saves `r6`/`r3` around every call and pops the whole
 frame on `return`, so recursion and nested calls work. Conditional branches
 longer than the 4-trit range of `BRZ`/`BRN` are expanded into an inverted
 short branch over an absolute `JMP`.
+
+Locals are block scoped: leaving a block pops the words its declarations
+pushed, and `break`/`continue` pop back to the locals live at loop entry, so
+declaring variables inside loops does not leak stack space.
 
 Known limits: no arrays, pointers or `char`; a function accepts at most five
 parameters. `/` and `%` truncate toward zero and are implemented by a small
