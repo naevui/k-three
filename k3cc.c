@@ -37,6 +37,8 @@ typedef enum {
     TOK_WHILE,
     TOK_FOR,
     TOK_RETURN,
+    TOK_BREAK,
+    TOK_CONTINUE,
     TOK_ASSIGN,     /* = */
     TOK_PLUS,       /* + */
     TOK_MINUS,      /* - */
@@ -71,6 +73,13 @@ static size_t g_token_pos = 0;
 static int g_label_counter = 0;
 static bool g_uses_divmod = false;
 
+/* Stack of enclosing loops for break/continue. */
+#define MAX_LOOP_DEPTH 32
+static int g_break_labels[MAX_LOOP_DEPTH];
+static int g_continue_labels[MAX_LOOP_DEPTH];
+static size_t g_loop_locals[MAX_LOOP_DEPTH];
+static int g_loop_depth = 0;
+
 /* Variable Symbol Table */
 typedef struct {
     char name[MAX_IDENT];
@@ -84,6 +93,25 @@ static size_t g_local_count = 0;
 static char g_globals[MAX_VARS][MAX_IDENT];
 static int64_t g_global_values[MAX_VARS];
 static size_t g_global_count = 0;
+
+static void loop_push(int break_label, int continue_label)
+{
+    if (g_loop_depth >= MAX_LOOP_DEPTH) {
+        fprintf(stderr, "k3cc: error: loops nested too deeply\n");
+        exit(1);
+    }
+    g_break_labels[g_loop_depth] = break_label;
+    g_continue_labels[g_loop_depth] = continue_label;
+    g_loop_locals[g_loop_depth] = g_local_count;
+    g_loop_depth++;
+}
+
+static void loop_pop(void)
+{
+    if (g_loop_depth > 0) {
+        g_loop_depth--;
+    }
+}
 
 static void gen_local_addr(FILE *out, int loc)
 {
@@ -153,6 +181,8 @@ static void lex(const char *src)
             else if (strcmp(tok->text, "while") == 0) tok->type = TOK_WHILE;
             else if (strcmp(tok->text, "for") == 0) tok->type = TOK_FOR;
             else if (strcmp(tok->text, "return") == 0) tok->type = TOK_RETURN;
+            else if (strcmp(tok->text, "break") == 0) tok->type = TOK_BREAK;
+            else if (strcmp(tok->text, "continue") == 0) tok->type = TOK_CONTINUE;
             else tok->type = TOK_IDENT;
             continue;
         }
@@ -502,13 +532,20 @@ static void parse_declaration(FILE *out)
     expect_tok(TOK_SEMI, "';' after variable declaration");
 }
 
+/* Pop `count` frame words off the stack. */
+static void emit_frame_pop(FILE *out, size_t count)
+{
+    if (count == 0) {
+        return;
+    }
+    fprintf(out, "    li r1, #%zu\n", count);
+    fprintf(out, "    add r7, r7, r1\n");
+}
+
 /* Pop the whole frame (parameters + locals) and return. */
 static void emit_function_return(FILE *out)
 {
-    if (g_local_count > 0) {
-        fprintf(out, "    li r1, #%zu\n", g_local_count);
-        fprintf(out, "    add r7, r7, r1\n");
-    }
+    emit_frame_pop(out, g_local_count);
     fprintf(out, "    ret\n");
 }
 
@@ -554,7 +591,9 @@ static void parse_statement(FILE *out)
         expect_tok(TOK_RPAREN, "')' after while condition");
 
         emit_cond_jump(out, "brnz", lbl_end);
+        loop_push(lbl_end, lbl_loop);
         parse_statement(out);
+        loop_pop();
         fprintf(out, "    jmp .L%d\n", lbl_loop);
         fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_FOR)) {
@@ -600,9 +639,14 @@ static void parse_statement(FILE *out)
         expect_tok(TOK_RPAREN, "')' after for step");
 
         emit_cond_jump(out, "brnz", lbl_end);
+        int lbl_cont = ++g_label_counter;
+        loop_push(lbl_end, lbl_cont);
         parse_statement(out);
+        loop_pop();
 
-        /* Emit the step expression by rewinding to its tokens. */
+        /* Emit the step expression by rewinding to its tokens.  `continue`
+         * jumps here so the step still runs. */
+        fprintf(out, ".L%d:\n", lbl_cont);
         size_t after_body = g_token_pos;
         g_token_pos = step_start;
         if (step_start != step_end) {
@@ -612,6 +656,24 @@ static void parse_statement(FILE *out)
 
         fprintf(out, "    jmp .L%d\n", lbl_loop);
         fprintf(out, ".L%d:\n", lbl_end);
+    } else if (match_tok(TOK_BREAK)) {
+        expect_tok(TOK_SEMI, "';' after break");
+        if (g_loop_depth == 0) {
+            fprintf(stderr, "k3cc:%d: error: 'break' outside of a loop\n",
+                    cur_tok()->line);
+            exit(1);
+        }
+        emit_frame_pop(out, g_local_count - g_loop_locals[g_loop_depth - 1]);
+        fprintf(out, "    jmp .L%d\n", g_break_labels[g_loop_depth - 1]);
+    } else if (match_tok(TOK_CONTINUE)) {
+        expect_tok(TOK_SEMI, "';' after continue");
+        if (g_loop_depth == 0) {
+            fprintf(stderr, "k3cc:%d: error: 'continue' outside of a loop\n",
+                    cur_tok()->line);
+            exit(1);
+        }
+        emit_frame_pop(out, g_local_count - g_loop_locals[g_loop_depth - 1]);
+        fprintf(out, "    jmp .L%d\n", g_continue_labels[g_loop_depth - 1]);
     } else if (match_tok(TOK_RETURN)) {
         if (cur_tok()->type != TOK_SEMI) {
             parse_expression(out);
@@ -631,11 +693,17 @@ static void parse_statement(FILE *out)
 
 static void parse_block(FILE *out)
 {
+    size_t saved_locals = g_local_count;
+
     expect_tok(TOK_LBRACE, "'{' to start block");
     while (cur_tok()->type != TOK_RBRACE && cur_tok()->type != TOK_EOF) {
         parse_statement(out);
     }
     expect_tok(TOK_RBRACE, "'}' to end block");
+
+    /* Block scoping: release the locals declared in this block. */
+    emit_frame_pop(out, g_local_count - saved_locals);
+    g_local_count = saved_locals;
 }
 
 /* Parse Functions and Globals */
