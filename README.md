@@ -83,6 +83,40 @@ with no argument lists breakpoints; `delete` with no argument clears all of
 them. `-l` enables labels in `dis`, and `-s N` sets the `continue` step limit
 (default 1,000,000). `reset` reinitialises the CPU and reloads the image.
 
+### `k3cc` - C-subset compiler
+
+`k3cc` compiles a small C dialect straight to K-Three assembly, which is then
+assembled with `k3asm` and executed on `k3vm`:
+
+```sh
+build/k3cc examples/hello_c.c -o build/hello_c.s
+build/k3asm build/hello_c.s -o build/hello_c.k3
+build/k3vm build/hello_c.k3
+```
+
+Supported language:
+
+| Feature | Notes |
+|---|---|
+| Types | `int` only (one 9-trit word, `-9841 .. +9841`) |
+| Variables | globals with constant initialisers, locals, block scoping |
+| Functions | up to 5 `int` parameters, `return`, recursion |
+| Statements | `if` / `else`, `while`, `for`, blocks, expression statements |
+| Operators | `+ - *`, `=`, `< > <= >= == !=` (no `/` or `%`) |
+| Builtins | `print(x)`, `putc(c)`, `halt()` |
+| Comments | `// line` and `/* block */` |
+
+Calling convention: arguments arrive in `r0..r4`, the result is returned in
+`r0`, `r6` is the link register and `r3` is the frame pointer. `r7` is the
+stack pointer, initialised to 6560 (the last word of memory) and growing
+downwards. The compiler saves `r6`/`r3` around every call and pops the whole
+frame on `return`, so recursion and nested calls work. Conditional branches
+longer than the 4-trit range of `BRZ`/`BRN` are expanded into an inverted
+short branch over an absolute `JMP`.
+
+Known limits: no arrays, pointers or `char`; no integer division, modulo or
+bitwise operators; a function accepts at most five parameters.
+
 Example programs live in `examples/`:
 
 | File | What it demonstrates | Expected result |
@@ -98,6 +132,7 @@ Example programs live in `examples/`:
 | `syscall_demo.s` | host syscalls and OS interface | prints telemetry |
 | `k3os.s` | interactive K3-OS shell (`calc`, `save`, `cat`, `exec`, GUI) | prompts until `q` |
 | `snake.s` | real-time ternary Snake game | `q` quits |
+| `hello_c.c` | C source compiled by `k3cc` (recursive factorial) | prints `120`, `r0 = 120` |
 
 `k3vm` exit status: `0` halted, `2` trapped, `3` step limit, `1` usage/load
 error.
@@ -125,6 +160,7 @@ k3vm.c               command-line loader/runner
 k3dis.c              disassembler
 k3dbg.c              scriptable interactive debugger
 k3forth.c            Forth compiler for the K-Three VM
+k3cc.c               C-subset compiler (emits K-Three assembly)
 arch/k3/             Linux-style architecture layer (boot, setup, process, entry)
 kernel/vmlinux.s     bootable kernel image source
 userspace/init.s     PID 1 init process
@@ -137,6 +173,7 @@ tests/test_asm.sh    assembler encoding and error-handling tests
 tests/test_asm_extended.sh literals, directives, pseudoinstructions and .k3b
 tests/test_examples.sh assembles and runs every example program
 tests/test_dbg.sh    scripted debugger command tests
+tests/test_c.sh      C compiler (k3cc) end-to-end tests
 examples/*.s         K-Three assembly examples
 ISA.md               ISA v0 proposal and open questions
 Makefile
@@ -293,15 +330,22 @@ Assembler, example and debugger suites (`tests/test_asm.sh`,
   register/memory/pc edits, memory dumps, labeled disassembly, `LI` literal
   skipping, the step limit, unknown commands, reset and image-load errors.
 
+C compiler suite (`tests/test_c.sh`):
+
+* Recursive factorial, `while` and `for` loops, global and local variables,
+  multi-argument calls, `else if` chains, nested calls inside expressions,
+  `print()` output, branch distances beyond the 4-trit conditional range and
+  globals declared between functions.
+
 All suites also run under AddressSanitizer and UndefinedBehaviorSanitizer via
 `make debug`.
 
 Current result: `test_ternary` has `1,762,135` checks, `test_vm` has `7,398`
 checks, `test_isa` has 257 checks, `test_packed` has `118,144` checks,
 `test_syscall` has 170 checks and `test_image` has 64 checks, all 0 failures;
-`test_asm` has 23 checks, `test_asm_extended` has 7, `test_examples` has 13
-and `test_dbg` has 38, all 0 failures. The exact counts are printed by the
-test binaries and scripts.
+`test_asm` has 23 checks, `test_asm_extended` has 7, `test_examples` has 13,
+`test_dbg` has 38 and `test_c` has 9, all 0 failures. The exact counts are
+printed by the test binaries and scripts.
 
 ## 2-bit-per-trit packing (implemented for images)
 
