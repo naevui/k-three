@@ -171,10 +171,11 @@ then assembled by `k3asm`. It has no external dependencies and is built as
 `build/k3cc` (release) and `build/k3cc_debug` (ASan/UBSan).
 
 **Supported language:** `int` only (one 9-trit word), global variables with
-constant initialisers, local variables, functions with up to 5 parameters,
-recursion, `if`/`else` (including `else if` chains), `while`, `for`, blocks,
-`return`, and the operators `+ - * / % = < > <= >= == !=` plus unary `-`.
-Builtins: `print(x)`, `putc(c)`, `halt()`. Comments: `//` and `/* */`.
+constant initialisers, local variables (block scoped), functions with up to 5
+parameters, recursion, `if`/`else` (including `else if` chains), `while`,
+`for`, `break`/`continue`, blocks, `return`, and the operators
+`+ - * / % = < > <= >= == !=` plus unary `-`. Builtins: `print(x)`,
+`putc(c)`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
 (emitted only when the source uses them) which returns the quotient in `r0`
@@ -197,6 +198,12 @@ Frame layout: the prologue pushes the parameters, then sets
 declaration order) with ordinal `k` lives at `r3 - (k + 1)`. Addressing
 through `r3` keeps locals correct while expression temporaries are pushed and
 popped. `return` pops the whole frame before `RET`.
+
+Block scoping: each `{ ... }` saves the symbol count on entry and, on exit,
+emits `r7 += (locals declared inside)` before restoring the count, so the
+symbol table never sees dead names. `break`/`continue` emit the same pop down
+to the locals live at loop entry (recorded by `loop_push`) before jumping, so
+locals declared inside loop bodies do not leak stack words.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
