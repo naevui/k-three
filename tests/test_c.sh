@@ -263,5 +263,75 @@ else
     bad test_scope_stack "expected r7 = 6560 after balanced block scopes"
 fi
 
+# Test 16: local and global arrays
+cat << 'EOF' > "$TMP/arrays.c"
+int g[5];
+int sum_arr() {
+    int a[4];
+    int i;
+    int s = 0;
+    for (i = 0; i < 4; i = i + 1) {
+        a[i] = i * i;
+    }
+    for (i = 0; i < 4; i = i + 1) {
+        s = s + a[i];
+    }
+    g[0] = s;
+    g[1] = a[3];
+    return g[0] + g[1];
+}
+int main() {
+    return sum_arr();
+}
+EOF
+build arrays
+expect_reg test_arrays r0 23
+
+# Test 17: bubble sort over a global array
+cat << 'EOF' > "$TMP/sort.c"
+int a[8];
+int main() {
+    int i;
+    int j;
+    int t;
+    a[0] = 5; a[1] = 3; a[2] = 8; a[3] = 1;
+    a[4] = 9; a[5] = 2; a[6] = 7; a[7] = 4;
+    for (i = 0; i < 7; i = i + 1) {
+        for (j = 0; j < 7 - i; j = j + 1) {
+            if (a[j] > a[j + 1]) {
+                t = a[j];
+                a[j] = a[j + 1];
+                a[j + 1] = t;
+            }
+        }
+    }
+    return a[0] * 100 + a[7];
+}
+EOF
+build sort
+expect_reg test_sort r0 109
+
+# Test 18: array declared inside a loop body is released each iteration
+cat << 'EOF' > "$TMP/arrscope.c"
+int main() {
+    int i;
+    int total = 0;
+    for (i = 0; i < 20; i = i + 1) {
+        int a[8];
+        a[0] = i;
+        a[7] = i * 2;
+        total = total + a[0] + a[7];
+    }
+    return total;
+}
+EOF
+build arrscope
+expect_reg test_array_scope r0 570
+if printf '%s\n' "$out" | grep -Fq "r7 = 6560"; then
+    ok
+else
+    bad test_array_scope_stack "expected r7 = 6560 after arrays in loop bodies"
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
