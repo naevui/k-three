@@ -41,6 +41,8 @@ typedef enum {
     TOK_PLUS,       /* + */
     TOK_MINUS,      /* - */
     TOK_STAR,       /* * */
+    TOK_SLASH,      /* / */
+    TOK_PERCENT,    /* % */
     TOK_EQ,         /* == */
     TOK_NEQ,        /* != */
     TOK_LT,         /* < */
@@ -67,6 +69,7 @@ static size_t g_token_count = 0;
 static size_t g_token_pos = 0;
 
 static int g_label_counter = 0;
+static bool g_uses_divmod = false;
 
 /* Variable Symbol Table */
 typedef struct {
@@ -129,7 +132,7 @@ static void lex(const char *src)
         tok->text[0] = '\0';
         tok->val = 0;
 
-        if (isdigit((unsigned char)*p) || (*p == '-' && isdigit((unsigned char)*(p + 1)))) {
+        if (isdigit((unsigned char)*p)) {
             char *end;
             tok->type = TOK_NUM;
             tok->val = strtoll(p, &end, 10);
@@ -164,6 +167,8 @@ static void lex(const char *src)
         case '+': tok->type = TOK_PLUS; p++; break;
         case '-': tok->type = TOK_MINUS; p++; break;
         case '*': tok->type = TOK_STAR; p++; break;
+        case '/': tok->type = TOK_SLASH; p++; break;
+        case '%': tok->type = TOK_PERCENT; p++; break;
         case '<': tok->type = TOK_LT; p++; break;
         case '>': tok->type = TOK_GT; p++; break;
         case '(': tok->type = TOK_LPAREN; p++; break;
@@ -239,7 +244,12 @@ static void parse_primary(FILE *out)
 {
     token *tok = cur_tok();
 
-    if (match_tok(TOK_NUM)) {
+    if (match_tok(TOK_MINUS)) {
+        parse_primary(out);
+        fprintf(out, "    neg r0, r0\n");
+    } else if (match_tok(TOK_PLUS)) {
+        parse_primary(out);
+    } else if (match_tok(TOK_NUM)) {
         fprintf(out, "    li r0, #%lld\n", (long long)tok->val);
     } else if (tok->type == TOK_IDENT) {
         char name[MAX_IDENT];
@@ -335,17 +345,33 @@ static void parse_primary(FILE *out)
     }
 }
 
-/* Multiplicative: * */
+/* Multiplicative: *, /, % */
 static void parse_multiplicative(FILE *out)
 {
     parse_primary(out);
-    while (cur_tok()->type == TOK_STAR) {
+    while (cur_tok()->type == TOK_STAR || cur_tok()->type == TOK_SLASH ||
+           cur_tok()->type == TOK_PERCENT) {
+        token_type op = cur_tok()->type;
         advance_tok();
         fprintf(out, "    push r0\n");
         parse_primary(out);
         fprintf(out, "    mov r1, r0\n");
         fprintf(out, "    pop r0\n");
-        fprintf(out, "    mul r0, r0, r1\n");
+        if (op == TOK_STAR) {
+            fprintf(out, "    mul r0, r0, r1\n");
+        } else {
+            /* r0 = lhs, r1 = rhs; helper returns quotient in r0 and
+             * remainder in r1. */
+            g_uses_divmod = true;
+            fprintf(out, "    push r6\n");
+            fprintf(out, "    push r3\n");
+            fprintf(out, "    call __k3_divmod\n");
+            fprintf(out, "    pop r3\n");
+            fprintf(out, "    pop r6\n");
+            if (op == TOK_PERCENT) {
+                fprintf(out, "    mov r0, r1\n");
+            }
+        }
     }
 }
 
@@ -690,6 +716,12 @@ static void parse_program(FILE *out)
 
             int64_t init_val = 0;
             if (match_tok(TOK_ASSIGN)) {
+                int64_t sign = 1;
+                if (match_tok(TOK_MINUS)) {
+                    sign = -1;
+                } else {
+                    (void)match_tok(TOK_PLUS);
+                }
                 token *val = cur_tok();
                 if (val->type != TOK_NUM) {
                     fprintf(stderr,
@@ -699,13 +731,64 @@ static void parse_program(FILE *out)
                     exit(1);
                 }
                 expect_tok(TOK_NUM, "constant number for global init");
-                init_val = val->val;
+                init_val = sign * val->val;
             }
             g_global_values[g_global_count] = init_val;
             g_global_count++;
 
             expect_tok(TOK_SEMI, "';' after global variable");
         }
+    }
+
+    /* Signed division/modulo helper, emitted only when used. */
+    if (g_uses_divmod) {
+        fprintf(out, "; __k3_divmod: r0 = r0 / r1, r1 = r0 %% r1 (toward zero)\n");
+        fprintf(out, "__k3_divmod:\n");
+        fprintf(out, "    brnz r1, .Ldiv_go\n");
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, "    ldi r1, #0\n");
+        fprintf(out, "    ret\n");
+        fprintf(out, ".Ldiv_go:\n");
+        fprintf(out, "    mov r2, r0\n");
+        fprintf(out, "    cmpi r2, #0\n");
+        fprintf(out, "    push r2\n");
+        fprintf(out, "    mov r2, r1\n");
+        fprintf(out, "    cmpi r2, #0\n");
+        fprintf(out, "    push r2\n");
+        fprintf(out, "    brn r0, .Ldiv_nega\n");
+        fprintf(out, "    jmp .Ldiv_absa\n");
+        fprintf(out, ".Ldiv_nega:\n");
+        fprintf(out, "    neg r0, r0\n");
+        fprintf(out, ".Ldiv_absa:\n");
+        fprintf(out, "    brn r1, .Ldiv_negb\n");
+        fprintf(out, "    jmp .Ldiv_absb\n");
+        fprintf(out, ".Ldiv_negb:\n");
+        fprintf(out, "    neg r1, r1\n");
+        fprintf(out, ".Ldiv_absb:\n");
+        fprintf(out, "    mov r2, r0\n");
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, ".Ldiv_loop:\n");
+        fprintf(out, "    sub r2, r2, r1\n");
+        fprintf(out, "    brn r2, .Ldiv_undo\n");
+        fprintf(out, "    addi r0, #1\n");
+        fprintf(out, "    jmp .Ldiv_loop\n");
+        fprintf(out, ".Ldiv_undo:\n");
+        fprintf(out, "    add r2, r2, r1\n");
+        fprintf(out, "    pop r4\n");
+        fprintf(out, "    pop r1\n");
+        fprintf(out, "    mul r4, r1, r4\n");
+        fprintf(out, "    brn r4, .Ldiv_negq\n");
+        fprintf(out, "    jmp .Ldiv_qdone\n");
+        fprintf(out, ".Ldiv_negq:\n");
+        fprintf(out, "    neg r0, r0\n");
+        fprintf(out, ".Ldiv_qdone:\n");
+        fprintf(out, "    brn r1, .Ldiv_negrem\n");
+        fprintf(out, "    jmp .Ldiv_remdone\n");
+        fprintf(out, ".Ldiv_negrem:\n");
+        fprintf(out, "    neg r2, r2\n");
+        fprintf(out, ".Ldiv_remdone:\n");
+        fprintf(out, "    mov r1, r2\n");
+        fprintf(out, "    ret\n\n");
     }
 
     /* Data section for global variables (emitted after all code so that the
