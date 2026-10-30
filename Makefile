@@ -242,7 +242,7 @@ $(BUILD)/k3forth_debug: k3forth.c vm.c isa.c ternary.c packed.c syscall.c image.
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD)/k3cc_debug: k3cc.c | $(BUILD)
-	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) $< -o $@
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $< -o $@
 
 examples: $(TOOLS)
 	@mkdir -p $(BUILD)/examples
