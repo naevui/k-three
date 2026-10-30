@@ -220,5 +220,48 @@ EOF
 build tight
 expect_reg test_tight r0 2
 
+# Test 13: break and continue inside for loops
+cat << 'EOF' > "$TMP/breakcont.c"
+int main() {
+    int sum = 0;
+    int i;
+    for (i = 1; i <= 20; i = i + 1) {
+        if (i > 10) break;
+        if (i % 2 == 0) continue;
+        sum = sum + i;
+    }
+    return sum;
+}
+EOF
+build breakcont
+expect_reg test_break_continue r0 25
+
+# Test 14: block-scoped locals are released (no stack leak) and nested loops
+cat << 'EOF' > "$TMP/scope.c"
+int main() {
+    int i;
+    int j;
+    int n = 0;
+    for (i = 0; i < 5; i = i + 1) {
+        int a = i;
+        for (j = 0; j < 5; j = j + 1) {
+            int b = j;
+            if (b == 2) continue;
+            if (b == 4) break;
+            n = n + 1;
+        }
+        if (a == 3) break;
+    }
+    return n;
+}
+EOF
+build scope
+expect_reg test_scope r0 12
+if printf '%s\n' "$out" | grep -Fq "r7 = 6560"; then
+    ok
+else
+    bad test_scope_stack "expected r7 = 6560 after balanced block scopes"
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
