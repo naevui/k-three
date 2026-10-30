@@ -100,6 +100,7 @@ Supported language:
 |---|---|
 | Types | `int` only (one 9-trit word, `-9841 .. +9841`) |
 | Variables | globals with constant initialisers, locals, block scoping |
+| Arrays | `int a[N];` as globals or locals, `a[i]` read/write, no initialisers or bounds checks |
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `for`, `break`, `continue`, blocks, expression statements |
 | Operators | `+ - * / %`, unary `-`, `=`, `< > <= >= == !=` |
@@ -118,7 +119,11 @@ Locals are block scoped: leaving a block pops the words its declarations
 pushed, and `break`/`continue` pop back to the locals live at loop entry, so
 declaring variables inside loops does not leak stack space.
 
-Known limits: no arrays, pointers or `char`; a function accepts at most five
+Arrays are fixed-size: `int a[10];` reserves ten words, either in the global
+data section or on the stack frame. `a[i]` computes `base + i` with no bounds
+checking, and array initialisers (`int a[3] = {...};`) are not supported.
+
+Known limits: no pointers or `char`; a function accepts at most five
 parameters. `/` and `%` truncate toward zero and are implemented by a small
 `__k3_divmod` helper that is emitted only when used; division by zero returns
 `0` instead of trapping.
