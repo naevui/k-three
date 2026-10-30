@@ -184,5 +184,41 @@ EOF
 build interleaved
 expect_reg test_interleaved r0 13
 
+# Test 10: division and modulo, including negative operands
+cat << 'EOF' > "$TMP/divmod.c"
+int main() {
+    int a = 100;
+    int b = 7;
+    int q = a / b;
+    int r = a % b;
+    int nq = -100 / b;
+    int nr = -100 % b;
+    return q * 100 + r + nq * 100 + nr;
+}
+EOF
+build divmod
+expect_reg test_divmod r0 0
+
+# Test 11: division by zero yields 0 instead of trapping
+cat << 'EOF' > "$TMP/divzero.c"
+int main() {
+    int z = 0;
+    return 5 / z + 5 % z;
+}
+EOF
+build divzero
+expect_reg test_divzero r0 0
+
+# Test 12: tight operator spacing and unary minus
+cat << 'EOF' > "$TMP/tight.c"
+int main() {
+    int x = 10;
+    int y = -x + 3;
+    return x-1 + y;
+}
+EOF
+build tight
+expect_reg test_tight r0 2
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
