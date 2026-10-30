@@ -102,7 +102,7 @@ Supported language:
 | Variables | globals with constant initialisers, locals, block scoping |
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `for`, blocks, expression statements |
-| Operators | `+ - *`, `=`, `< > <= >= == !=` (no `/` or `%`) |
+| Operators | `+ - * / %`, unary `-`, `=`, `< > <= >= == !=` |
 | Builtins | `print(x)`, `putc(c)`, `halt()` |
 | Comments | `// line` and `/* block */` |
 
@@ -114,8 +114,10 @@ frame on `return`, so recursion and nested calls work. Conditional branches
 longer than the 4-trit range of `BRZ`/`BRN` are expanded into an inverted
 short branch over an absolute `JMP`.
 
-Known limits: no arrays, pointers or `char`; no integer division, modulo or
-bitwise operators; a function accepts at most five parameters.
+Known limits: no arrays, pointers or `char`; a function accepts at most five
+parameters. `/` and `%` truncate toward zero and are implemented by a small
+`__k3_divmod` helper that is emitted only when used; division by zero returns
+`0` instead of trapping.
 
 Example programs live in `examples/`:
 
