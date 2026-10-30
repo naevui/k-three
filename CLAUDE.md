@@ -47,6 +47,11 @@ make clean          # Remove build artifacts
 
 # Assemble an assembly program
 ./build/k3asm examples/mycode.s -o build/mycode.k3 -l build/mycode.lst
+
+# Compile C source to K-Three assembly, then assemble and run it
+./build/k3cc examples/hello_c.c -o build/hello_c.s
+./build/k3asm build/hello_c.s -o build/hello_c.k3
+./build/k3vm build/hello_c.k3
 ```
 
 ---
@@ -156,3 +161,47 @@ Key Syscall Codes:
 4. **C Standard Compliance:**
    * Strictly `-std=c11 -Wall -Wextra -Wpedantic`. Never use non-standard extensions or implicit function declarations.
    * Do not introduce external library dependencies.
+
+---
+
+## 6. `k3cc` C-Subset Compiler
+
+`k3cc.c` is a single-pass compiler that emits K-Three assembly (`.s`) which is
+then assembled by `k3asm`. It has no external dependencies and is built as
+`build/k3cc` (release) and `build/k3cc_debug` (ASan/UBSan).
+
+**Supported language:** `int` only (one 9-trit word), global variables with
+constant initialisers, local variables, functions with up to 5 parameters,
+recursion, `if`/`else` (including `else if` chains), `while`, `for`, blocks,
+`return`, and the operators `+ - * = < > <= >= == !=`. Builtins: `print(x)`,
+`putc(c)`, `halt()`. Comments: `//` and `/* */`.
+
+**Calling convention emitted by `k3cc`:**
+
+| Register | Role |
+|---|---|
+| `r0..r4` | arguments on entry, `r0` holds the return value |
+| `r3` | frame pointer (saved/restored around every call) |
+| `r5` | scratch for `JMP` label expansion |
+| `r6` | link register (saved/restored around every call) |
+| `r7` | stack pointer, starts at 6560 and grows downwards |
+
+Frame layout: the prologue pushes the parameters, then sets
+`r3 = r7 + param_count`. Every frame word (parameters first, then locals in
+declaration order) with ordinal `k` lives at `r3 - (k + 1)`. Addressing
+through `r3` keeps locals correct while expression temporaries are pushed and
+popped. `return` pops the whole frame before `RET`.
+
+**Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
+`k3cc` never emits a long conditional branch directly. It emits an inverted
+short branch over an absolute `JMP` (which uses `LI r5, target; JMP r5`).
+Follow the same pattern when hand-writing assembly for long bodies.
+
+**Gotcha:** global variables are collected during parsing and emitted as a
+`.word` data section *after* all functions, so the instruction stream is never
+interrupted by data.
+
+**Tests:** `tests/test_c.sh` (wired into `make test` and `make debug`) covers
+recursion, loops, globals, multi-argument calls, nested calls, `print()`,
+long branch distances and interleaved globals.
+
