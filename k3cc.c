@@ -25,6 +25,7 @@
 #define MAX_VARS 256
 #define MAX_FUNCS 64
 #define MAX_IDENT 64
+#define MAX_ARGS 5 /* r0..r4 */
 
 typedef enum {
     TOK_EOF = 0,
@@ -71,14 +72,27 @@ static int g_label_counter = 0;
 typedef struct {
     char name[MAX_IDENT];
     bool is_global;
-    int stack_offset; /* For locals: relative to frame or offset from r7 */
+    int index; /* 0 for 1st local, 1 for 2nd local, etc. */
 } var_symbol;
 
 static var_symbol g_locals[MAX_VARS];
 static size_t g_local_count = 0;
 
 static char g_globals[MAX_VARS][MAX_IDENT];
+static int64_t g_global_values[MAX_VARS];
 static size_t g_global_count = 0;
+
+static void gen_local_addr(FILE *out, int loc)
+{
+    /* r3 is the frame pointer: it points one word above the first pushed
+     * word of this function's frame.  The k-th pushed word of the frame
+     * (parameters first, then locals in declaration order) lives at
+     * r3 - (k + 1).  Using a frame pointer keeps addresses stable while
+     * expression temporaries are pushed on the stack. */
+    int offset = -(g_locals[loc].index + 1);
+    fprintf(out, "    li r1, #%d\n", offset);
+    fprintf(out, "    add r1, r3, r1\n");
+}
 
 /* Lexer */
 static void lex(const char *src)
@@ -249,42 +263,60 @@ static void parse_primary(FILE *out)
 
             /* Builtin helpers */
             if (strcmp(name, "print") == 0) {
-                if (arg_count > 0) {
-                    fprintf(out, "    pop r0\n");
-                    fprintf(out, "    trap #3\n");      /* SYS_PUTNUM */
-                    fprintf(out, "    ldi r0, #10\n");  /* '\n' */
-                    fprintf(out, "    trap #1\n");      /* SYS_PUTC */
+                if (arg_count != 1) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: print() expects 1 argument\n",
+                            tok->line);
+                    exit(1);
                 }
+                fprintf(out, "    pop r0\n");
+                fprintf(out, "    trap #3\n");      /* SYS_PUTNUM */
+                fprintf(out, "    ldi r0, #10\n");  /* '\n' */
+                fprintf(out, "    trap #1\n");      /* SYS_PUTC */
                 return;
             } else if (strcmp(name, "putc") == 0) {
-                if (arg_count > 0) {
-                    fprintf(out, "    pop r0\n");
-                    fprintf(out, "    trap #1\n");      /* SYS_PUTC */
+                if (arg_count != 1) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: putc() expects 1 argument\n",
+                            tok->line);
+                    exit(1);
                 }
+                fprintf(out, "    pop r0\n");
+                fprintf(out, "    trap #1\n");      /* SYS_PUTC */
                 return;
             } else if (strcmp(name, "halt") == 0) {
+                if (arg_count != 0) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: halt() expects no arguments\n",
+                            tok->line);
+                    exit(1);
+                }
                 fprintf(out, "    halt\n");
                 return;
             }
 
+            if (arg_count > MAX_ARGS) {
+                fprintf(stderr,
+                        "k3cc:%d: error: call to '%s' has %d arguments "
+                        "(maximum %d)\n",
+                        tok->line, name, arg_count, MAX_ARGS);
+                exit(1);
+            }
+
             /* Custom function: Pop arguments into registers r0..r4 in reverse */
             for (int a = arg_count - 1; a >= 0; --a) {
-                if (a < 5) {
-                    fprintf(out, "    pop r%d\n", a);
-                } else {
-                    fprintf(out, "    pop r4\n");
-                }
+                fprintf(out, "    pop r%d\n", a);
             }
             fprintf(out, "    push r6\n");
+            fprintf(out, "    push r3\n");
             fprintf(out, "    call fn_%s\n", name);
+            fprintf(out, "    pop r3\n");
             fprintf(out, "    pop r6\n");
         } else {
             /* Variable read */
             int loc = find_local(name);
             if (loc >= 0) {
-                /* Local variable stored in frame */
-                fprintf(out, "    li r1, #%d\n", g_locals[loc].stack_offset);
-                fprintf(out, "    add r1, r7, r1\n");
+                gen_local_addr(out, loc);
                 fprintf(out, "    load r0, [r1]\n");
             } else if (is_global(name)) {
                 fprintf(out, "    li r1, g_%s\n", name);
@@ -390,8 +422,7 @@ static void parse_expression(FILE *out)
 
         int loc = find_local(name);
         if (loc >= 0) {
-            fprintf(out, "    li r1, #%d\n", g_locals[loc].stack_offset);
-            fprintf(out, "    add r1, r7, r1\n");
+            gen_local_addr(out, loc);
             fprintf(out, "    store r0, [r1]\n");
         } else if (is_global(name)) {
             fprintf(out, "    li r1, g_%s\n", name);
@@ -406,6 +437,66 @@ static void parse_expression(FILE *out)
 }
 
 /* Statements */
+static void parse_statement(FILE *out);
+
+/* Local variable declaration: int name [= expr] ; (the 'int' token is already
+ * consumed).  Declarations emit a zero word on the stack and register the
+ * symbol so later references resolve through the frame pointer. */
+static void parse_declaration(FILE *out)
+{
+    token *id = cur_tok();
+    expect_tok(TOK_IDENT, "identifier in variable declaration");
+
+    if (g_local_count >= MAX_VARS) {
+        fprintf(stderr, "k3cc: error: too many local variables\n");
+        exit(1);
+    }
+    if (find_local(id->text) >= 0) {
+        fprintf(stderr, "k3cc:%d: error: variable '%s' already declared\n",
+                id->line, id->text);
+        exit(1);
+    }
+
+    strncpy(g_locals[g_local_count].name, id->text, MAX_IDENT - 1);
+    g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
+    g_locals[g_local_count].is_global = false;
+    g_locals[g_local_count].index = (int)g_local_count;
+    g_local_count++;
+
+    /* Allocate space on stack: push 0 */
+    fprintf(out, "    ldi r0, #0\n");
+    fprintf(out, "    push r0\n");
+
+    if (match_tok(TOK_ASSIGN)) {
+        parse_expression(out);
+        int loc = find_local(id->text);
+        gen_local_addr(out, loc);
+        fprintf(out, "    store r0, [r1]\n");
+    }
+    expect_tok(TOK_SEMI, "';' after variable declaration");
+}
+
+/* Pop the whole frame (parameters + locals) and return. */
+static void emit_function_return(FILE *out)
+{
+    if (g_local_count > 0) {
+        fprintf(out, "    li r1, #%zu\n", g_local_count);
+        fprintf(out, "    add r7, r7, r1\n");
+    }
+    fprintf(out, "    ret\n");
+}
+
+/* Emit "if (r0 cond) goto .L<label>".  Conditional branches only carry a
+ * 4-trit displacement (-40..40), so the long-range case is expressed as an
+ * inverted short branch over an absolute JMP (which uses a 9-trit address). */
+static void emit_cond_jump(FILE *out, const char *cond, int label)
+{
+    int skip = ++g_label_counter;
+    fprintf(out, "    %s r0, .L%d\n", cond, skip);
+    fprintf(out, "    jmp .L%d\n", label);
+    fprintf(out, ".L%d:\n", skip);
+}
+
 static void parse_statement(FILE *out)
 {
     if (match_tok(TOK_IF)) {
@@ -416,7 +507,7 @@ static void parse_statement(FILE *out)
         parse_expression(out);
         expect_tok(TOK_RPAREN, "')' after if condition");
 
-        fprintf(out, "    brz r0, .L%d\n", lbl_else);
+        emit_cond_jump(out, "brnz", lbl_else);
         parse_statement(out);
 
         if (match_tok(TOK_ELSE)) {
@@ -436,8 +527,63 @@ static void parse_statement(FILE *out)
         parse_expression(out);
         expect_tok(TOK_RPAREN, "')' after while condition");
 
-        fprintf(out, "    brz r0, .L%d\n", lbl_end);
+        emit_cond_jump(out, "brnz", lbl_end);
         parse_statement(out);
+        fprintf(out, "    jmp .L%d\n", lbl_loop);
+        fprintf(out, ".L%d:\n", lbl_end);
+    } else if (match_tok(TOK_FOR)) {
+        int lbl_loop = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+
+        expect_tok(TOK_LPAREN, "'(' after for");
+
+        /* Initializer: declaration, expression or empty */
+        if (cur_tok()->type == TOK_INT) {
+            advance_tok();
+            parse_declaration(out);
+        } else {
+            if (cur_tok()->type != TOK_SEMI) {
+                parse_expression(out);
+            }
+            expect_tok(TOK_SEMI, "';' after for initializer");
+        }
+
+        fprintf(out, ".L%d:\n", lbl_loop);
+
+        /* Condition: expression or empty (always true) */
+        if (cur_tok()->type != TOK_SEMI) {
+            parse_expression(out);
+        } else {
+            fprintf(out, "    ldi r0, #1\n");
+        }
+        expect_tok(TOK_SEMI, "';' after for condition");
+
+        /* Remember the step tokens so they can be emitted after the body. */
+        size_t step_start = g_token_pos;
+        int depth = 0;
+        while (cur_tok()->type != TOK_EOF) {
+            if (cur_tok()->type == TOK_LPAREN) {
+                depth++;
+            } else if (cur_tok()->type == TOK_RPAREN) {
+                if (depth == 0) break;
+                depth--;
+            }
+            advance_tok();
+        }
+        size_t step_end = g_token_pos;
+        expect_tok(TOK_RPAREN, "')' after for step");
+
+        emit_cond_jump(out, "brnz", lbl_end);
+        parse_statement(out);
+
+        /* Emit the step expression by rewinding to its tokens. */
+        size_t after_body = g_token_pos;
+        g_token_pos = step_start;
+        if (step_start != step_end) {
+            parse_expression(out);
+        }
+        g_token_pos = after_body;
+
         fprintf(out, "    jmp .L%d\n", lbl_loop);
         fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_RETURN)) {
@@ -445,40 +591,9 @@ static void parse_statement(FILE *out)
             parse_expression(out);
         }
         expect_tok(TOK_SEMI, "';' after return");
-        /* Pop locals off stack and return */
-        if (g_local_count > 0) {
-            fprintf(out, "    li r1, #%zu\n", g_local_count);
-            fprintf(out, "    add r7, r7, r1\n");
-        }
-        fprintf(out, "    ret\n");
+        emit_function_return(out);
     } else if (match_tok(TOK_INT)) {
-        /* Variable declaration */
-        token *id = cur_tok();
-        expect_tok(TOK_IDENT, "identifier in variable declaration");
-
-        /* Register local */
-        if (g_local_count >= MAX_VARS) {
-            fprintf(stderr, "k3cc: error: too many local variables\n");
-            exit(1);
-        }
-        strncpy(g_locals[g_local_count].name, id->text, MAX_IDENT - 1);
-        g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
-        g_locals[g_local_count].is_global = false;
-        g_locals[g_local_count].stack_offset = (int)g_local_count;
-        g_local_count++;
-
-        /* Allocate space on stack: push 0 */
-        fprintf(out, "    ldi r0, #0\n");
-        fprintf(out, "    push r0\n");
-
-        if (match_tok(TOK_ASSIGN)) {
-            parse_expression(out);
-            int loc = find_local(id->text);
-            fprintf(out, "    li r1, #%d\n", g_locals[loc].stack_offset);
-            fprintf(out, "    add r1, r7, r1\n");
-            fprintf(out, "    store r0, [r1]\n");
-        }
-        expect_tok(TOK_SEMI, "';' after variable declaration");
+        parse_declaration(out);
     } else if (cur_tok()->type == TOK_LBRACE) {
         parse_block(out);
     } else {
@@ -530,7 +645,7 @@ static void parse_program(FILE *out)
                     strncpy(g_locals[g_local_count].name, pid->text, MAX_IDENT - 1);
                     g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
                     g_locals[g_local_count].is_global = false;
-                    g_locals[g_local_count].stack_offset = (int)g_local_count;
+                    g_locals[g_local_count].index = (int)g_local_count;
                     g_local_count++;
                     param_count++;
 
@@ -539,40 +654,69 @@ static void parse_program(FILE *out)
             }
             expect_tok(TOK_RPAREN, "')' after parameters");
 
+            if (param_count > MAX_ARGS) {
+                fprintf(stderr,
+                        "k3cc:%d: error: function '%s' has %d parameters "
+                        "(maximum %d)\n",
+                        id->line, func_name, param_count, MAX_ARGS);
+                exit(1);
+            }
+
             fprintf(out, "fn_%s:\n", func_name);
 
             /* Push parameters from registers r0..r4 to stack */
             for (int p = 0; p < param_count; ++p) {
-                if (p < 5) {
-                    fprintf(out, "    push r%d\n", p);
-                } else {
-                    fprintf(out, "    ldi r0, #0\n    push r0\n");
-                }
+                fprintf(out, "    push r%d\n", p);
             }
+
+            /* Establish the frame pointer r3 = r7 + param_count, i.e. one
+             * word above the first frame word. */
+            fprintf(out, "    li r1, #%d\n", param_count);
+            fprintf(out, "    add r3, r7, r1\n");
 
             parse_block(out);
 
             /* Default return */
-            if (g_local_count > 0) {
-                fprintf(out, "    li r1, #%zu\n", g_local_count);
-                fprintf(out, "    add r7, r7, r1\n");
-            }
-            fprintf(out, "    ret\n\n");
+            emit_function_return(out);
+            fprintf(out, "\n");
         } else {
-            /* Global variable */
+            /* Global variable: collect, emit data after all code */
+            if (g_global_count >= MAX_VARS) {
+                fprintf(stderr, "k3cc: error: too many global variables\n");
+                exit(1);
+            }
             strncpy(g_globals[g_global_count], id->text, MAX_IDENT - 1);
             g_globals[g_global_count][MAX_IDENT - 1] = '\0';
-            g_global_count++;
 
             int64_t init_val = 0;
             if (match_tok(TOK_ASSIGN)) {
                 token *val = cur_tok();
+                if (val->type != TOK_NUM) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: global initializer for '%s' "
+                            "must be a constant number\n",
+                            val->line, id->text);
+                    exit(1);
+                }
                 expect_tok(TOK_NUM, "constant number for global init");
                 init_val = val->val;
             }
+            g_global_values[g_global_count] = init_val;
+            g_global_count++;
+
             expect_tok(TOK_SEMI, "';' after global variable");
-            fprintf(out, "g_%s: .word %lld\n\n", id->text, (long long)init_val);
         }
+    }
+
+    /* Data section for global variables (emitted after all code so that the
+     * instruction stream is never interrupted by data words). */
+    if (g_global_count > 0) {
+        fprintf(out, "; --- global variables ---\n");
+        for (size_t g = 0; g < g_global_count; ++g) {
+            fprintf(out, "g_%s: .word %lld\n",
+                    g_globals[g], (long long)g_global_values[g]);
+        }
+        fprintf(out, "\n");
     }
 }
 
