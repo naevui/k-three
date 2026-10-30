@@ -276,6 +276,9 @@ test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TE
 	OUT=$(abspath $(BUILD)/examples) sh tests/test_examples.sh
 	K3ASM=$(abspath $(BUILD)/k3asm) K3DBG=$(abspath $(BUILD)/k3dbg) \
 	TMP=$(abspath $(BUILD)/dbg-tests) sh tests/test_dbg.sh
+	K3CC=$(abspath $(BUILD)/k3cc) K3ASM=$(abspath $(BUILD)/k3asm) \
+	K3VM=$(abspath $(BUILD)/k3vm) \
+	TMP=$(abspath $(BUILD)/c-tests) sh tests/test_c.sh
 
 debug: $(TEST_TERNARY_DEBUG) $(TEST_VM_DEBUG) $(TEST_ISA_DEBUG) $(TEST_PACKED_DEBUG) $(TEST_SYSCALL_DEBUG) $(TEST_IMAGE_DEBUG) $(DEBUG_TOOLS)
 	$(ASAN_ENV) ./$(TEST_TERNARY_DEBUG)
@@ -300,6 +303,11 @@ debug: $(TEST_TERNARY_DEBUG) $(TEST_VM_DEBUG) $(TEST_ISA_DEBUG) $(TEST_PACKED_DE
 		K3DBG=$(abspath $(BUILD)/k3dbg_debug) \
 		TMP=$(abspath $(BUILD)/dbg-tests-debug) \
 		sh tests/test_dbg.sh
+	$(ASAN_ENV) K3CC=$(abspath $(BUILD)/k3cc_debug) \
+		K3ASM=$(abspath $(BUILD)/k3asm_debug) \
+		K3VM=$(abspath $(BUILD)/k3vm_debug) \
+		TMP=$(abspath $(BUILD)/c-tests-debug) \
+		sh tests/test_c.sh
 
 clean:
 	rm -rf $(BUILD)
