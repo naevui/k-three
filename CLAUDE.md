@@ -173,8 +173,14 @@ then assembled by `k3asm`. It has no external dependencies and is built as
 **Supported language:** `int` only (one 9-trit word), global variables with
 constant initialisers, local variables, functions with up to 5 parameters,
 recursion, `if`/`else` (including `else if` chains), `while`, `for`, blocks,
-`return`, and the operators `+ - * = < > <= >= == !=`. Builtins: `print(x)`,
-`putc(c)`, `halt()`. Comments: `//` and `/* */`.
+`return`, and the operators `+ - * / % = < > <= >= == !=` plus unary `-`.
+Builtins: `print(x)`, `putc(c)`, `halt()`. Comments: `//` and `/* */`.
+
+`/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
+(emitted only when the source uses them) which returns the quotient in `r0`
+and the remainder in `r1`; division by zero yields `0` rather than trapping.
+The helper uses `r2`/`r4` as scratch, which is safe because the compiler never
+keeps live values in registers across a call.
 
 **Calling convention emitted by `k3cc`:**
 
