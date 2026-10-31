@@ -55,6 +55,9 @@ typedef enum {
     TOK_GT,         /* > */
     TOK_LE,         /* <= */
     TOK_GE,         /* >= */
+    TOK_ANDAND,     /* && */
+    TOK_OROR,       /* || */
+    TOK_NOT,        /* ! */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
     TOK_LBRACE,     /* { */
@@ -309,6 +312,8 @@ static void lex(const char *src)
 
         if (*p == '=' && *(p + 1) == '=') { tok->type = TOK_EQ; p += 2; continue; }
         if (*p == '!' && *(p + 1) == '=') { tok->type = TOK_NEQ; p += 2; continue; }
+        if (*p == '&' && *(p + 1) == '&') { tok->type = TOK_ANDAND; p += 2; continue; }
+        if (*p == '|' && *(p + 1) == '|') { tok->type = TOK_OROR; p += 2; continue; }
         if (*p == '<' && *(p + 1) == '=') { tok->type = TOK_LE; p += 2; continue; }
         if (*p == '>' && *(p + 1) == '=') { tok->type = TOK_GE; p += 2; continue; }
 
@@ -321,6 +326,7 @@ static void lex(const char *src)
         case '%': tok->type = TOK_PERCENT; p++; break;
         case '<': tok->type = TOK_LT; p++; break;
         case '>': tok->type = TOK_GT; p++; break;
+        case '!': tok->type = TOK_NOT; p++; break;
         case '(': tok->type = TOK_LPAREN; p++; break;
         case ')': tok->type = TOK_RPAREN; p++; break;
         case '{': tok->type = TOK_LBRACE; p++; break;
@@ -372,6 +378,7 @@ static void expect_tok(token_type t, const char *msg)
 static void parse_expression(FILE *out);
 static void parse_statement(FILE *out);
 static void parse_block(FILE *out);
+static void emit_cond_jump(FILE *out, const char *cond, int label);
 
 static int find_local(const char *name)
 {
@@ -406,6 +413,16 @@ static void parse_primary(FILE *out)
         fprintf(out, "    neg r0, r0\n");
     } else if (match_tok(TOK_PLUS)) {
         parse_primary(out);
+    } else if (match_tok(TOK_NOT)) {
+        parse_primary(out);
+        int lbl_false = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+        fprintf(out, "    brz r0, .L%d\n", lbl_false);
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, "    jmp .L%d\n", lbl_end);
+        fprintf(out, ".L%d:\n", lbl_false);
+        fprintf(out, "    ldi r0, #1\n");
+        fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_NUM)) {
         fprintf(out, "    li r0, #%lld\n", (long long)tok->val);
     } else if (tok->type == TOK_IDENT) {
@@ -631,6 +648,42 @@ static void parse_relational(FILE *out)
     }
 }
 
+/* Logical AND: short-circuit, yields 0 or 1. */
+static void parse_logical_and(FILE *out)
+{
+    parse_relational(out);
+    while (match_tok(TOK_ANDAND)) {
+        int lbl_false = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+        emit_cond_jump(out, "brnz", lbl_false);
+        parse_relational(out);
+        emit_cond_jump(out, "brnz", lbl_false);
+        fprintf(out, "    ldi r0, #1\n");
+        fprintf(out, "    jmp .L%d\n", lbl_end);
+        fprintf(out, ".L%d:\n", lbl_false);
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, ".L%d:\n", lbl_end);
+    }
+}
+
+/* Logical OR: short-circuit, yields 0 or 1. */
+static void parse_logical_or(FILE *out)
+{
+    parse_logical_and(out);
+    while (match_tok(TOK_OROR)) {
+        int lbl_true = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+        emit_cond_jump(out, "brz", lbl_true);
+        parse_logical_and(out);
+        emit_cond_jump(out, "brz", lbl_true);
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, "    jmp .L%d\n", lbl_end);
+        fprintf(out, ".L%d:\n", lbl_true);
+        fprintf(out, "    ldi r0, #1\n");
+        fprintf(out, ".L%d:\n", lbl_end);
+    }
+}
+
 /* Return true when the tokens at the cursor are `IDENT [ ... ] =`, i.e. an
  * assignment to an array element. */
 static bool is_array_assign(void)
@@ -709,7 +762,7 @@ static void parse_expression(FILE *out)
         fprintf(out, "    store r0, [r1]\n");
         return;
     }
-    parse_relational(out);
+    parse_logical_or(out);
 }
 
 /* Statements */
