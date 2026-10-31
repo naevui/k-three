@@ -461,5 +461,25 @@ else
     ok
 fi
 
+# Test 26: do/while loops with break/continue and the ternary operator
+cat << 'EOF' > "$TMP/do.c"
+int absv(int x) {
+    return x < 0 ? -x : x;
+}
+int main() {
+    int i = 0;
+    int s = 0;
+    do {
+        i = i + 1;
+        if (i == 3) { continue; }
+        if (i > 5) { break; }
+        s = s + i;
+    } while (i < 10);
+    return s * 100 + absv(-7) + absv(4);
+}
+EOF
+build do
+expect_reg test_do_ternary r0 1211
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
