@@ -432,5 +432,34 @@ else
     ok
 fi
 
+# Test 25: logical operators short-circuit and yield 0/1
+cat << 'EOF' > "$TMP/logic.c"
+int boom() {
+    print(999);
+    return 1;
+}
+int main() {
+    int a = 0;
+    int b = 5;
+    int r = 0;
+    if (a || b) { r = r + 1; }
+    if (a && b) { r = r + 100; }
+    if (!a && !(b == 4)) { r = r + 10; }
+    if (a != 0 && (b / a) > 0) { r = r + 100; }
+    if (0 && boom()) { r = r + 100; }
+    if (1 || boom()) { r = r + 1; }
+    if (1 || 0 && 0) { r = r + 1; }
+    if ((1 || 0) && 0) { r = r + 100; }
+    return r;
+}
+EOF
+build logic
+expect_reg test_logic r0 13
+if printf '%s\n' "$out" | grep -Fq '999'; then
+    bad test_logic_shortcircuit "boom() was evaluated despite short-circuit"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
