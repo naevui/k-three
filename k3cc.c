@@ -45,6 +45,11 @@ typedef enum {
     TOK_BREAK,
     TOK_CONTINUE,
     TOK_ASSIGN,     /* = */
+    TOK_PLUSEQ,     /* += */
+    TOK_MINUSEQ,    /* -= */
+    TOK_STAREQ,     /* *= */
+    TOK_SLASHEQ,    /* /= */
+    TOK_PERCENTEQ,  /* %= */
     TOK_PLUS,       /* + */
     TOK_MINUS,      /* - */
     TOK_STAR,       /* * */
@@ -318,6 +323,11 @@ static void lex(const char *src)
         if (*p == '!' && *(p + 1) == '=') { tok->type = TOK_NEQ; p += 2; continue; }
         if (*p == '&' && *(p + 1) == '&') { tok->type = TOK_ANDAND; p += 2; continue; }
         if (*p == '|' && *(p + 1) == '|') { tok->type = TOK_OROR; p += 2; continue; }
+        if (*p == '+' && *(p + 1) == '=') { tok->type = TOK_PLUSEQ; p += 2; continue; }
+        if (*p == '-' && *(p + 1) == '=') { tok->type = TOK_MINUSEQ; p += 2; continue; }
+        if (*p == '*' && *(p + 1) == '=') { tok->type = TOK_STAREQ; p += 2; continue; }
+        if (*p == '/' && *(p + 1) == '=') { tok->type = TOK_SLASHEQ; p += 2; continue; }
+        if (*p == '%' && *(p + 1) == '=') { tok->type = TOK_PERCENTEQ; p += 2; continue; }
         if (*p == '<' && *(p + 1) == '=') { tok->type = TOK_LE; p += 2; continue; }
         if (*p == '>' && *(p + 1) == '=') { tok->type = TOK_GE; p += 2; continue; }
 
@@ -707,13 +717,41 @@ static void parse_conditional(FILE *out)
     }
 }
 
-/* Return true when the tokens at the cursor are `IDENT [ ... ] =`, i.e. an
- * assignment to an array element. */
-static bool is_array_assign(void)
+static bool is_compound_op(token_type t)
+{
+    return t == TOK_PLUSEQ || t == TOK_MINUSEQ || t == TOK_STAREQ ||
+           t == TOK_SLASHEQ || t == TOK_PERCENTEQ;
+}
+
+/* Emit `r0 = r0 <op> r1` for a compound assignment operator. */
+static void emit_compound_op(FILE *out, token_type op)
+{
+    if (op == TOK_PLUSEQ) {
+        fprintf(out, "    add r0, r0, r1\n");
+    } else if (op == TOK_MINUSEQ) {
+        fprintf(out, "    sub r0, r0, r1\n");
+    } else if (op == TOK_STAREQ) {
+        fprintf(out, "    mul r0, r0, r1\n");
+    } else {
+        g_uses_divmod = true;
+        fprintf(out, "    push r6\n");
+        fprintf(out, "    push r3\n");
+        fprintf(out, "    call __k3_divmod\n");
+        fprintf(out, "    pop r3\n");
+        fprintf(out, "    pop r6\n");
+        if (op == TOK_PERCENTEQ) {
+            fprintf(out, "    mov r0, r1\n");
+        }
+    }
+}
+
+/* If the cursor is `IDENT [ ... ] op` where op is `=` or a compound
+ * assignment, return that operator; otherwise return TOK_EOF. */
+static token_type array_assign_op(void)
 {
     if (cur_tok()->type != TOK_IDENT ||
         g_tokens[g_token_pos + 1].type != TOK_LBRACKET) {
-        return false;
+        return TOK_EOF;
     }
     size_t i = g_token_pos + 2;
     int depth = 1;
@@ -726,36 +764,67 @@ static bool is_array_assign(void)
         }
         i++;
     }
-    return g_tokens[i].type == TOK_RBRACKET &&
-           g_tokens[i + 1].type == TOK_ASSIGN;
+    if (g_tokens[i].type != TOK_RBRACKET) {
+        return TOK_EOF;
+    }
+    token_type op = g_tokens[i + 1].type;
+    if (op == TOK_ASSIGN || is_compound_op(op)) {
+        return op;
+    }
+    return TOK_EOF;
 }
 
 /* Assignment and Full Expression */
 static void parse_expression(FILE *out)
 {
-    if (cur_tok()->type == TOK_IDENT && g_tokens[g_token_pos + 1].type == TOK_ASSIGN) {
-        char name[MAX_IDENT];
-        strncpy(name, cur_tok()->text, sizeof(name) - 1);
-        name[sizeof(name) - 1] = '\0';
-        advance_tok(); /* ident */
-        advance_tok(); /* = */
+    if (cur_tok()->type == TOK_IDENT) {
+        token_type op = g_tokens[g_token_pos + 1].type;
+        if (op == TOK_ASSIGN || is_compound_op(op)) {
+            char name[MAX_IDENT];
+            strncpy(name, cur_tok()->text, sizeof(name) - 1);
+            name[sizeof(name) - 1] = '\0';
+            advance_tok(); /* ident */
+            advance_tok(); /* assignment operator */
 
-        parse_expression(out); /* leaves result in r0 */
+            int loc = find_local(name);
+            if (loc < 0 && !is_global(name)) {
+                fprintf(stderr,
+                        "k3cc: error: assignment to undeclared variable '%s'\n",
+                        name);
+                exit(1);
+            }
 
-        int loc = find_local(name);
-        if (loc >= 0) {
-            gen_local_addr(out, loc);
+            if (op != TOK_ASSIGN) {
+                /* Load the current value as the left operand. */
+                if (loc >= 0) {
+                    gen_local_addr(out, loc);
+                } else {
+                    fprintf(out, "    li r1, g_%s\n", name);
+                }
+                fprintf(out, "    load r0, [r1]\n");
+                fprintf(out, "    push r0\n");
+            }
+
+            parse_expression(out); /* right-hand side in r0 */
+
+            if (op != TOK_ASSIGN) {
+                fprintf(out, "    mov r1, r0\n");
+                fprintf(out, "    pop r0\n");
+                emit_compound_op(out, op);
+            }
+
+            if (loc >= 0) {
+                gen_local_addr(out, loc);
+            } else {
+                fprintf(out, "    li r1, g_%s\n", name);
+            }
             fprintf(out, "    store r0, [r1]\n");
-        } else if (is_global(name)) {
-            fprintf(out, "    li r1, g_%s\n", name);
-            fprintf(out, "    store r0, [r1]\n");
-        } else {
-            fprintf(stderr, "k3cc: error: assignment to undeclared variable '%s'\n", name);
-            exit(1);
+            return;
         }
-        return;
     }
-    if (is_array_assign()) {
+
+    token_type arr_op = array_assign_op();
+    if (arr_op != TOK_EOF) {
         char name[MAX_IDENT];
         strncpy(name, cur_tok()->text, sizeof(name) - 1);
         name[sizeof(name) - 1] = '\0';
@@ -779,12 +848,22 @@ static void parse_expression(FILE *out)
         expect_tok(TOK_RBRACKET, "']' after array index");
         gen_array_addr(out, name, loc);
         fprintf(out, "    push r1\n");   /* save element address */
-        expect_tok(TOK_ASSIGN, "'=' after array subscript");
+        if (arr_op != TOK_ASSIGN) {
+            fprintf(out, "    load r0, [r1]\n");
+            fprintf(out, "    push r0\n");
+        }
+        expect_tok(arr_op, "assignment operator after array subscript");
         parse_expression(out);           /* value in r0 */
+        if (arr_op != TOK_ASSIGN) {
+            fprintf(out, "    mov r1, r0\n");
+            fprintf(out, "    pop r0\n");
+            emit_compound_op(out, arr_op);
+        }
         fprintf(out, "    pop r1\n");
         fprintf(out, "    store r0, [r1]\n");
         return;
     }
+
     parse_conditional(out);
 }
 
