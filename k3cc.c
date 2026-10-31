@@ -494,6 +494,8 @@ static void parse_primary(FILE *out)
         fprintf(out, ".L%d:\n", lbl_false);
         fprintf(out, "    ldi r0, #1\n");
         fprintf(out, ".L%d:\n", lbl_end);
+    } else if (match_tok(TOK_STAR)) {
+        parse_primary(out);
     } else if (match_tok(TOK_INC)) {
         parse_lvalue_load(out);
         fprintf(out, "    addi r0, #1\n");
