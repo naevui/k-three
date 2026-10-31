@@ -69,6 +69,7 @@ typedef enum {
     TOK_OROR,       /* || */
     TOK_NOT,        /* ! */
     TOK_SIZEOF,     /* sizeof */
+    TOK_ENUM,       /* enum */
     TOK_AMP,      /* & */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
@@ -316,6 +317,7 @@ static void lex(const char *src)
 
             if (strcmp(tok->text, "int") == 0) tok->type = TOK_INT;
             else if (strcmp(tok->text, "const") == 0) tok->type = TOK_INT;
+            else if (strcmp(tok->text, "enum") == 0) tok->type = TOK_INT;
             else if (strcmp(tok->text, "if") == 0) tok->type = TOK_IF;
             else if (strcmp(tok->text, "else") == 0) tok->type = TOK_ELSE;
             else if (strcmp(tok->text, "while") == 0) tok->type = TOK_WHILE;
@@ -1314,7 +1316,7 @@ static void parse_statement(FILE *out)
         expect_tok(TOK_LPAREN, "'(' after for");
 
         /* Initializer: declaration, expression or empty */
-        if (cur_tok()->type == TOK_INT) {
+        if (cur_tok()->type == TOK_INT || cur_tok()->type == TOK_ENUM) {
             advance_tok();
             parse_declaration(out);
         } else {
@@ -1398,7 +1400,7 @@ static void parse_statement(FILE *out)
         }
         expect_tok(TOK_SEMI, "';' after return");
         emit_function_return(out);
-    } else if (match_tok(TOK_INT)) {
+    } else if (match_tok(TOK_INT) || match_tok(TOK_ENUM)) {
         parse_declaration(out);
     } else if (cur_tok()->type == TOK_LBRACE) {
         parse_block(out);
