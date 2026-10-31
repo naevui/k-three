@@ -99,6 +99,7 @@ Supported language:
 | Feature | Notes |
 |---|---|
 | Types | `int` only (one 9-trit word, `-9841 .. +9841`) |
+| Literals | decimal integers, `'c'` character literals with escapes, `"..."` strings for `puts()` |
 | Variables | globals with constant initialisers, locals, block scoping |
 | Arrays | `int a[N];` or `int a[N] = {c1, c2, ...};` as globals or locals, `a[i]` read/write, no bounds checks |
 | Functions | up to 5 `int` parameters, `return`, recursion |
