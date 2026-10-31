@@ -161,6 +161,22 @@ static void gen_array_addr(FILE *out, const char *name, int loc)
     fprintf(out, "    add r1, r1, r0\n");
 }
 
+/* Decode one backslash escape from a character or string literal. */
+static int decode_escape_char(char c)
+{
+    switch (c) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case 'r': return '\r';
+    case '0': return '\0';
+    case 'e': return 27;
+    case '\\': return '\\';
+    case '"': return '"';
+    case '\'': return '\'';
+    default: return (unsigned char)c;
+    }
+}
+
 /* Lexer */
 static void lex(const char *src)
 {
@@ -236,6 +252,31 @@ static void lex(const char *src)
             tok->type = TOK_STR;
             tok->val = idx;
             g_string_count++;
+            continue;
+        }
+
+        if (*p == '\'') {
+            p++;
+            int c;
+            if (*p == '\\' && *(p + 1) != '\0') {
+                p++;
+                c = decode_escape_char(*p++);
+            } else if (*p == '\'' || *p == '\0') {
+                fprintf(stderr, "k3cc:%d: error: empty or unterminated "
+                                "character literal\n", line);
+                exit(1);
+            } else {
+                c = (unsigned char)*p++;
+            }
+            if (*p != '\'') {
+                fprintf(stderr,
+                        "k3cc:%d: error: unterminated character literal\n",
+                        line);
+                exit(1);
+            }
+            p++;
+            tok->type = TOK_NUM;
+            tok->val = c;
             continue;
         }
 
