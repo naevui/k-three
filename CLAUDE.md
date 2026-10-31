@@ -177,7 +177,8 @@ bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
 with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `do ... while`, `for`, `break`/`continue`, blocks,
 `return`, and the operators `+ - * / % = < > <= >= == != && || !` plus unary
-`-` and the `?:` conditional operator. Builtins:
+`-`, the `?:` conditional operator, and the compound assignments
+`+= -= *= /= %=`. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
@@ -240,6 +241,12 @@ while `c` is non-zero. `continue` targets the condition label and `break`
 targets the end label. The ternary `c ? a : b` uses
 `emit_cond_jump(..., "brnz", lbl_else)` so a zero condition selects the else
 arm; both arms leave their result in `r0`.
+
+Compound assignments (`x op= e`, also on array elements) load the current
+value, push it, evaluate the right-hand side, call `emit_compound_op`
+(`add`/`sub`/`mul`, or `__k3_divmod` for `/=`/`%=`) and store the result back.
+`array_assign_op()` scans to the matching `]` and returns `=` or the compound
+operator so `a[i] op= e` shares the plain-array-assignment path.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
