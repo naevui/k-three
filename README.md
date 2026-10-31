@@ -104,7 +104,7 @@ Supported language:
 | Arrays | `int a[N];` or `int a[N] = {c1, c2, ...};` as globals or locals, `a[i]` read/write, no bounds checks |
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `do ... while`, `for`, `break`, `continue`, blocks, expression statements |
-| Operators | `+ - * / %`, unary `-`/`!`, `=`, `+= -= *= /= %=`, `< > <= >= == !=`, `&&`, `||` (short-circuit), `?:` |
+| Operators | `+ - * / %`, unary `-`/`!`, `=`, `+= -= *= /= %=`, `++`/`--` (pre/post), `< > <= >= == !=`, `&&`, `||` (short-circuit), `?:` |
 | Builtins | `print(x)`, `putc(c)`, `puts("...")`, `halt()` |
 | Comments | `// line` and `/* block */` |
 
