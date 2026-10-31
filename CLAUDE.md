@@ -176,9 +176,8 @@ constant initialisers, local variables (block scoped), fixed-size arrays
 bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
 with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `do ... while`, `for`, `break`/`continue`, blocks,
-`return`, and
-the operators `+ - * / % = < > <= >= == != && || !` plus unary `-` and the
-`?:` conditional operator. Builtins:
+`return`, and the operators `+ - * / % = < > <= >= == != && || !` plus unary
+`-` and the `?:` conditional operator. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
@@ -235,6 +234,12 @@ Logical operators: `&&` and `||` short-circuit and produce `0`/`1`. Note that
 **false** (it emits `cond r0, .Lskip; jmp label; .Lskip:`), so `a && b` uses
 `emit_cond_jump(..., "brnz", lbl_false)` and `a || b` uses
 `emit_cond_jump(..., "brz", lbl_true)`.
+
+`do { body } while (c);` evaluates the body once, then jumps back to the body
+while `c` is non-zero. `continue` targets the condition label and `break`
+targets the end label. The ternary `c ? a : b` uses
+`emit_cond_jump(..., "brnz", lbl_else)` so a zero condition selects the else
+arm; both arms leave their result in `r0`.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
