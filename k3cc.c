@@ -39,6 +39,7 @@ typedef enum {
     TOK_IF,
     TOK_ELSE,
     TOK_WHILE,
+    TOK_DO,
     TOK_FOR,
     TOK_RETURN,
     TOK_BREAK,
@@ -65,7 +66,9 @@ typedef enum {
     TOK_COMMA,      /* , */
     TOK_LBRACKET,   /* [ */
     TOK_RBRACKET,   /* ] */
-    TOK_SEMI        /* ; */
+    TOK_SEMI,       /* ; */
+    TOK_QUESTION,   /* ? */
+    TOK_COLON       /* : */
 } token_type;
 
 typedef struct {
@@ -302,6 +305,7 @@ static void lex(const char *src)
             else if (strcmp(tok->text, "if") == 0) tok->type = TOK_IF;
             else if (strcmp(tok->text, "else") == 0) tok->type = TOK_ELSE;
             else if (strcmp(tok->text, "while") == 0) tok->type = TOK_WHILE;
+            else if (strcmp(tok->text, "do") == 0) tok->type = TOK_DO;
             else if (strcmp(tok->text, "for") == 0) tok->type = TOK_FOR;
             else if (strcmp(tok->text, "return") == 0) tok->type = TOK_RETURN;
             else if (strcmp(tok->text, "break") == 0) tok->type = TOK_BREAK;
@@ -335,6 +339,8 @@ static void lex(const char *src)
         case '[': tok->type = TOK_LBRACKET; p++; break;
         case ']': tok->type = TOK_RBRACKET; p++; break;
         case ';': tok->type = TOK_SEMI; p++; break;
+        case '?': tok->type = TOK_QUESTION; p++; break;
+        case ':': tok->type = TOK_COLON; p++; break;
         default:
             fprintf(stderr, "k3cc:%d: error: unexpected character '%c'\n", line, *p);
             exit(1);
@@ -684,6 +690,23 @@ static void parse_logical_or(FILE *out)
     }
 }
 
+/* Conditional (ternary): cond ? then : else.  Both arms leave r0 set. */
+static void parse_conditional(FILE *out)
+{
+    parse_logical_or(out);
+    if (match_tok(TOK_QUESTION)) {
+        int lbl_else = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+        emit_cond_jump(out, "brnz", lbl_else); /* if cond == 0 goto else */
+        parse_expression(out);
+        expect_tok(TOK_COLON, "':' in conditional expression");
+        fprintf(out, "    jmp .L%d\n", lbl_end);
+        fprintf(out, ".L%d:\n", lbl_else);
+        parse_expression(out);
+        fprintf(out, ".L%d:\n", lbl_end);
+    }
+}
+
 /* Return true when the tokens at the cursor are `IDENT [ ... ] =`, i.e. an
  * assignment to an array element. */
 static bool is_array_assign(void)
@@ -762,7 +785,7 @@ static void parse_expression(FILE *out)
         fprintf(out, "    store r0, [r1]\n");
         return;
     }
-    parse_logical_or(out);
+    parse_conditional(out);
 }
 
 /* Statements */
@@ -954,6 +977,24 @@ static void parse_statement(FILE *out)
         } else {
             fprintf(out, ".L%d:\n", lbl_else);
         }
+    } else if (match_tok(TOK_DO)) {
+        int lbl_body = ++g_label_counter;
+        int lbl_cond = ++g_label_counter;
+        int lbl_end = ++g_label_counter;
+
+        fprintf(out, ".L%d:\n", lbl_body);
+        loop_push(lbl_end, lbl_cond);
+        parse_statement(out);
+        loop_pop();
+
+        fprintf(out, ".L%d:\n", lbl_cond);
+        expect_tok(TOK_WHILE, "'while' after do body");
+        expect_tok(TOK_LPAREN, "'(' after do-while");
+        parse_expression(out);
+        expect_tok(TOK_RPAREN, "')' after do-while condition");
+        expect_tok(TOK_SEMI, "';' after do-while");
+        emit_cond_jump(out, "brz", lbl_body); /* repeat while r0 != 0 */
+        fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_WHILE)) {
         int lbl_loop = ++g_label_counter;
         int lbl_end = ++g_label_counter;
