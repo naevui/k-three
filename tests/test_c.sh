@@ -603,5 +603,19 @@ else
     ok
 fi
 
+# Test 32: the examples/c_demo.c showcase compiles and runs
+"$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
+"$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
+out=$("$K3VM" -d "$TMP/c_demo.k3")
+if printf '%s\n' "$out" | grep -Fqx 'K-Three C demo' && \
+   printf '%s\n' "$out" | grep -Fqx '28' && \
+   printf '%s\n' "$out" | grep -Fqx 'fib(7) = 13' && \
+   printf '%s\n' "$out" | grep -Fqx '100' && \
+   printf '%s\n' "$out" | grep -Fq 'r0 = 41'; then
+    ok
+else
+    bad test_c_demo "expected examples/c_demo.c output"
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
