@@ -104,7 +104,7 @@ Supported language:
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `for`, `break`, `continue`, blocks, expression statements |
 | Operators | `+ - * / %`, unary `-`, `=`, `< > <= >= == !=` |
-| Builtins | `print(x)`, `putc(c)`, `halt()` |
+| Builtins | `print(x)`, `putc(c)`, `puts("...")`, `halt()` |
 | Comments | `// line` and `/* block */` |
 
 Calling convention: arguments arrive in `r0..r4`, the result is returned in
@@ -129,6 +129,11 @@ Known limits: no pointers or `char`; a function accepts at most five
 parameters. `/` and `%` truncate toward zero and are implemented by a small
 `__k3_divmod` helper that is emitted only when used; division by zero returns
 `0` instead of trapping.
+
+String literals are supported only as `puts("...")` arguments. They are
+emitted as null-terminated `.string` data at the end of the program and
+printed with `SYS_PUTS` (trap 4). `\n`, `\t`, `\r`, `\0`, `\\` and `\"`
+escapes are passed through to `k3asm`.
 
 Example programs live in `examples/`:
 
