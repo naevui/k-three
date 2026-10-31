@@ -100,7 +100,7 @@ Supported language:
 |---|---|
 | Types | `int` only (one 9-trit word, `-9841 .. +9841`) |
 | Variables | globals with constant initialisers, locals, block scoping |
-| Arrays | `int a[N];` as globals or locals, `a[i]` read/write, no initialisers or bounds checks |
+| Arrays | `int a[N];` or `int a[N] = {c1, c2, ...};` as globals or locals, `a[i]` read/write, no bounds checks |
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `for`, `break`, `continue`, blocks, expression statements |
 | Operators | `+ - * / %`, unary `-`, `=`, `< > <= >= == !=` |
@@ -121,7 +121,9 @@ declaring variables inside loops does not leak stack space.
 
 Arrays are fixed-size: `int a[10];` reserves ten words, either in the global
 data section or on the stack frame. `a[i]` computes `base + i` with no bounds
-checking, and array initialisers (`int a[3] = {...};`) are not supported.
+checking. Both globals and locals accept a constant brace initialiser such as
+`int a[4] = {10, 20};`; elements after the last supplied value are zero-filled,
+and supplying more elements than the array holds is a compile error.
 
 Known limits: no pointers or `char`; a function accepts at most five
 parameters. `/` and `%` truncate toward zero and are implemented by a small
