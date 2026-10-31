@@ -481,5 +481,32 @@ EOF
 build do
 expect_reg test_do_ternary r0 1211
 
+# Test 27: compound assignments on scalars, globals and array elements
+cat << 'EOF' > "$TMP/compound.c"
+int g = 10;
+int main() {
+    int x = 1;
+    x += 4;
+    x *= 3;
+    x -= 2;
+    x /= 2;
+    x %= 4;
+    g += x;
+    g *= 2;
+    int a[3] = {1, 2, 3};
+    a[0] += 10;
+    a[1] *= 5;
+    a[2] -= 1;
+    int y = -7;
+    y /= 2;
+    int z = -7;
+    z %= 2;
+    return a[0] + a[1] + a[2] + g + x * 10 +
+           (y + 3) * 100 + (z + 1) * 1000;
+}
+EOF
+build compound
+expect_reg test_compound r0 67
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
