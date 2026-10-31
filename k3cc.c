@@ -100,6 +100,14 @@ static int64_t g_global_values[MAX_VARS];
 static int g_global_sizes[MAX_VARS];
 static size_t g_global_count = 0;
 
+/* Constant array initializers for globals are collected while parsing and
+ * emitted in the data section at the end.  A single pool bounded by the VM
+ * memory size keeps the compiler allocation-free. */
+static int64_t g_init_pool[K3_MAX_WORDS];
+static size_t g_init_pool_used = 0;
+static size_t g_global_init_start[MAX_VARS];
+static int g_global_init_counts[MAX_VARS];
+
 static void loop_push(int break_label, int continue_label)
 {
     if (g_loop_depth >= MAX_LOOP_DEPTH) {
@@ -599,6 +607,78 @@ static void parse_expression(FILE *out)
 /* Statements */
 static void parse_statement(FILE *out);
 
+/* Parse an optionally signed decimal constant used in an initializer.  The
+ * value must fit the 9-trit word range so that `li` can encode it. */
+static int64_t parse_const_int(const char *what)
+{
+    int64_t sign = 1;
+    if (match_tok(TOK_MINUS)) {
+        sign = -1;
+    } else {
+        (void)match_tok(TOK_PLUS);
+    }
+    token *v = cur_tok();
+    if (v->type != TOK_NUM) {
+        fprintf(stderr, "k3cc:%d: error: %s must be a constant integer\n",
+                v->line, what);
+        exit(1);
+    }
+    expect_tok(TOK_NUM, what);
+    int64_t value = sign * v->val;
+    if (value < -9841 || value > 9841) {
+        fprintf(stderr, "k3cc:%d: error: %s value %lld does not fit in a "
+                        "9-trit word [-9841..9841]\n",
+                v->line, what, (long long)value);
+        exit(1);
+    }
+    return value;
+}
+
+/* Parse `{ v0, v1, ... }` for a local array of `size` words and emit the
+ * stores.  Elements after the last supplied value are zero-filled, matching
+ * C semantics for partially initialized aggregates. */
+static void emit_local_array_init(FILE *out, const char *name, int size)
+{
+    int loc = find_local(name);
+    int base = -(g_locals[loc].index + g_locals[loc].size);
+
+    if (!match_tok(TOK_LBRACE)) {
+        fprintf(stderr,
+                "k3cc:%d: error: array initializer must be a brace-enclosed "
+                "list\n",
+                cur_tok()->line);
+        exit(1);
+    }
+
+    int count = 0;
+    if (cur_tok()->type != TOK_RBRACE) {
+        while (1) {
+            int64_t value = parse_const_int("array initializer element");
+            if (count >= size) {
+                fprintf(stderr,
+                        "k3cc:%d: error: too many initializers for '%s' "
+                        "(size %d)\n",
+                        cur_tok()->line, name, size);
+                exit(1);
+            }
+            fprintf(out, "    li r0, #%lld\n", (long long)value);
+            fprintf(out, "    li r1, #%d\n", base + count);
+            fprintf(out, "    add r1, r3, r1\n");
+            fprintf(out, "    store r0, [r1]\n");
+            count++;
+            if (!match_tok(TOK_COMMA)) break;
+        }
+    }
+    expect_tok(TOK_RBRACE, "'}' after array initializer");
+
+    for (int i = count; i < size; ++i) {
+        fprintf(out, "    ldi r0, #0\n");
+        fprintf(out, "    li r1, #%d\n", base + i);
+        fprintf(out, "    add r1, r3, r1\n");
+        fprintf(out, "    store r0, [r1]\n");
+    }
+}
+
 /* Local variable declaration: int name [N] [= expr] ; (the 'int' token is
  * already consumed).  Scalars emit one zero word on the stack; arrays reserve
  * N words.  Symbols are registered so later references resolve through the
@@ -626,12 +706,6 @@ static void parse_declaration(FILE *out)
         expect_tok(TOK_NUM, "array size");
         size = (int)n->val;
         expect_tok(TOK_RBRACKET, "']' after array size");
-        if (cur_tok()->type == TOK_ASSIGN) {
-            fprintf(stderr,
-                    "k3cc:%d: error: array initializers are not supported\n",
-                    cur_tok()->line);
-            exit(1);
-        }
     }
 
     if (find_local(id->text) >= 0) {
@@ -663,6 +737,9 @@ static void parse_declaration(FILE *out)
         /* Reserve `size` words; the base is the lowest of them. */
         fprintf(out, "    li r1, #%d\n", size);
         fprintf(out, "    sub r7, r7, r1\n");
+        if (match_tok(TOK_ASSIGN)) {
+            emit_local_array_init(out, id->text, size);
+        }
     }
     expect_tok(TOK_SEMI, "';' after variable declaration");
 }
@@ -941,43 +1018,52 @@ static void parse_program(FILE *out)
                 expect_tok(TOK_NUM, "array size");
                 size = (int)n->val;
                 expect_tok(TOK_RBRACKET, "']' after array size");
-                if (cur_tok()->type == TOK_ASSIGN) {
-                    fprintf(stderr,
-                            "k3cc:%d: error: array initializers are not "
-                            "supported\n",
-                            cur_tok()->line);
-                    exit(1);
-                }
             }
 
             int64_t init_val = 0;
+            int init_count = 0;
+            size_t init_start = 0;
             if (match_tok(TOK_ASSIGN)) {
-                if (size != 1) {
-                    fprintf(stderr,
-                            "k3cc:%d: error: array initializers are not "
-                            "supported\n",
-                            id->line);
-                    exit(1);
-                }
-                int64_t sign = 1;
-                if (match_tok(TOK_MINUS)) {
-                    sign = -1;
+                if (size == 1) {
+                    init_val = parse_const_int("global initializer");
                 } else {
-                    (void)match_tok(TOK_PLUS);
+                    if (!match_tok(TOK_LBRACE)) {
+                        fprintf(stderr,
+                                "k3cc:%d: error: array initializer must be a "
+                                "brace-enclosed list\n",
+                                cur_tok()->line);
+                        exit(1);
+                    }
+                    init_start = g_init_pool_used;
+                    if (cur_tok()->type != TOK_RBRACE) {
+                        while (1) {
+                            int64_t value =
+                                parse_const_int("array initializer element");
+                            if (init_count >= size) {
+                                fprintf(stderr,
+                                        "k3cc:%d: error: too many "
+                                        "initializers for '%s' (size %d)\n",
+                                        cur_tok()->line, id->text, size);
+                                exit(1);
+                            }
+                            if (g_init_pool_used >= K3_MAX_WORDS) {
+                                fprintf(stderr,
+                                        "k3cc: error: too many global "
+                                        "initializer words\n");
+                                exit(1);
+                            }
+                            g_init_pool[g_init_pool_used++] = value;
+                            init_count++;
+                            if (!match_tok(TOK_COMMA)) break;
+                        }
+                    }
+                    expect_tok(TOK_RBRACE, "'}' after array initializer");
                 }
-                token *val = cur_tok();
-                if (val->type != TOK_NUM) {
-                    fprintf(stderr,
-                            "k3cc:%d: error: global initializer for '%s' "
-                            "must be a constant number\n",
-                            val->line, id->text);
-                    exit(1);
-                }
-                expect_tok(TOK_NUM, "constant number for global init");
-                init_val = sign * val->val;
             }
             g_global_values[g_global_count] = init_val;
             g_global_sizes[g_global_count] = size;
+            g_global_init_start[g_global_count] = init_start;
+            g_global_init_counts[g_global_count] = init_count;
             g_global_count++;
 
             expect_tok(TOK_SEMI, "';' after global variable");
@@ -1041,8 +1127,22 @@ static void parse_program(FILE *out)
         fprintf(out, "; --- global variables ---\n");
         for (size_t g = 0; g < g_global_count; ++g) {
             if (g_global_sizes[g] > 1) {
-                fprintf(out, "g_%s: .space %d\n",
-                        g_globals[g], g_global_sizes[g]);
+                int n = g_global_init_counts[g];
+                if (n == 0) {
+                    fprintf(out, "g_%s: .space %d\n",
+                            g_globals[g], g_global_sizes[g]);
+                } else {
+                    fprintf(out, "g_%s:\n", g_globals[g]);
+                    for (int i = 0; i < n; ++i) {
+                        fprintf(out, "    .word %lld\n",
+                                (long long)g_init_pool[g_global_init_start[g] +
+                                                      (size_t)i]);
+                    }
+                    if (n < g_global_sizes[g]) {
+                        fprintf(out, "    .space %d\n",
+                                g_global_sizes[g] - n);
+                    }
+                }
             } else {
                 fprintf(out, "g_%s: .word %lld\n",
                         g_globals[g], (long long)g_global_values[g]);
