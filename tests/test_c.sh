@@ -508,5 +508,39 @@ EOF
 build compound
 expect_reg test_compound r0 67
 
+# Test 28: prefix/postfix increment and decrement on scalars and arrays
+cat << 'EOF' > "$TMP/incdec.c"
+int g = 5;
+int main() {
+    int i = 0;
+    int s = 0;
+    int a[3] = {0, 0, 0};
+    for (i = 0; i < 4; i++) {
+        s += i;
+    }
+    int x = i++;
+    int y = ++i;
+    int z = a[0]++;
+    int w = ++a[1];
+    a[2]--;
+    --g;
+    return s * 1000 + x * 100 + y * 10 + z + w + a[0] + a[1] + a[2] + g;
+}
+EOF
+build incdec
+expect_reg test_incdec r0 6466
+
+# Test 29: ++ requires an lvalue
+cat << 'EOF' > "$TMP/inc_bad.c"
+int main() {
+    return ++5;
+}
+EOF
+if "$K3CC" "$TMP/inc_bad.c" -o "$TMP/inc_bad.s" 2>/dev/null; then
+    bad test_inc_bad "expected ++5 to fail"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
