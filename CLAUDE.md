@@ -175,8 +175,8 @@ constant initialisers, local variables (block scoped), fixed-size arrays
 (`int a[N];` or `int a[N] = {c1, c2, ...};`, read/write via `a[i]`, no
 bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
 with up to 5 parameters, recursion, `if`/`else` (including
-`else if` chains), `while`, `do ... while`, `for`, `break`/`continue`, blocks,
-`return`, and the operators `+ - * / % = < > <= >= == != && || !` plus unary
+`else if` chains), `while`, `do ... while`, `for`, `switch`/`case`/`default`,
+`break`/`continue`, blocks, `return`, and the operators `+ - * / % = < > <= >= == != && || !` plus unary
 `-`, the `?:` conditional operator, the compound assignments
 `+= -= *= /= %=`, and prefix/postfix `++`/`--`. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
@@ -252,6 +252,17 @@ operator so `a[i] op= e` shares the plain-array-assignment path.
 lvalue, loads its value into `r0` and leaves its address in `r1`; prefix forms
 then `addi`/`store` and return the new value, while postfix forms push the old
 value, update the cell through `r1`, and pop the old value back into `r0`.
+
+`switch` is lowered with a pre-scan: `scan_switch_body()` walks the body at
+brace depth 0, assigns a label to every `case`/`default`, and records the
+constant values. The compiler then emits a dispatch chain
+(`li r1, #c; cmp r2, r0, r1; brz r2, .Lcase`) that jumps into the body, which
+is emitted afterwards with fallthrough and labels at the case markers. Case
+labels must be directly in the switch body (not nested in a block) and must be
+9-trit constants. `break` inside a switch uses the loop-frame stack with a
+`-1` continue label; `continue` scans down the stack for the innermost frame
+with a real loop label, so `continue` inside a switch still targets the
+enclosing loop.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
