@@ -940,6 +940,11 @@ static void parse_expression(FILE *out)
         return;
     }
 
+    /* Comma operator support */
+    if (cur_tok()->type == TOK_COMMA) {
+        advance_tok(); /* consume comma */
+        parse_expression(out); /* evaluate right-hand side; r0 has its value */
+    }
     parse_conditional(out);
 }
 
