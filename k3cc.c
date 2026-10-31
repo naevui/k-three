@@ -315,6 +315,7 @@ static void lex(const char *src)
             tok->text[i] = '\0';
 
             if (strcmp(tok->text, "int") == 0) tok->type = TOK_INT;
+            else if (strcmp(tok->text, "const") == 0) tok->type = TOK_INT;
             else if (strcmp(tok->text, "if") == 0) tok->type = TOK_IF;
             else if (strcmp(tok->text, "else") == 0) tok->type = TOK_ELSE;
             else if (strcmp(tok->text, "while") == 0) tok->type = TOK_WHILE;
