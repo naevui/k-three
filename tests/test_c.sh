@@ -333,5 +333,42 @@ else
     bad test_array_scope_stack "expected r7 = 6560 after arrays in loop bodies"
 fi
 
+# Test 19: constant array initializers (local and global, zero-filled tail)
+cat << 'EOF' > "$TMP/arrinit.c"
+int g[5] = {1, -2, 3};
+int main() {
+    int a[4] = {10, 20};
+    return a[0] + a[1] + a[2] + a[3] + g[0] + g[1] + g[2] + g[3] + g[4];
+}
+EOF
+build arrinit
+expect_reg test_array_init r0 32
+
+# Test 20: invalid array initializers are rejected at compile time
+cat << 'EOF' > "$TMP/arrinit_bad.c"
+int main() {
+    int a[2] = {1, 2, 3};
+    return a[0];
+}
+EOF
+if "$K3CC" "$TMP/arrinit_bad.c" -o "$TMP/arrinit_bad.s" 2>/dev/null; then
+    bad test_array_init_overflow "expected too many initializers to fail"
+else
+    ok
+fi
+
+cat << 'EOF' > "$TMP/arrinit_bad2.c"
+int main() {
+    int x = 1;
+    int a[2] = {x, 2};
+    return a[0];
+}
+EOF
+if "$K3CC" "$TMP/arrinit_bad2.c" -o "$TMP/arrinit_bad2.s" 2>/dev/null; then
+    bad test_array_init_nonconst "expected non-constant initializer to fail"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
