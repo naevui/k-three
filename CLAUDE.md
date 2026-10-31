@@ -177,7 +177,7 @@ bounds checks),
 functions with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `for`, `break`/`continue`, blocks, `return`, and
 the operators `+ - * / % = < > <= >= == !=` plus unary `-`. Builtins:
-`print(x)`, `putc(c)`, `halt()`. Comments: `//` and `/* */`.
+`print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
 (emitted only when the source uses them) which returns the quotient in `r0`
@@ -221,6 +221,12 @@ zero-filled; more elements than the array size, non-constant elements, or
 values outside `[-9841..9841]` are compile errors. Global initialiser words
 are collected in the fixed `g_init_pool` (bounded by `K3_MAX_WORDS`) so the
 compiler stays allocation-free.
+
+String literals are only valid as `puts("...")` arguments; they are not
+first-class values. The lexer keeps the raw source text (escapes included) in
+`g_strings`, and the data section emits `__str_N: .string "..."` after all
+code. `puts` becomes `li r0, __str_N; trap #4` (`SYS_PUTS`). String bytes are
+limited to `MAX_STR - 1` and there are at most `MAX_STRINGS` literals.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
