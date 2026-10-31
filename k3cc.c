@@ -73,7 +73,9 @@ typedef enum {
     TOK_RBRACKET,   /* ] */
     TOK_SEMI,       /* ; */
     TOK_QUESTION,   /* ? */
-    TOK_COLON       /* : */
+    TOK_COLON,      /* : */
+    TOK_INC,        /* ++ */
+    TOK_DEC         /* -- */
 } token_type;
 
 typedef struct {
@@ -328,6 +330,8 @@ static void lex(const char *src)
         if (*p == '*' && *(p + 1) == '=') { tok->type = TOK_STAREQ; p += 2; continue; }
         if (*p == '/' && *(p + 1) == '=') { tok->type = TOK_SLASHEQ; p += 2; continue; }
         if (*p == '%' && *(p + 1) == '=') { tok->type = TOK_PERCENTEQ; p += 2; continue; }
+        if (*p == '+' && *(p + 1) == '+') { tok->type = TOK_INC; p += 2; continue; }
+        if (*p == '-' && *(p + 1) == '-') { tok->type = TOK_DEC; p += 2; continue; }
         if (*p == '<' && *(p + 1) == '=') { tok->type = TOK_LE; p += 2; continue; }
         if (*p == '>' && *(p + 1) == '=') { tok->type = TOK_GE; p += 2; continue; }
 
@@ -419,6 +423,48 @@ static bool is_global(const char *name)
     return find_global(name) >= 0;
 }
 
+/* Parse a scalar or array-element lvalue, leaving its current value in r0 and
+ * its address in r1.  Used by prefix ++/-- and postfix ++/--. */
+static void parse_lvalue_load(FILE *out)
+{
+    token *id = cur_tok();
+    expect_tok(TOK_IDENT, "variable after ++/--");
+
+    char name[MAX_IDENT];
+    strncpy(name, id->text, sizeof(name) - 1);
+    name[sizeof(name) - 1] = '\0';
+
+    int loc = find_local(name);
+    if (match_tok(TOK_LBRACKET)) {
+        int gl = find_global(name);
+        if (loc < 0 && gl < 0) {
+            fprintf(stderr, "k3cc:%d: error: undeclared array '%s'\n",
+                    id->line, name);
+            exit(1);
+        }
+        if ((loc >= 0 && g_locals[loc].size <= 1) ||
+            (loc < 0 && g_global_sizes[gl] <= 1)) {
+            fprintf(stderr, "k3cc:%d: error: '%s' is not an array\n",
+                    id->line, name);
+            exit(1);
+        }
+        parse_expression(out);
+        expect_tok(TOK_RBRACKET, "']' after array index");
+        gen_array_addr(out, name, loc);
+        fprintf(out, "    load r0, [r1]\n");
+    } else if (loc >= 0) {
+        gen_local_addr(out, loc);
+        fprintf(out, "    load r0, [r1]\n");
+    } else if (is_global(name)) {
+        fprintf(out, "    li r1, g_%s\n", name);
+        fprintf(out, "    load r0, [r1]\n");
+    } else {
+        fprintf(stderr, "k3cc:%d: error: undeclared variable '%s'\n",
+                id->line, name);
+        exit(1);
+    }
+}
+
 /* Primary Expression: numbers, identifiers, function calls, parens */
 static void parse_primary(FILE *out)
 {
@@ -439,6 +485,14 @@ static void parse_primary(FILE *out)
         fprintf(out, ".L%d:\n", lbl_false);
         fprintf(out, "    ldi r0, #1\n");
         fprintf(out, ".L%d:\n", lbl_end);
+    } else if (match_tok(TOK_INC)) {
+        parse_lvalue_load(out);
+        fprintf(out, "    addi r0, #1\n");
+        fprintf(out, "    store r0, [r1]\n");
+    } else if (match_tok(TOK_DEC)) {
+        parse_lvalue_load(out);
+        fprintf(out, "    addi r0, #-1\n");
+        fprintf(out, "    store r0, [r1]\n");
     } else if (match_tok(TOK_NUM)) {
         fprintf(out, "    li r0, #%lld\n", (long long)tok->val);
     } else if (tok->type == TOK_IDENT) {
@@ -564,6 +618,19 @@ static void parse_primary(FILE *out)
             } else {
                 fprintf(stderr, "k3cc:%d: error: undeclared variable '%s'\n", tok->line, name);
                 exit(1);
+            }
+
+            /* Postfix ++/--: the value of the expression is the old value. */
+            if (match_tok(TOK_INC)) {
+                fprintf(out, "    push r0\n");
+                fprintf(out, "    addi r0, #1\n");
+                fprintf(out, "    store r0, [r1]\n");
+                fprintf(out, "    pop r0\n");
+            } else if (match_tok(TOK_DEC)) {
+                fprintf(out, "    push r0\n");
+                fprintf(out, "    addi r0, #-1\n");
+                fprintf(out, "    store r0, [r1]\n");
+                fprintf(out, "    pop r0\n");
             }
         }
     } else if (match_tok(TOK_LPAREN)) {
