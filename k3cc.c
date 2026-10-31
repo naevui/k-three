@@ -29,6 +29,7 @@
 #define K3_MAX_WORDS 6561 /* total VM memory words (3^8) */
 #define MAX_STRINGS 256
 #define MAX_STR 1024 /* matches k3asm's quoted-string buffer */
+#define MAX_SWITCH_CASES 128
 
 typedef enum {
     TOK_EOF = 0,
@@ -40,6 +41,9 @@ typedef enum {
     TOK_ELSE,
     TOK_WHILE,
     TOK_DO,
+    TOK_SWITCH,
+    TOK_CASE,
+    TOK_DEFAULT,
     TOK_FOR,
     TOK_RETURN,
     TOK_BREAK,
@@ -313,6 +317,9 @@ static void lex(const char *src)
             else if (strcmp(tok->text, "else") == 0) tok->type = TOK_ELSE;
             else if (strcmp(tok->text, "while") == 0) tok->type = TOK_WHILE;
             else if (strcmp(tok->text, "do") == 0) tok->type = TOK_DO;
+            else if (strcmp(tok->text, "switch") == 0) tok->type = TOK_SWITCH;
+            else if (strcmp(tok->text, "case") == 0) tok->type = TOK_CASE;
+            else if (strcmp(tok->text, "default") == 0) tok->type = TOK_DEFAULT;
             else if (strcmp(tok->text, "for") == 0) tok->type = TOK_FOR;
             else if (strcmp(tok->text, "return") == 0) tok->type = TOK_RETURN;
             else if (strcmp(tok->text, "break") == 0) tok->type = TOK_BREAK;
@@ -1102,9 +1109,138 @@ static void emit_cond_jump(FILE *out, const char *cond, int label)
     fprintf(out, ".L%d:\n", skip);
 }
 
+/* Scan a switch body for top-level `case`/`default` labels and assign each a
+ * fresh label in source order.  Returns the token index of the closing `}`. */
+static size_t scan_switch_body(size_t start, int64_t *values, int *labels,
+                               int *count, int *default_label,
+                               bool *has_default)
+{
+    size_t i = start;
+    int depth = 0;
+
+    *count = 0;
+    *has_default = false;
+    *default_label = 0;
+
+    while (g_tokens[i].type != TOK_EOF) {
+        token_type t = g_tokens[i].type;
+        if (t == TOK_LBRACE) {
+            depth++;
+        } else if (t == TOK_RBRACE) {
+            if (depth == 0) {
+                return i;
+            }
+            depth--;
+        } else if (depth == 0 && t == TOK_CASE) {
+            size_t j = i + 1;
+            int64_t sign = 1;
+            if (g_tokens[j].type == TOK_MINUS) {
+                sign = -1;
+                j++;
+            } else if (g_tokens[j].type == TOK_PLUS) {
+                j++;
+            }
+            if (g_tokens[j].type != TOK_NUM) {
+                fprintf(stderr,
+                        "k3cc:%d: error: case label must be a constant "
+                        "integer\n",
+                        g_tokens[j].line);
+                exit(1);
+            }
+            if (*count >= MAX_SWITCH_CASES) {
+                fprintf(stderr,
+                        "k3cc: error: too many case labels (maximum %d)\n",
+                        MAX_SWITCH_CASES);
+                exit(1);
+            }
+            int64_t value = sign * g_tokens[j].val;
+            if (value < -9841 || value > 9841) {
+                fprintf(stderr,
+                        "k3cc:%d: error: case label %lld does not fit in a "
+                        "9-trit word [-9841..9841]\n",
+                        g_tokens[j].line, (long long)value);
+                exit(1);
+            }
+            values[*count] = value;
+            labels[*count] = ++g_label_counter;
+            (*count)++;
+            i = j; /* continue after the constant */
+        } else if (depth == 0 && t == TOK_DEFAULT) {
+            if (*has_default) {
+                fprintf(stderr, "k3cc:%d: error: duplicate default label\n",
+                        g_tokens[i].line);
+                exit(1);
+            }
+            *has_default = true;
+            *default_label = ++g_label_counter;
+        }
+        i++;
+    }
+
+    fprintf(stderr, "k3cc: error: unterminated switch body\n");
+    exit(1);
+}
+
+/* switch (expr) { case c: ... default: ... } with C fallthrough.  The
+ * controlling value stays in r0 while the dispatch chain compares it against
+ * each case constant.  Cases must sit directly in the switch body (not inside
+ * a nested block), and `break` uses the loop-frame stack with a -1 continue
+ * label so `continue` still finds the enclosing loop. */
+static void parse_switch(FILE *out)
+{
+    int64_t values[MAX_SWITCH_CASES];
+    int labels[MAX_SWITCH_CASES];
+    int count = 0;
+    int default_label = 0;
+    bool has_default = false;
+
+    expect_tok(TOK_LPAREN, "'(' after switch");
+    parse_expression(out);
+    expect_tok(TOK_RPAREN, "')' after switch expression");
+    expect_tok(TOK_LBRACE, "'{' after switch");
+
+    size_t body_start = g_token_pos;
+    size_t body_end = scan_switch_body(body_start, values, labels, &count,
+                                       &default_label, &has_default);
+
+    int end_label = ++g_label_counter;
+
+    /* Dispatch: r0 holds the controlling value. */
+    for (int k = 0; k < count; ++k) {
+        fprintf(out, "    li r1, #%lld\n", (long long)values[k]);
+        fprintf(out, "    cmp r2, r0, r1\n");
+        fprintf(out, "    brz r2, .L%d\n", labels[k]);
+    }
+    fprintf(out, "    jmp .L%d\n", has_default ? default_label : end_label);
+
+    /* Bodies, with labels at the case/default markers. */
+    loop_push(end_label, -1);
+    g_token_pos = body_start;
+    int k = 0;
+    while (g_token_pos < body_end) {
+        if (cur_tok()->type == TOK_CASE) {
+            advance_tok();
+            (void)parse_const_int("case label");
+            expect_tok(TOK_COLON, "':' after case label");
+            fprintf(out, ".L%d:\n", labels[k++]);
+        } else if (cur_tok()->type == TOK_DEFAULT) {
+            advance_tok();
+            expect_tok(TOK_COLON, "':' after default");
+            fprintf(out, ".L%d:\n", default_label);
+        } else {
+            parse_statement(out);
+        }
+    }
+    loop_pop();
+    expect_tok(TOK_RBRACE, "'}' after switch body");
+    fprintf(out, ".L%d:\n", end_label);
+}
+
 static void parse_statement(FILE *out)
 {
-    if (match_tok(TOK_IF)) {
+    if (match_tok(TOK_SWITCH)) {
+        parse_switch(out);
+    } else if (match_tok(TOK_IF)) {
         int lbl_else = ++g_label_counter;
         int lbl_end = ++g_label_counter;
 
@@ -1227,13 +1363,20 @@ static void parse_statement(FILE *out)
         fprintf(out, "    jmp .L%d\n", g_break_labels[g_loop_depth - 1]);
     } else if (match_tok(TOK_CONTINUE)) {
         expect_tok(TOK_SEMI, "';' after continue");
-        if (g_loop_depth == 0) {
+        int frame = -1;
+        for (int k = (int)g_loop_depth - 1; k >= 0; --k) {
+            if (g_continue_labels[k] >= 0) {
+                frame = k;
+                break;
+            }
+        }
+        if (frame < 0) {
             fprintf(stderr, "k3cc:%d: error: 'continue' outside of a loop\n",
                     cur_tok()->line);
             exit(1);
         }
-        emit_frame_pop(out, g_frame_words - g_loop_locals[g_loop_depth - 1]);
-        fprintf(out, "    jmp .L%d\n", g_continue_labels[g_loop_depth - 1]);
+        emit_frame_pop(out, g_frame_words - g_loop_locals[frame]);
+        fprintf(out, "    jmp .L%d\n", g_continue_labels[frame]);
     } else if (match_tok(TOK_RETURN)) {
         if (cur_tok()->type != TOK_SEMI) {
             parse_expression(out);
