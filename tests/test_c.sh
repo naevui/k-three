@@ -399,5 +399,38 @@ else
     ok
 fi
 
+# Test 23: character literals with escapes
+cat << 'EOF' > "$TMP/chars.c"
+int main() {
+    putc('A');
+    putc('\n');
+    putc('\\');
+    putc('\'');
+    putc('\n');
+    print('z');
+    return 0;
+}
+EOF
+build chars
+if printf '%s\n' "$out" | grep -Fq 'A' && \
+   printf '%s\n' "$out" | grep -Fq "\'" && \
+   printf '%s\n' "$out" | grep -Fq '122'; then
+    ok
+else
+    bad test_chars "expected character literal output"
+fi
+
+# Test 24: empty character literals are rejected
+cat << 'EOF' > "$TMP/chars_bad.c"
+int main() {
+    return '';
+}
+EOF
+if "$K3CC" "$TMP/chars_bad.c" -o "$TMP/chars_bad.s" 2>/dev/null; then
+    bad test_chars_bad "expected empty character literal to fail"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
