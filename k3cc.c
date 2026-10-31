@@ -27,12 +27,15 @@
 #define MAX_IDENT 64
 #define MAX_ARGS 5 /* r0..r4 */
 #define K3_MAX_WORDS 6561 /* total VM memory words (3^8) */
+#define MAX_STRINGS 256
+#define MAX_STR 1024 /* matches k3asm's quoted-string buffer */
 
 typedef enum {
     TOK_EOF = 0,
     TOK_INT,
     TOK_IDENT,
     TOK_NUM,
+    TOK_STR,        /* "..." string literal (raw escapes kept) */
     TOK_IF,
     TOK_ELSE,
     TOK_WHILE,
@@ -107,6 +110,11 @@ static int64_t g_init_pool[K3_MAX_WORDS];
 static size_t g_init_pool_used = 0;
 static size_t g_global_init_start[MAX_VARS];
 static int g_global_init_counts[MAX_VARS];
+
+/* String literals keep their raw source text (escapes included); k3asm
+ * decodes them for `.string` directives. */
+static char g_strings[MAX_STRINGS][MAX_STR];
+static int g_string_count = 0;
 
 static void loop_push(int break_label, int continue_label)
 {
@@ -187,6 +195,49 @@ static void lex(const char *src)
         tok->line = line;
         tok->text[0] = '\0';
         tok->val = 0;
+
+        if (*p == '"') {
+            if (g_string_count >= MAX_STRINGS) {
+                fprintf(stderr, "k3cc: error: too many string literals "
+                                "(maximum %d)\n", MAX_STRINGS);
+                exit(1);
+            }
+            int idx = g_string_count;
+            size_t n = 0;
+            p++;
+            while (*p && *p != '"') {
+                if (*p == '\n') line++;
+                if (*p == '\\' && *(p + 1) != '\0') {
+                    if (n + 2 >= MAX_STR) {
+                        fprintf(stderr, "k3cc:%d: error: string literal too "
+                                        "long (maximum %d bytes)\n",
+                                line, MAX_STR - 1);
+                        exit(1);
+                    }
+                    g_strings[idx][n++] = *p++;
+                    g_strings[idx][n++] = *p++;
+                    continue;
+                }
+                if (n + 1 >= MAX_STR) {
+                    fprintf(stderr, "k3cc:%d: error: string literal too long "
+                                    "(maximum %d bytes)\n",
+                            line, MAX_STR - 1);
+                    exit(1);
+                }
+                g_strings[idx][n++] = *p++;
+            }
+            if (*p != '"') {
+                fprintf(stderr, "k3cc:%d: error: unterminated string literal\n",
+                        line);
+                exit(1);
+            }
+            p++;
+            g_strings[idx][n] = '\0';
+            tok->type = TOK_STR;
+            tok->val = idx;
+            g_string_count++;
+            continue;
+        }
 
         if (isdigit((unsigned char)*p)) {
             char *end;
@@ -324,6 +375,22 @@ static void parse_primary(FILE *out)
 
         /* Function Call */
         if (match_tok(TOK_LPAREN)) {
+            /* puts() takes a string literal directly; strings are not
+             * first-class values, so this is the only place they appear. */
+            if (strcmp(name, "puts") == 0) {
+                token *s = cur_tok();
+                if (s->type != TOK_STR) {
+                    fprintf(stderr,
+                            "k3cc:%d: error: puts() expects a string literal\n",
+                            s->line);
+                    exit(1);
+                }
+                advance_tok();
+                expect_tok(TOK_RPAREN, "')' after puts() argument");
+                fprintf(out, "    li r0, __str_%lld\n", (long long)s->val);
+                fprintf(out, "    trap #4\n");      /* SYS_PUTS */
+                return;
+            }
             int arg_count = 0;
             if (cur_tok()->type != TOK_RPAREN) {
                 while (1) {
@@ -1147,6 +1214,16 @@ static void parse_program(FILE *out)
                 fprintf(out, "g_%s: .word %lld\n",
                         g_globals[g], (long long)g_global_values[g]);
             }
+        }
+        fprintf(out, "\n");
+    }
+
+    /* String literals (null-terminated) for puts(). */
+    if (g_string_count > 0) {
+        fprintf(out, "; --- string literals ---\n");
+        for (int i = 0; i < g_string_count; ++i) {
+            fprintf(out, "__str_%d:\n", i);
+            fprintf(out, "    .string \"%s\"\n", g_strings[i]);
         }
         fprintf(out, "\n");
     }
