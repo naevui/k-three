@@ -173,8 +173,8 @@ then assembled by `k3asm`. It has no external dependencies and is built as
 **Supported language:** `int` only (one 9-trit word), global variables with
 constant initialisers, local variables (block scoped), fixed-size arrays
 (`int a[N];` or `int a[N] = {c1, c2, ...};`, read/write via `a[i]`, no
-bounds checks),
-functions with up to 5 parameters, recursion, `if`/`else` (including
+bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
+with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `for`, `break`/`continue`, blocks, `return`, and
 the operators `+ - * / % = < > <= >= == !=` plus unary `-`. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
