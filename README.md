@@ -103,8 +103,8 @@ Supported language:
 | Variables | globals with constant initialisers, locals, block scoping |
 | Arrays | `int a[N];` or `int a[N] = {c1, c2, ...};` as globals or locals, `a[i]` read/write, no bounds checks |
 | Functions | up to 5 `int` parameters, `return`, recursion |
-| Statements | `if` / `else`, `while`, `for`, `break`, `continue`, blocks, expression statements |
-| Operators | `+ - * / %`, unary `-`/`!`, `=`, `< > <= >= == !=`, `&&`, `||` (short-circuit) |
+| Statements | `if` / `else`, `while`, `do ... while`, `for`, `break`, `continue`, blocks, expression statements |
+| Operators | `+ - * / %`, unary `-`/`!`, `=`, `< > <= >= == !=`, `&&`, `||` (short-circuit), `?:` |
 | Builtins | `print(x)`, `putc(c)`, `puts("...")`, `halt()` |
 | Comments | `// line` and `/* block */` |
 
