@@ -171,11 +171,12 @@ then assembled by `k3asm`. It has no external dependencies and is built as
 `build/k3cc` (release) and `build/k3cc_debug` (ASan/UBSan).
 
 **Supported language:** `int` only (one 9-trit word), global variables with
-constant initialisers, local variables (block scoped), functions with up to 5
-parameters, recursion, `if`/`else` (including `else if` chains), `while`,
-`for`, `break`/`continue`, blocks, `return`, and the operators
-`+ - * / % = < > <= >= == !=` plus unary `-`. Builtins: `print(x)`,
-`putc(c)`, `halt()`. Comments: `//` and `/* */`.
+constant initialisers, local variables (block scoped), fixed-size arrays
+(`int a[N];`, read/write via `a[i]`, no initialisers or bounds checks),
+functions with up to 5 parameters, recursion, `if`/`else` (including
+`else if` chains), `while`, `for`, `break`/`continue`, blocks, `return`, and
+the operators `+ - * / % = < > <= >= == !=` plus unary `-`. Builtins:
+`print(x)`, `putc(c)`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
 (emitted only when the source uses them) which returns the quotient in `r0`
@@ -204,6 +205,13 @@ emits `r7 += (locals declared inside)` before restoring the count, so the
 symbol table never sees dead names. `break`/`continue` emit the same pop down
 to the locals live at loop entry (recorded by `loop_push`) before jumping, so
 locals declared inside loop bodies do not leak stack words.
+
+Arrays: `int a[N];` advances the frame word counter by `N`. A scalar's frame
+word ordinal is its symbol `index`; an array of size `N` occupies ordinals
+`index .. index + N - 1`, so its lowest address is `r3 - (index + N)` and
+element `i` lives at `base + i`. Globals arrays are emitted as `.space N` in
+the data section. `g_frame_words` tracks live frame words separately from
+`g_local_count` (live symbols).
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
