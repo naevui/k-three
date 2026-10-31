@@ -152,6 +152,7 @@ Example programs live in `examples/`:
 | `k3os.s` | interactive K3-OS shell (`calc`, `save`, `cat`, `exec`, GUI) | prompts until `q` |
 | `snake.s` | real-time ternary Snake game | `q` quits |
 | `hello_c.c` | C source compiled by `k3cc` (recursive factorial) | prints `120`, `r0 = 120` |
+| `c_demo.c` | C showcase: strings, arrays, `switch`, `do/while`, ternary, `++` | prints `28`, `100`, `r0 = 41` |
 
 `k3vm` exit status: `0` halted, `2` trapped, `3` step limit, `1` usage/load
 error.
