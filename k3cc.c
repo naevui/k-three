@@ -68,6 +68,7 @@ typedef enum {
     TOK_ANDAND,     /* && */
     TOK_OROR,       /* || */
     TOK_NOT,        /* ! */
+    TOK_AMP,      /* & */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
     TOK_LBRACE,     /* { */
@@ -352,6 +353,7 @@ static void lex(const char *src)
         case '<': tok->type = TOK_LT; p++; break;
         case '>': tok->type = TOK_GT; p++; break;
         case '!': tok->type = TOK_NOT; p++; break;
+        case '&': tok->type = TOK_AMP; p++; break;
         case '(': tok->type = TOK_LPAREN; p++; break;
         case ')': tok->type = TOK_RPAREN; p++; break;
         case '{': tok->type = TOK_LBRACE; p++; break;
