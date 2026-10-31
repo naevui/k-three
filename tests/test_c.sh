@@ -370,5 +370,34 @@ else
     ok
 fi
 
+# Test 21: puts() emits null-terminated string literals with escapes
+cat << 'EOF' > "$TMP/puts.c"
+int main() {
+    puts("Hello, K-Three!\n");
+    puts("quote: \" slash: \\\n");
+    return 0;
+}
+EOF
+build puts
+if printf '%s\n' "$out" | grep -Fq 'Hello, K-Three!' && \
+   printf '%s\n' "$out" | grep -Fq 'quote: " slash: \'; then
+    ok
+else
+    bad test_puts "expected decoded string output"
+fi
+
+# Test 22: puts() rejects non-string arguments
+cat << 'EOF' > "$TMP/puts_bad.c"
+int main() {
+    puts(5);
+    return 0;
+}
+EOF
+if "$K3CC" "$TMP/puts_bad.c" -o "$TMP/puts_bad.s" 2>/dev/null; then
+    bad test_puts_bad "expected puts(5) to fail"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
