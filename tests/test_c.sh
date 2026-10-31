@@ -542,5 +542,66 @@ else
     ok
 fi
 
+# Test 30: switch/case with fallthrough, default and break/continue
+cat << 'EOF' > "$TMP/switch.c"
+int classify(int x) {
+    int r = 0;
+    switch (x) {
+    case 1:
+        r = 10;
+        break;
+    case 2:
+    case 3:
+        r = 20;
+        break;
+    case -4:
+        r = 40;
+    default:
+        r += 1;
+    }
+    return r;
+}
+int main() {
+    int i;
+    int s = 0;
+    for (i = 0; i < 6; i++) {
+        s = s + classify(i - 4);
+    }
+    int j = 0;
+    int t = 0;
+    while (j < 3) {
+        j++;
+        switch (j) {
+        case 2:
+            continue;
+        default:
+            t += j;
+        }
+        t += 100;
+    }
+    return s + t;
+}
+EOF
+build switch
+expect_reg test_switch r0 259
+
+# Test 31: duplicate default labels are rejected
+cat << 'EOF' > "$TMP/switch_bad.c"
+int main() {
+    switch (1) {
+    default:
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+EOF
+if "$K3CC" "$TMP/switch_bad.c" -o "$TMP/switch_bad.s" 2>/dev/null; then
+    bad test_switch_bad "expected duplicate default to fail"
+else
+    ok
+fi
+
 printf 'test_c: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
