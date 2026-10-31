@@ -177,8 +177,8 @@ bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
 with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `do ... while`, `for`, `break`/`continue`, blocks,
 `return`, and the operators `+ - * / % = < > <= >= == != && || !` plus unary
-`-`, the `?:` conditional operator, and the compound assignments
-`+= -= *= /= %=`. Builtins:
+`-`, the `?:` conditional operator, the compound assignments
+`+= -= *= /= %=`, and prefix/postfix `++`/`--`. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
@@ -247,6 +247,11 @@ value, push it, evaluate the right-hand side, call `emit_compound_op`
 (`add`/`sub`/`mul`, or `__k3_divmod` for `/=`/`%=`) and store the result back.
 `array_assign_op()` scans to the matching `]` and returns `=` or the compound
 operator so `a[i] op= e` shares the plain-array-assignment path.
+
+`++`/`--` work on scalars and array elements. `parse_lvalue_load()` parses an
+lvalue, loads its value into `r0` and leaves its address in `r1`; prefix forms
+then `addi`/`store` and return the new value, while postfix forms push the old
+value, update the cell through `r1`, and pop the old value back into `r0`.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
