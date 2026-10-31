@@ -68,6 +68,7 @@ typedef enum {
     TOK_ANDAND,     /* && */
     TOK_OROR,       /* || */
     TOK_NOT,        /* ! */
+    TOK_SIZEOF,     /* sizeof */
     TOK_AMP,      /* & */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
@@ -325,6 +326,7 @@ static void lex(const char *src)
             else if (strcmp(tok->text, "return") == 0) tok->type = TOK_RETURN;
             else if (strcmp(tok->text, "break") == 0) tok->type = TOK_BREAK;
             else if (strcmp(tok->text, "continue") == 0) tok->type = TOK_CONTINUE;
+            else if (strcmp(tok->text, "sizeof") == 0) tok->type = TOK_SIZEOF;
             else tok->type = TOK_IDENT;
             continue;
         }
@@ -496,6 +498,9 @@ static void parse_primary(FILE *out)
         fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_STAR)) {
         parse_primary(out);
+    } else if (match_tok(TOK_SIZEOF)) {
+        /* sizeof type: r0 = size of type (1 word) */
+        fprintf(out, "    li r0, #1\n");
     } else if (match_tok(TOK_INC)) {
         parse_lvalue_load(out);
         fprintf(out, "    addi r0, #1\n");
