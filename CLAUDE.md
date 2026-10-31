@@ -172,7 +172,8 @@ then assembled by `k3asm`. It has no external dependencies and is built as
 
 **Supported language:** `int` only (one 9-trit word), global variables with
 constant initialisers, local variables (block scoped), fixed-size arrays
-(`int a[N];`, read/write via `a[i]`, no initialisers or bounds checks),
+(`int a[N];` or `int a[N] = {c1, c2, ...};`, read/write via `a[i]`, no
+bounds checks),
 functions with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `for`, `break`/`continue`, blocks, `return`, and
 the operators `+ - * / % = < > <= >= == !=` plus unary `-`. Builtins:
@@ -212,6 +213,14 @@ word ordinal is its symbol `index`; an array of size `N` occupies ordinals
 element `i` lives at `base + i`. Globals arrays are emitted as `.space N` in
 the data section. `g_frame_words` tracks live frame words separately from
 `g_local_count` (live symbols).
+
+Array initialisers are constant-only: `int a[4] = {10, 20};` emits one
+`li`/`store` pair per element (locals) or a `.word` list followed by
+`.space (N - count)` (globals). Elements after the last supplied value are
+zero-filled; more elements than the array size, non-constant elements, or
+values outside `[-9841..9841]` are compile errors. Global initialiser words
+are collected in the fixed `g_init_pool` (bounded by `K3_MAX_WORDS`) so the
+compiler stays allocation-free.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
