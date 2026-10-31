@@ -176,7 +176,7 @@ constant initialisers, local variables (block scoped), fixed-size arrays
 bounds checks), character literals (`'a'`, `'\n'`, `'\''`, ...), functions
 with up to 5 parameters, recursion, `if`/`else` (including
 `else if` chains), `while`, `for`, `break`/`continue`, blocks, `return`, and
-the operators `+ - * / % = < > <= >= == !=` plus unary `-`. Builtins:
+the operators `+ - * / % = < > <= >= == != && || !` plus unary `-`. Builtins:
 `print(x)`, `putc(c)`, `puts("...")`, `halt()`. Comments: `//` and `/* */`.
 
 `/` and `%` truncate toward zero. They call a generated `__k3_divmod` helper
@@ -227,6 +227,12 @@ first-class values. The lexer keeps the raw source text (escapes included) in
 `g_strings`, and the data section emits `__str_N: .string "..."` after all
 code. `puts` becomes `li r0, __str_N; trap #4` (`SYS_PUTS`). String bytes are
 limited to `MAX_STR - 1` and there are at most `MAX_STRINGS` literals.
+
+Logical operators: `&&` and `||` short-circuit and produce `0`/`1`. Note that
+`emit_cond_jump(out, cond, label)` actually jumps to `label` when `cond` is
+**false** (it emits `cond r0, .Lskip; jmp label; .Lskip:`), so `a && b` uses
+`emit_cond_jump(..., "brnz", lbl_false)` and `a || b` uses
+`emit_cond_jump(..., "brz", lbl_true)`.
 
 **Gotcha:** `BRZ`/`BRNZ`/`BRN`/`BRP` only carry a 4-trit displacement, so
 `k3cc` never emits a long conditional branch directly. It emits an inverted
