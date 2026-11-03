@@ -378,6 +378,8 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
         }
         vm->pc = vm->saved_pc;
         vm->mode = vm->saved_mode;
+        vm->active_irq = -1;
+        vm->irq_enabled = 1;
         return K3_VM_RUNNING;
     }
 
@@ -419,6 +421,9 @@ void k3_vm_init(k3_vm *vm, const k3_vm_callbacks *callbacks)
     vm->saved_mode = K3_MODE_KERNEL;
     vm->saved_pc = 0;
     vm->trap_vector = -1;
+    vm->irq_enabled = 1;
+    vm->irq_pending = 0;
+    vm->active_irq = -1;
 
     k3_vm_set_callbacks(vm, callbacks);
 }
@@ -440,6 +445,9 @@ void k3_vm_reset(k3_vm *vm)
     vm->saved_mode = K3_MODE_KERNEL;
     vm->saved_pc = 0;
     vm->trap_vector = -1;
+    vm->irq_enabled = 1;
+    vm->irq_pending = 0;
+    vm->active_irq = -1;
 }
 
 void k3_vm_set_callbacks(k3_vm *vm, const k3_vm_callbacks *callbacks)
@@ -566,6 +574,22 @@ k3_vm_status k3_vm_step(k3_vm *vm)
         return vm->status;
     }
 
+    /* Check for pending hardware interrupts if enabled and vector is set */
+    if (vm->irq_enabled && vm->irq_pending != 0 && vm->trap_vector >= 0) {
+        for (uint8_t line = 0; line < 8; ++line) {
+            if (vm->irq_pending & (1u << line)) {
+                vm->irq_pending &= (uint8_t)~(1u << line);
+                vm->saved_pc = vm->pc;
+                vm->saved_mode = vm->mode;
+                vm->mode = K3_MODE_KERNEL;
+                vm->active_irq = (int8_t)line;
+                vm->irq_enabled = 0;
+                vm->pc = (uint16_t)vm->trap_vector;
+                break;
+            }
+        }
+    }
+
     if (vm->pc > K3_VM_MAX_ADDRESS) {
         k3_vm_status status = set_trap(vm, K3_TRAP_MEMORY, 0, vm->pc);
         notify_stop(vm);
@@ -633,4 +657,40 @@ k3_vm_mode k3_vm_get_mode(const k3_vm *vm)
 uint16_t k3_vm_get_saved_pc(const k3_vm *vm)
 {
     return vm ? vm->saved_pc : 0;
+}
+
+void k3_vm_raise_irq(k3_vm *vm, uint8_t irq_line)
+{
+    if (vm != NULL && irq_line < 8) {
+        vm->irq_pending |= (uint8_t)(1u << irq_line);
+    }
+}
+
+void k3_vm_clear_irq(k3_vm *vm, uint8_t irq_line)
+{
+    if (vm != NULL && irq_line < 8) {
+        vm->irq_pending &= (uint8_t)~(1u << irq_line);
+    }
+}
+
+void k3_vm_enable_irq(k3_vm *vm, bool enable)
+{
+    if (vm != NULL) {
+        vm->irq_enabled = enable ? 1 : 0;
+    }
+}
+
+bool k3_vm_irq_enabled(const k3_vm *vm)
+{
+    return vm != NULL && vm->irq_enabled != 0;
+}
+
+uint8_t k3_vm_pending_irqs(const k3_vm *vm)
+{
+    return vm != NULL ? vm->irq_pending : 0;
+}
+
+int8_t k3_vm_active_irq(const k3_vm *vm)
+{
+    return vm != NULL ? vm->active_irq : -1;
 }
