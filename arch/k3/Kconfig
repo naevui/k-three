@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# arch/k3/Kconfig - K-Three Balanced Ternary Linux Architecture Configuration
+#
+
+config K3
+	def_bool y
+	select ARCH_HAS_CPU_FINALIZE_INIT
+	select ARCH_NO_COHERENT_DMA_MMAP
+	select GENERIC_ATOMIC64
+	select GENERIC_IRQ_SHOW
+	select HAVE_ARCH_KGDB
+	select HAVE_DYNAMIC_FTRACE
+	select SET_FS
+	help
+	  K-Three (Kord-Three) is a 9-trit balanced-ternary RISC processor
+	  architecture developed as an alternative to binary computing.
+	  Features:
+	  - Radix-3 balanced ternary (-1, 0, +1 trits)
+	  - 9 trits per word (symmetric range [-9841..+9841])
+	  - Flat word-addressed physical memory (6561 words, 9 pages of 729)
+	  - 8 general-purpose 9-trit registers (r0..r7)
+	  - Hardware MMIO, hardware timer IRQ, and DMA block storage
+
+config BALANCED_TERNARY
+	def_bool y
+	help
+	  This architecture uses balanced ternary arithmetic (powers of 3)
+	  instead of standard binary arithmetic.
+
+config MMU
+	def_bool n
+	help
+	  The baseline K-Three ISA v0 uses a flat word-addressed NOMMU
+	  memory model with hardware memory protection bounds.
+
+config PAGE_OFFSET
+	hex
+	default "0x0000"
+
+config STACK_POINTER_OFFSET
+	hex
+	default "0x19A0"
+
+config CPU_NAME
+	string
+	default "K-Three 9-Trit Balanced Ternary Processor"
+
+config HZ
+	int
+	default 100
+	help
+	  Hardware timer frequency in ticks per second.
+
+config K3_MAX_TASKS
+	int "Maximum number of simultaneous tasks"
+	default 8
+	help
+	  Maximum task table slots for embedded K-Three Linux.
+
+menu "K-Three Machine Setup"
+
+config K3_RAM_WORDS
+	int "Physical RAM words"
+	default 6561
+	help
+	  Total physical memory words (3^8 = 6561).
+
+config K3_KERNEL_WORDS
+	int "Kernel reserved memory words"
+	default 1458
+	help
+	  Memory allocated to kernel code and data (Pages 0..1 = 1458 words).
+
+config K3_USER_WORDS
+	int "Userspace memory words"
+	default 5103
+	help
+	  Memory allocated to userspace tasks (Pages 2..8 = 5103 words).
+
+config K3_HW_MMIO
+	bool "Hardware Memory-Mapped I/O support"
+	default y
+	help
+	  Enable direct hardware MMIO peripherals (UART, Timer, RNG, Disk DMA).
+
+endmenu
