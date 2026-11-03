@@ -110,6 +110,10 @@ struct k3_vm {
     uint8_t irq_pending;       /* Pending IRQ lines bitmask (lines 0..7) */
     int8_t active_irq;         /* Currently servicing IRQ line (-1 = none) */
 
+    /* Memory Protection (User Mode Address Bounds) */
+    uint16_t user_base;        /* Lowest valid address in user mode (default 0) */
+    uint16_t user_limit;       /* Highest valid address in user mode (default K3_VM_MAX_ADDRESS) */
+
     k3_vm_callbacks callbacks;
 };
 
@@ -181,5 +185,9 @@ void k3_vm_enable_irq(k3_vm *vm, bool enable);
 bool k3_vm_irq_enabled(const k3_vm *vm);
 uint8_t k3_vm_pending_irqs(const k3_vm *vm);
 int8_t k3_vm_active_irq(const k3_vm *vm);
+
+/* Hardware Memory Protection API */
+void k3_vm_set_user_bounds(k3_vm *vm, uint16_t base, uint16_t limit);
+void k3_vm_get_user_bounds(const k3_vm *vm, uint16_t *base, uint16_t *limit);
 
 #endif /* K3_VM_H */
