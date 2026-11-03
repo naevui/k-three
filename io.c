@@ -32,6 +32,14 @@ static struct timespec s_boot_time;
 static bool s_time_initialized = false;
 static uint64_t s_rng_state = 0x123456789ABCDEFULL;
 
+/* Block Storage Device State */
+static bt_word s_disk[K3_DISK_MAX_SECTORS * K3_DISK_SECTOR_WORDS];
+static int64_t s_disk_sector = 0;
+static int64_t s_disk_dma_addr = 0;
+static int64_t s_disk_count = K3_DISK_SECTOR_WORDS;
+static int64_t s_disk_status = K3_DISK_STATUS_IDLE;
+static char s_disk_path[512] = { 0 };
+
 static uint64_t xorshift64(void)
 {
     uint64_t x = s_rng_state;
@@ -184,6 +192,31 @@ static bool standard_peripheral_read(k3_vm *vm, uint16_t address, bt_word *out)
         val = K3_VM_MEMORY_WORDS;
         break;
 
+    /* Block Device / Disk Registers */
+    case K3_MMIO_DISK_SECTOR:
+        val = s_disk_sector;
+        break;
+
+    case K3_MMIO_DISK_DMA_ADDR:
+        val = s_disk_dma_addr;
+        break;
+
+    case K3_MMIO_DISK_COUNT:
+        val = s_disk_count;
+        break;
+
+    case K3_MMIO_DISK_CMD:
+        val = 0;
+        break;
+
+    case K3_MMIO_DISK_STATUS:
+        val = s_disk_status;
+        break;
+
+    case K3_MMIO_DISK_CAPACITY:
+        val = K3_DISK_MAX_SECTORS;
+        break;
+
     default:
         return false;
     }
@@ -258,6 +291,53 @@ static bool standard_peripheral_write(k3_vm *vm, uint16_t address, const bt_word
         s_leds = val;
         return true;
 
+    /* Block Device / Disk Registers */
+    case K3_MMIO_DISK_SECTOR:
+        s_disk_sector = val;
+        return true;
+
+    case K3_MMIO_DISK_DMA_ADDR:
+        s_disk_dma_addr = val;
+        return true;
+
+    case K3_MMIO_DISK_COUNT:
+        s_disk_count = val;
+        return true;
+
+    case K3_MMIO_DISK_CMD:
+        if (vm == NULL) {
+            s_disk_status = K3_DISK_STATUS_ERROR;
+            return true;
+        }
+        if (val == K3_DISK_CMD_READ) {
+            if (s_disk_sector < 0 || s_disk_sector >= K3_DISK_MAX_SECTORS ||
+                s_disk_count <= 0 || s_disk_count > K3_DISK_SECTOR_WORDS ||
+                s_disk_dma_addr < 0 || s_disk_dma_addr + s_disk_count > K3_VM_MEMORY_WORDS) {
+                s_disk_status = K3_DISK_STATUS_ERROR;
+            } else {
+                size_t disk_offset = (size_t)s_disk_sector * K3_DISK_SECTOR_WORDS;
+                memcpy(&vm->memory[s_disk_dma_addr], &s_disk[disk_offset],
+                       (size_t)s_disk_count * sizeof(bt_word));
+                s_disk_status = K3_DISK_STATUS_IDLE;
+            }
+        } else if (val == K3_DISK_CMD_WRITE) {
+            if (s_disk_sector < 0 || s_disk_sector >= K3_DISK_MAX_SECTORS ||
+                s_disk_count <= 0 || s_disk_count > K3_DISK_SECTOR_WORDS ||
+                s_disk_dma_addr < 0 || s_disk_dma_addr + s_disk_count > K3_VM_MEMORY_WORDS) {
+                s_disk_status = K3_DISK_STATUS_ERROR;
+            } else {
+                size_t disk_offset = (size_t)s_disk_sector * K3_DISK_SECTOR_WORDS;
+                memcpy(&s_disk[disk_offset], &vm->memory[s_disk_dma_addr],
+                       (size_t)s_disk_count * sizeof(bt_word));
+                s_disk_status = K3_DISK_STATUS_IDLE;
+            }
+        } else if (val == K3_DISK_CMD_SYNC) {
+            s_disk_status = K3_DISK_STATUS_IDLE;
+        } else {
+            s_disk_status = K3_DISK_STATUS_ERROR;
+        }
+        return true;
+
     default:
         return false;
     }
@@ -270,7 +350,25 @@ void k3_io_init(void)
     s_timer_interval = 0;
     s_timer_ctrl = 0;
     s_uart_ctrl = 0;
+    s_disk_sector = 0;
+    s_disk_dma_addr = 0;
+    s_disk_count = K3_DISK_SECTOR_WORDS;
+    s_disk_status = K3_DISK_STATUS_IDLE;
+    for (size_t i = 0; i < K3_DISK_MAX_SECTORS * K3_DISK_SECTOR_WORDS; ++i) {
+        bt_word_zero(&s_disk[i]);
+    }
     init_time_base();
+}
+
+bool k3_io_disk_attach(const char *image_path)
+{
+    if (image_path == NULL) {
+        s_disk_path[0] = '\0';
+        return true;
+    }
+    strncpy(s_disk_path, image_path, sizeof(s_disk_path) - 1);
+    s_disk_path[sizeof(s_disk_path) - 1] = '\0';
+    return true;
 }
 
 void k3_io_reset(void)
