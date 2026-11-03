@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * arch/k3/include/asm/unistd.h
+ *
+ * System call numbers for the K-Three balanced ternary Linux architecture.
+ */
+
+#ifndef _ASM_K3_UNISTD_H
+#define _ASM_K3_UNISTD_H
+
+/* Standard Linux POSIX System Call Numbers */
+#define __NR_restart_syscall    0
+#define __NR_exit               1
+#define __NR_fork               2
+#define __NR_read               3
+#define __NR_write              4
+#define __NR_open               5
+#define __NR_close              6
+#define __NR_waitpid            7
+#define __NR_execve             11
+#define __NR_getpid             20
+#define __NR_pause              29
+#define __NR_kill               37
+#define __NR_pipe               42
+#define __NR_brk                45
+#define __NR_getppid            64
+#define __NR_sysinfo            116
+#define __NR_clone              120
+#define __NR_uname              122
+#define __NR_sched_yield        158
+#define __NR_nanosleep          162
+
+/* K-Three Balanced Ternary Hardware Extensions */
+#define __NR_k3_uptime          200   /* Monotonic hardware timer ms */
+#define __NR_k3_entropy         201   /* True hardware balanced ternary random word */
+#define __NR_k3_leds            202   /* Read / write front-panel diagnostic LEDs */
+#define __NR_k3_disk_dma        203   /* Direct sector block storage DMA transfer */
+#define __NR_k3_vram_flush      204   /* Flush text video RAM to terminal display */
+
+#define __NR_syscalls           256
+
+#endif /* _ASM_K3_UNISTD_H */
