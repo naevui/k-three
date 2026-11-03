@@ -1192,6 +1192,23 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "SYS_FILE_SIZE", 37);
     add_predefined_equ(as, "SYS_FILE_EXISTS", 38);
     add_predefined_equ(as, "SYS_BANK_SWITCH", 39);
+
+    /* Hardware MMIO Peripheral Architecture (base 5000) */
+    add_predefined_equ(as, "IO_UART_DATA", 5000);
+    add_predefined_equ(as, "IO_UART_STAT", 5001);
+    add_predefined_equ(as, "IO_UART_CTRL", 5002);
+    add_predefined_equ(as, "IO_TIMER_L", 5004);
+    add_predefined_equ(as, "IO_TIMER_H", 5005);
+    add_predefined_equ(as, "IO_TIMER_INT", 5006);
+    add_predefined_equ(as, "IO_TIMER_CTRL", 5007);
+    add_predefined_equ(as, "IO_RNG_WORD", 5008);
+    add_predefined_equ(as, "IO_RNG_TRIT", 5009);
+    add_predefined_equ(as, "IO_SYS_RESET", 5010);
+    add_predefined_equ(as, "IO_SYS_HALT", 5011);
+    add_predefined_equ(as, "IO_SYS_LEDS", 5012);
+    add_predefined_equ(as, "IO_SYS_TICKS_L", 5013);
+    add_predefined_equ(as, "IO_SYS_TICKS_H", 5014);
+    add_predefined_equ(as, "IO_SYS_MEMSIZE", 5015);
 }
 
 int main(int argc, char **argv)
