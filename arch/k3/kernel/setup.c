@@ -27,7 +27,7 @@ void k3_kernel_banner(void)
     printf("[    0.000000] devtmpfs: initialized\n");
     printf("[    0.000000] VFS: Mounted root (ternary-romfs filesystem) readonly.\n");
     printf("\033[1;32m[    0.000000] Freeing unused kernel memory... Done\033[0m\n");
-    printf("\033[1;33m[    0.000000] Run /sbin/init as init process (pid 1)\033[0m\n");
+    printf("\033[1;33m[    0.000000] Run /sbin/kinit as init process (pid 1)\033[0m\n");
     fflush(stdout);
 }
 
