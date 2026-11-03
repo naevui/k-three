@@ -672,6 +672,50 @@ else
     ok
 fi
 
+# Test 37: pointer assignment and address-of (*p = val, &var)
+cat << 'EOF' > "$TMP/ptr_assign.c"
+int main() {
+    int a = 10;
+    int b = 20;
+    int *p = &a;
+    *p = 50;
+    int *q = &b;
+    *q += 5;
+    return a + b;
+}
+EOF
+build ptr_assign
+expect_reg test_ptr_assign r0 75
+
+# Test 38: pointer arithmetic on arrays (*(p + i) = val)
+cat << 'EOF' > "$TMP/ptr_arith.c"
+int main() {
+    int arr[4] = {1, 2, 3, 4};
+    int *p = &arr[0];
+    *(p + 1) = 20;
+    *(p + 2) += 30;
+    *(p + 3) = *(p + 0) + 10;
+    return arr[0] + arr[1] + arr[2] + arr[3];
+}
+EOF
+build ptr_arith
+expect_reg test_ptr_arith r0 65
+
+# Test 39: pointer passed as function argument
+cat << 'EOF' > "$TMP/ptr_func.c"
+int update(int *ptr, int val) {
+    *ptr = val * 2;
+    return *ptr;
+}
+int main() {
+    int x = 5;
+    int res = update(&x, 15);
+    return x + res;
+}
+EOF
+build ptr_func
+expect_reg test_ptr_func r0 60
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
