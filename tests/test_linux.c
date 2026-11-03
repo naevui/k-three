@@ -18,6 +18,8 @@
 #include "arch/k3/include/asm/atomic.h"
 #include "arch/k3/include/asm/bitops.h"
 #include "arch/k3/include/asm/io.h"
+#include "arch/k3/include/asm/irq.h"
+#include "arch/k3/include/asm/irqflags.h"
 
 static int g_checks = 0;
 static int g_failures = 0;
@@ -59,6 +61,51 @@ extern int k3_proc_interrupts(char *buf, size_t max_len);
 
 extern int k3_trap_to_signal(k3_trap_reason reason);
 extern struct thread_struct *k3_get_init_thread(void);
+
+extern void init_IRQ(void);
+typedef int (*irq_handler_t)(int irq, void *dev_id);
+extern int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, const char *name, void *dev_id);
+extern void free_irq(unsigned int irq, void *dev_id);
+extern void do_IRQ(k3_vm *vm, unsigned int irq, struct pt_regs *regs);
+extern unsigned long k3_get_irq_count(unsigned int irq);
+extern const char *k3_get_irq_name(unsigned int irq);
+
+static int s_test_irq_fired = 0;
+static int test_irq_handler(int irq, void *dev_id)
+{
+    (void)dev_id;
+    s_test_irq_fired = irq + 10;
+    return 0;
+}
+
+static void test_linux_irq_subsystem(void)
+{
+    k3_vm vm;
+    k3_vm_init(&vm, NULL);
+    init_IRQ();
+
+    int dev_token = 123;
+    CHECK_EQ_I64(request_irq(K3_IRQ_TIMER, test_irq_handler, 0, "test_timer", &dev_token), 0);
+    CHECK(strcmp(k3_get_irq_name(K3_IRQ_TIMER), "test_timer") == 0);
+
+    /* Dispatch IRQ 0 */
+    s_test_irq_fired = 0;
+    do_IRQ(&vm, K3_IRQ_TIMER, NULL);
+    CHECK_EQ_I64(s_test_irq_fired, 10);
+    CHECK_EQ_I64(k3_get_irq_count(K3_IRQ_TIMER), 1);
+
+    /* Free IRQ */
+    free_irq(K3_IRQ_TIMER, &dev_token);
+
+    /* irqflags primitives */
+    arch_local_irq_enable(&vm);
+    CHECK(k3_vm_irq_enabled(&vm));
+    unsigned long flags = arch_local_irq_save(&vm);
+    CHECK(!k3_vm_irq_enabled(&vm));
+    CHECK(!arch_irqs_disabled_flags(flags));
+    arch_local_irq_restore(&vm, flags);
+    CHECK(k3_vm_irq_enabled(&vm));
+}
 
 static void test_linux_traps_and_atomics(void)
 {
@@ -230,6 +277,7 @@ int main(void)
     test_linux_procfs();
     test_linux_uaccess();
     test_linux_traps_and_atomics();
+    test_linux_irq_subsystem();
 
     printf("test_linux: %d checks, %d failures\n", g_checks, g_failures);
     return (g_failures == 0) ? 0 : 1;
