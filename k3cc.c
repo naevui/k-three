@@ -70,6 +70,8 @@ typedef enum {
     TOK_NOT,        /* ! */
     TOK_SIZEOF,     /* sizeof */
     TOK_ENUM,       /* enum */
+    TOK_STRUCT,     /* struct */
+    TOK_DOT,        /* . */
     TOK_AMP,      /* & */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
@@ -110,8 +112,9 @@ static int g_loop_depth = 0;
 typedef struct {
     char name[MAX_IDENT];
     bool is_global;
-    int index; /* 0 for 1st local, 1 for 2nd local, etc. */
-    int size;  /* 1 for a scalar, N for an array of N words */
+    int index;      /* 0 for 1st local, 1 for 2nd local, etc. */
+    int size;       /* 1 for a scalar, N for an array of N words */
+    int struct_idx; /* -1 for non-struct, >=0 index into g_structs */
 } var_symbol;
 
 static var_symbol g_locals[MAX_VARS];
@@ -130,6 +133,47 @@ static int64_t g_init_pool[K3_MAX_WORDS];
 static size_t g_init_pool_used = 0;
 static size_t g_global_init_start[MAX_VARS];
 static int g_global_init_counts[MAX_VARS];
+static int g_global_struct_idx[MAX_VARS]; /* -1 unless a struct instance */
+
+/* ── Struct type table ─────────────────────────────────────────────────────
+ * Supports: struct Foo { int a; int b[4]; };
+ * Member access:  var.field  (load)  or  var.field = expr  (store)
+ * Each struct occupies (sum of member sizes) words in the frame/global data.
+ */
+#define MAX_STRUCTS  32
+#define MAX_FIELDS   16
+
+typedef struct {
+    char name[MAX_IDENT];       /* field name */
+    int  offset;                /* word offset from struct base */
+    int  size;                  /* 1 for scalar, N for array */
+} field_def;
+
+typedef struct {
+    char      name[MAX_IDENT];
+    field_def fields[MAX_FIELDS];
+    int       field_count;
+    int       total_size;       /* sum of all field sizes */
+} struct_def;
+
+static struct_def g_structs[MAX_STRUCTS];
+static int        g_struct_count = 0;
+
+/* Look up a struct by name; returns index or -1. */
+static int find_struct(const char *name)
+{
+    for (int i = 0; i < g_struct_count; ++i)
+        if (strcmp(g_structs[i].name, name) == 0) return i;
+    return -1;
+}
+
+/* Look up a field within a struct; returns its index or -1. */
+static int find_field(int si, const char *name)
+{
+    for (int i = 0; i < g_structs[si].field_count; ++i)
+        if (strcmp(g_structs[si].fields[i].name, name) == 0) return i;
+    return -1;
+}
 
 /* String literals keep their raw source text (escapes included); k3asm
  * decodes them for `.string` directives. */
@@ -179,6 +223,26 @@ static void gen_array_addr(FILE *out, const char *name, int loc)
         fprintf(out, "    li r1, g_%s\n", name);
     }
     fprintf(out, "    add r1, r1, r0\n");
+}
+
+/* Emit the base address of a struct field into r1.
+ * `loc >= 0` addresses a local; otherwise `gname` names a global symbol
+ * (emitted as `g_<gname>`).  `foff` is the field's word offset within the
+ * struct.  For globals with a non-zero offset r0 is clobbered, so callers
+ * must compute the base before parsing an array index. */
+static void gen_field_addr(FILE *out, const char *gname, int loc, int foff)
+{
+    if (loc >= 0) {
+        int offset = -(g_locals[loc].index + g_locals[loc].size) + foff;
+        fprintf(out, "    li r1, #%d\n", offset);
+        fprintf(out, "    add r1, r3, r1\n");
+    } else {
+        fprintf(out, "    li r1, g_%s\n", gname);
+        if (foff > 0) {
+            fprintf(out, "    li r0, #%d\n", foff);
+            fprintf(out, "    add r1, r1, r0\n");
+        }
+    }
 }
 
 /* Decode one backslash escape from a character or string literal. */
@@ -330,6 +394,7 @@ static void lex(const char *src)
             else if (strcmp(tok->text, "break") == 0) tok->type = TOK_BREAK;
             else if (strcmp(tok->text, "continue") == 0) tok->type = TOK_CONTINUE;
             else if (strcmp(tok->text, "sizeof") == 0) tok->type = TOK_SIZEOF;
+            else if (strcmp(tok->text, "struct") == 0) tok->type = TOK_STRUCT;
             else tok->type = TOK_IDENT;
             continue;
         }
@@ -369,6 +434,7 @@ static void lex(const char *src)
         case ';': tok->type = TOK_SEMI; p++; break;
         case '?': tok->type = TOK_QUESTION; p++; break;
         case ':': tok->type = TOK_COLON; p++; break;
+        case '.': tok->type = TOK_DOT;   p++; break;
         default:
             fprintf(stderr, "k3cc:%d: error: unexpected character '%c'\n", line, *p);
             exit(1);
@@ -650,6 +716,56 @@ static void parse_primary(FILE *out)
                 fprintf(out, "    addi r0, #-1\n");
                 fprintf(out, "    store r0, [r1]\n");
                 fprintf(out, "    pop r0\n");
+            } else if (cur_tok()->type == TOK_DOT) {
+                /* Member access: var.field  →  r0 = value at (base + offset) */
+                advance_tok(); /* consume '.' */
+                token *fname = cur_tok();
+                expect_tok(TOK_IDENT, "field name after '.'");
+
+                /* Look up struct_idx from the variable (local or global) */
+                int v_loc = find_local(name);
+                int v_gl  = (v_loc >= 0) ? -1 : find_global(name);
+                int v_si;
+                if (v_loc >= 0) {
+                    v_si = g_locals[v_loc].struct_idx;
+                } else if (v_gl >= 0) {
+                    v_si = g_global_struct_idx[v_gl];
+                } else {
+                    v_si = -1;
+                }
+                if (v_si < 0) {
+                    fprintf(stderr, "k3cc:%d: error: '%s' is not a struct\n",
+                            fname->line, name);
+                    exit(1);
+                }
+                int fi = find_field(v_si, fname->text);
+                if (fi < 0) {
+                    fprintf(stderr, "k3cc:%d: error: struct '%s' has no field '%s'\n",
+                            fname->line, g_structs[v_si].name, fname->text);
+                    exit(1);
+                }
+                int foff = g_structs[v_si].fields[fi].offset;
+                int fsize = g_structs[v_si].fields[fi].size;
+
+                if (cur_tok()->type == TOK_LBRACKET) {
+                    /* Array field: var.field[index] */
+                    if (fsize <= 1) {
+                        fprintf(stderr, "k3cc:%d: error: field '%s' is not an "
+                                        "array\n", fname->line, fname->text);
+                        exit(1);
+                    }
+                    gen_field_addr(out, name, v_loc, foff);
+                    fprintf(out, "    push r1\n");       /* save base */
+                    advance_tok(); /* '[' */
+                    parse_expression(out); /* index into r0 */
+                    expect_tok(TOK_RBRACKET, "']' after field index");
+                    fprintf(out, "    pop r1\n");
+                    fprintf(out, "    add r1, r1, r0\n");
+                    fprintf(out, "    load r0, [r1]\n");
+                } else {
+                    gen_field_addr(out, name, v_loc, foff);
+                    fprintf(out, "    load r0, [r1]\n");
+                }
             }
         }
     } else if (match_tok(TOK_LPAREN)) {
@@ -860,9 +976,150 @@ static token_type array_assign_op(void)
     return TOK_EOF;
 }
 
+/* Detect `IDENT . IDENT [ ... ] op` where op is `=` or a compound op.
+ * Returns the operator token or TOK_EOF.  The cursor is left unchanged. */
+static token_type member_array_assign_op(void)
+{
+    if (g_tokens[g_token_pos].type != TOK_IDENT) return TOK_EOF;
+    if (g_tokens[g_token_pos + 1].type != TOK_DOT) return TOK_EOF;
+    if (g_tokens[g_token_pos + 2].type != TOK_IDENT) return TOK_EOF;
+    if (g_tokens[g_token_pos + 3].type != TOK_LBRACKET) return TOK_EOF;
+
+    size_t i = g_token_pos + 3;
+    int depth = 0;
+    while (i < g_token_count) {
+        if (g_tokens[i].type == TOK_LBRACKET) {
+            depth++;
+        } else if (g_tokens[i].type == TOK_RBRACKET) {
+            depth--;
+            if (depth == 0) break;
+        }
+        i++;
+    }
+    if (g_tokens[i].type != TOK_RBRACKET) return TOK_EOF;
+    token_type op = g_tokens[i + 1].type;
+    if (op == TOK_ASSIGN || is_compound_op(op)) return op;
+    return TOK_EOF;
+}
+
 /* Assignment and Full Expression */
 static void parse_expression(FILE *out)
 {
+    /* Member array assignment: var.field[index] = expr */
+    if (member_array_assign_op() != TOK_EOF) {
+        char vname[MAX_IDENT];
+        strncpy(vname, cur_tok()->text, MAX_IDENT - 1);
+        vname[MAX_IDENT - 1] = '\0';
+        int v_loc = find_local(vname);
+        int v_gl  = (v_loc >= 0) ? -1 : find_global(vname);
+        int v_si  = (v_loc >= 0) ? g_locals[v_loc].struct_idx
+                                 : (v_gl >= 0 ? g_global_struct_idx[v_gl] : -1);
+        if (v_si < 0) {
+            fprintf(stderr, "k3cc:%d: error: '%s' is not a struct\n",
+                    cur_tok()->line, vname);
+            exit(1);
+        }
+
+        advance_tok(); /* var name */
+        advance_tok(); /* '.' */
+        token *fname = cur_tok();
+        advance_tok(); /* field name */
+        advance_tok(); /* '[' */
+
+        int fi = find_field(v_si, fname->text);
+        if (fi < 0) {
+            fprintf(stderr, "k3cc:%d: error: struct '%s' has no field '%s'\n",
+                    fname->line, g_structs[v_si].name, fname->text);
+            exit(1);
+        }
+        int foff = g_structs[v_si].fields[fi].offset;
+
+        gen_field_addr(out, vname, v_loc, foff);
+        fprintf(out, "    push r1\n");   /* save field base */
+        parse_expression(out); /* index into r0 */
+        expect_tok(TOK_RBRACKET, "']' after field index");
+        /* element address in r1 = base + index */
+        fprintf(out, "    pop r1\n");
+        fprintf(out, "    add r1, r1, r0\n");
+        fprintf(out, "    push r1\n");   /* save element address */
+
+        token_type op = cur_tok()->type;
+        if (op != TOK_ASSIGN) {
+            fprintf(out, "    load r0, [r1]\n");
+            fprintf(out, "    push r0\n");
+        }
+        expect_tok(op, "assignment operator after field subscript");
+        parse_expression(out); /* value in r0 */
+        if (op != TOK_ASSIGN) {
+            fprintf(out, "    mov r1, r0\n");
+            fprintf(out, "    pop r0\n");
+            emit_compound_op(out, op);
+        }
+        fprintf(out, "    pop r1\n");
+        fprintf(out, "    store r0, [r1]\n");
+        return;
+    }
+
+    /* Member assignment: var.field = expr */
+    if (cur_tok()->type == TOK_IDENT &&
+        g_tokens[g_token_pos + 1].type == TOK_DOT) {
+
+        char vname[MAX_IDENT];
+        strncpy(vname, cur_tok()->text, MAX_IDENT - 1);
+        vname[MAX_IDENT - 1] = '\0';
+        int v_loc = find_local(vname);
+        int v_gl  = (v_loc >= 0) ? -1 : find_global(vname);
+        int v_si  = (v_loc >= 0) ? g_locals[v_loc].struct_idx
+                                 : (v_gl >= 0 ? g_global_struct_idx[v_gl] : -1);
+
+        /* Only intercept if this really is a struct member store */
+        if (v_si >= 0 &&
+            g_tokens[g_token_pos + 2].type == TOK_IDENT &&
+            (g_tokens[g_token_pos + 3].type == TOK_ASSIGN ||
+             is_compound_op(g_tokens[g_token_pos + 3].type))) {
+
+            advance_tok(); /* var name */
+            advance_tok(); /* '.' */
+
+            token *fname = cur_tok();
+            advance_tok(); /* field name */
+
+            token_type op = cur_tok()->type;
+            advance_tok(); /* '=' or compound op */
+
+            int fi = find_field(v_si, fname->text);
+            if (fi < 0) {
+                fprintf(stderr, "k3cc:%d: error: struct '%s' has no field '%s'\n",
+                        fname->line, g_structs[v_si].name, fname->text);
+                exit(1);
+            }
+            int foff = g_structs[v_si].fields[fi].offset;
+
+            /* Compute the field address first (globals may clobber r0),
+             * then stash it so the RHS can use r0 freely. */
+            gen_field_addr(out, vname, v_loc, foff);
+            fprintf(out, "    push r1\n");           /* save field address */
+
+            if (op != TOK_ASSIGN) {
+                /* Load current value for compound ops */
+                fprintf(out, "    load r0, [r1]\n");
+                fprintf(out, "    push r0\n");       /* save lhs value */
+            }
+
+            parse_expression(out); /* RHS in r0 */
+
+            if (op != TOK_ASSIGN) {
+                fprintf(out, "    mov r1, r0\n");
+                fprintf(out, "    pop r0\n");
+                emit_compound_op(out, op);
+            }
+
+            fprintf(out, "    pop r1\n");            /* recover field address */
+            fprintf(out, "    store r0, [r1]\n");
+            return;
+        }
+    }
+
     if (cur_tok()->type == TOK_IDENT) {
         token_type op = g_tokens[g_token_pos + 1].type;
         if (op == TOK_ASSIGN || is_compound_op(op)) {
@@ -1039,6 +1296,63 @@ static void emit_local_array_init(FILE *out, const char *name, int size)
  * frame pointer. */
 static void parse_declaration(FILE *out)
 {
+    /* struct Foo varname; or struct Foo varname[N]; */
+    if (cur_tok()->type == TOK_IDENT) {
+        int si = find_struct(cur_tok()->text);
+        if (si >= 0) {
+            advance_tok(); /* consume struct tag */
+            token *svar = cur_tok();
+            expect_tok(TOK_IDENT, "variable name after struct tag");
+
+            int arr_count = 1;  /* number of struct instances (1 = single) */
+            if (match_tok(TOK_LBRACKET)) {
+                token *cn = cur_tok();
+                if (cn->type != TOK_NUM || cn->val <= 0) {
+                    fprintf(stderr, "k3cc:%d: error: struct array size must be "
+                                    "a positive constant\n", cn->line);
+                    exit(1);
+                }
+                arr_count = (int)cn->val;
+                advance_tok();
+                expect_tok(TOK_RBRACKET, "']' after struct array size");
+            }
+
+            int total = g_structs[si].total_size * arr_count;
+
+            if (find_local(svar->text) >= 0) {
+                fprintf(stderr, "k3cc:%d: error: variable '%s' already declared\n",
+                        svar->line, svar->text);
+                exit(1);
+            }
+            if (g_local_count >= MAX_VARS) {
+                fprintf(stderr, "k3cc: error: too many local variables\n");
+                exit(1);
+            }
+            strncpy(g_locals[g_local_count].name, svar->text, MAX_IDENT - 1);
+            g_locals[g_local_count].name[MAX_IDENT - 1] = '\0';
+            g_locals[g_local_count].is_global = false;
+            g_locals[g_local_count].index = (int)g_frame_words;
+            g_locals[g_local_count].size = total;
+            g_locals[g_local_count].struct_idx = si;
+            g_local_count++;
+            g_frame_words += (size_t)total;
+
+            /* Reserve total words, zero-initialised */
+            fprintf(out, "    li r1, #%d\n", total);
+            fprintf(out, "    sub r7, r7, r1\n");
+            /* zero-fill */
+            for (int w = 0; w < total; ++w) {
+                int off = -(g_locals[g_local_count - 1].index + w + 1);
+                fprintf(out, "    ldi r0, #0\n");
+                fprintf(out, "    li r1, #%d\n", off);
+                fprintf(out, "    add r1, r3, r1\n");
+                fprintf(out, "    store r0, [r1]\n");
+            }
+            expect_tok(TOK_SEMI, "';' after struct variable declaration");
+            return;
+        }
+    }
+
     token *id = cur_tok();
     expect_tok(TOK_IDENT, "identifier in variable declaration");
 
@@ -1073,6 +1387,7 @@ static void parse_declaration(FILE *out)
     g_locals[g_local_count].is_global = false;
     g_locals[g_local_count].index = (int)g_frame_words;
     g_locals[g_local_count].size = size;
+    g_locals[g_local_count].struct_idx = -1;
     g_local_count++;
     g_frame_words += (size_t)size;
 
@@ -1316,7 +1631,7 @@ static void parse_statement(FILE *out)
         expect_tok(TOK_LPAREN, "'(' after for");
 
         /* Initializer: declaration, expression or empty */
-        if (cur_tok()->type == TOK_INT || cur_tok()->type == TOK_ENUM) {
+        if (cur_tok()->type == TOK_INT || cur_tok()->type == TOK_ENUM || cur_tok()->type == TOK_STRUCT) {
             advance_tok();
             parse_declaration(out);
         } else {
@@ -1400,7 +1715,7 @@ static void parse_statement(FILE *out)
         }
         expect_tok(TOK_SEMI, "';' after return");
         emit_function_return(out);
-    } else if (match_tok(TOK_INT) || match_tok(TOK_ENUM)) {
+    } else if (match_tok(TOK_INT) || match_tok(TOK_ENUM) || match_tok(TOK_STRUCT)) {
         parse_declaration(out);
     } else if (cur_tok()->type == TOK_LBRACE) {
         parse_block(out);
@@ -1438,6 +1753,115 @@ static void parse_program(FILE *out)
     fprintf(out, "    halt\n\n");
 
     while (cur_tok()->type != TOK_EOF) {
+
+        /* ── struct definition: struct Foo { int a; int b[4]; }; ──
+         * ── or global instance: struct Foo var; ── */
+        if (match_tok(TOK_STRUCT)) {
+            token *sname = cur_tok();
+            expect_tok(TOK_IDENT, "struct name");
+
+            /* Global instance of an existing struct type */
+            if (cur_tok()->type != TOK_LBRACE) {
+                int esi = find_struct(sname->text);
+                if (esi < 0) {
+                    fprintf(stderr, "k3cc:%d: error: unknown struct '%s' "
+                                    "(definition must appear first)\n",
+                            sname->line, sname->text);
+                    exit(1);
+                }
+                token *gvar = cur_tok();
+                expect_tok(TOK_IDENT, "global struct variable name");
+
+                int arr_count = 1;
+                if (match_tok(TOK_LBRACKET)) {
+                    token *cn = cur_tok();
+                    if (cn->type != TOK_NUM || cn->val <= 0 ||
+                        cn->val > K3_MAX_WORDS) {
+                        fprintf(stderr, "k3cc:%d: error: struct array size must "
+                                        "be a positive constant\n", cn->line);
+                        exit(1);
+                    }
+                    arr_count = (int)cn->val;
+                    advance_tok();
+                    expect_tok(TOK_RBRACKET, "']' after struct array size");
+                }
+                int total = g_structs[esi].total_size * arr_count;
+
+                if (find_global(gvar->text) >= 0) {
+                    fprintf(stderr, "k3cc:%d: error: global '%s' already "
+                                    "declared\n", gvar->line, gvar->text);
+                    exit(1);
+                }
+                if (g_global_count >= MAX_VARS) {
+                    fprintf(stderr, "k3cc: error: too many global variables\n");
+                    exit(1);
+                }
+                strncpy(g_globals[g_global_count], gvar->text, MAX_IDENT - 1);
+                g_globals[g_global_count][MAX_IDENT - 1] = '\0';
+                g_global_values[g_global_count]  = 0;
+                g_global_sizes[g_global_count]   = total;
+                g_global_init_start[g_global_count]  = 0;
+                g_global_init_counts[g_global_count] = 0;
+                g_global_struct_idx[g_global_count]  = esi;
+                g_global_count++;
+
+                expect_tok(TOK_SEMI, "';' after global struct variable");
+                continue;
+            }
+
+            if (g_struct_count >= MAX_STRUCTS) {
+                fprintf(stderr, "k3cc: error: too many struct definitions\n");
+                exit(1);
+            }
+            int si = g_struct_count++;
+            strncpy(g_structs[si].name, sname->text, MAX_IDENT - 1);
+            g_structs[si].name[MAX_IDENT - 1] = '\0';
+            g_structs[si].field_count = 0;
+            g_structs[si].total_size  = 0;
+
+            expect_tok(TOK_LBRACE, "'{' after struct name");
+
+            while (cur_tok()->type != TOK_RBRACE &&
+                   cur_tok()->type != TOK_EOF) {
+                /* Only int fields for now */
+                expect_tok(TOK_INT, "field type 'int'");
+                token *fname = cur_tok();
+                expect_tok(TOK_IDENT, "field name");
+
+                int fsize = 1;
+                if (match_tok(TOK_LBRACKET)) {
+                    token *fn = cur_tok();
+                    if (fn->type != TOK_NUM || fn->val <= 0 ||
+                        fn->val > K3_MAX_WORDS) {
+                        fprintf(stderr,
+                                "k3cc:%d: error: field array size must be "
+                                "a positive constant\n", fn->line);
+                        exit(1);
+                    }
+                    fsize = (int)fn->val;
+                    advance_tok(); /* consume size */
+                    expect_tok(TOK_RBRACKET, "']' after field array size");
+                }
+
+                if (g_structs[si].field_count >= MAX_FIELDS) {
+                    fprintf(stderr, "k3cc: error: too many fields in struct '%s'\n",
+                            g_structs[si].name);
+                    exit(1);
+                }
+                int fi = g_structs[si].field_count++;
+                strncpy(g_structs[si].fields[fi].name, fname->text, MAX_IDENT - 1);
+                g_structs[si].fields[fi].name[MAX_IDENT - 1] = '\0';
+                g_structs[si].fields[fi].offset = g_structs[si].total_size;
+                g_structs[si].fields[fi].size   = fsize;
+                g_structs[si].total_size += fsize;
+
+                expect_tok(TOK_SEMI, "';' after field declaration");
+            }
+            expect_tok(TOK_RBRACE, "'}' after struct body");
+            expect_tok(TOK_SEMI, "';' after struct definition");
+            continue; /* next top-level item */
+        }
+
         expect_tok(TOK_INT, "type 'int'");
         token *id = cur_tok();
         expect_tok(TOK_IDENT, "identifier");
@@ -1572,6 +1996,7 @@ static void parse_program(FILE *out)
             g_global_sizes[g_global_count] = size;
             g_global_init_start[g_global_count] = init_start;
             g_global_init_counts[g_global_count] = init_count;
+            g_global_struct_idx[g_global_count] = -1;
             g_global_count++;
 
             expect_tok(TOK_SEMI, "';' after global variable");
