@@ -152,6 +152,7 @@ Example programs live in `examples/`:
 | `syscall_demo.s` | host syscalls and OS interface | prints telemetry |
 | `k3os.s` | interactive K3-OS shell (`calc`, `save`, `cat`, `exec`, GUI) | prompts until `q` |
 | `snake.s` | real-time ternary Snake game | `q` quits |
+| `io_hardware.s` | hardware MMIO: UART, timer, RNG, LEDs via `LOAD`/`STORE` | prints `K-Three Hardware MMIO!`, `r0 = 42` |
 | `hello_c.c` | C source compiled by `k3cc` (recursive factorial) | prints `120`, `r0 = 120` |
 | `c_demo.c` | C showcase: strings, arrays, `switch`, `do/while`, ternary, `++` | prints `28`, `100`, `r0 = 41` |
 
@@ -176,6 +177,8 @@ disasm.h             instruction formatting (host tools, uses stdio)
 disasm.c             implementation
 syscall.h            host syscall numbers and ABI
 syscall.c            syscall layer, terminal control and GUI desktop
+io.h                 memory-mapped I/O (MMIO) hardware architecture
+io.c                 hardware peripherals (UART, timer, RNG, system control)
 k3asm.c              assembler (labels, directives, pseudoinstructions)
 k3vm.c               command-line loader/runner
 k3dis.c              disassembler
