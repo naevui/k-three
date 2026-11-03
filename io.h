@@ -49,6 +49,7 @@
 #define K3_MMIO_SYS_TICKS_L     5013
 #define K3_MMIO_SYS_TICKS_H     5014
 #define K3_MMIO_SYS_MEMSIZE     5015
+#define K3_MMIO_SYS_IRQ_CTRL    5016
 
 #define K3_MMIO_MAX_DEVICES     16
 
