@@ -1107,7 +1107,7 @@ static void test_run_and_callbacks(void)
     };
     callback_state state = { 0 };
     k3_vm_callbacks callbacks = {
-        &state, record_step, record_stop, NULL
+        &state, record_step, record_stop, NULL, NULL, NULL
     };
     k3_vm vm;
     uint64_t executed = 99;
