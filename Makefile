@@ -42,7 +42,7 @@ TEST_PACKED_OBJS := $(BUILD)/test_packed.o
 TEST_SYSCALL_OBJS := $(BUILD)/test_syscall.o
 TEST_IMAGE_OBJS := $(BUILD)/test_image.o
 TEST_IO_OBJS := $(BUILD)/test_io.o
-TEST_LINUX_OBJS := $(BUILD)/test_linux.o $(BUILD)/sched.o $(BUILD)/sys_k3.o $(BUILD)/procfs.o $(BUILD)/traps.o $(BUILD)/init_task.o
+TEST_LINUX_OBJS := $(BUILD)/test_linux.o $(BUILD)/sched.o $(BUILD)/sys_k3.o $(BUILD)/procfs.o $(BUILD)/traps.o $(BUILD)/init_task.o $(BUILD)/irq.o
 
 DEBUG_TERNARY_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/test_ternary_debug.o
 DEBUG_VM_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o \
@@ -63,7 +63,7 @@ DEBUG_IO_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o \
 DEBUG_LINUX_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o $(BUILD)/isa_debug.o $(BUILD)/packed_debug.o \
                     $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/io_debug.o \
                     $(BUILD)/sched_debug.o $(BUILD)/sys_k3_debug.o $(BUILD)/procfs_debug.o \
-                    $(BUILD)/traps_debug.o $(BUILD)/init_task_debug.o $(BUILD)/test_linux_debug.o
+                    $(BUILD)/traps_debug.o $(BUILD)/init_task_debug.o $(BUILD)/irq_debug.o $(BUILD)/test_linux_debug.o
 
 DEBUG_FLAGS := -O0 -g3 -fsanitize=address,undefined \
                -fno-omit-frame-pointer
@@ -233,6 +233,9 @@ $(BUILD)/traps.o: arch/k3/kernel/traps.c | $(BUILD)
 $(BUILD)/init_task.o: arch/k3/kernel/init_task.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
+$(BUILD)/irq.o: arch/k3/kernel/irq.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
 $(BUILD)/setup_debug.o: arch/k3/kernel/setup.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
@@ -254,7 +257,10 @@ $(BUILD)/traps_debug.o: arch/k3/kernel/traps.c | $(BUILD)
 $(BUILD)/init_task_debug.o: arch/k3/kernel/init_task.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3linux: $(BUILD)/boot.o $(BUILD)/setup.o $(BUILD)/process.o $(BUILD)/sched.o $(BUILD)/sys_k3.o $(BUILD)/procfs.o $(BUILD)/traps.o $(BUILD)/init_task.o $(LIB)
+$(BUILD)/irq_debug.o: arch/k3/kernel/irq.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(BUILD)/k3linux: $(BUILD)/boot.o $(BUILD)/setup.o $(BUILD)/process.o $(BUILD)/sched.o $(BUILD)/sys_k3.o $(BUILD)/procfs.o $(BUILD)/traps.o $(BUILD)/init_task.o $(BUILD)/irq.o $(LIB)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
 $(TEST_TERNARY): $(TEST_TERNARY_OBJS) $(LIB)
