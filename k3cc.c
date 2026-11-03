@@ -567,6 +567,31 @@ static void parse_primary(FILE *out)
         fprintf(out, ".L%d:\n", lbl_end);
     } else if (match_tok(TOK_STAR)) {
         parse_primary(out);
+        fprintf(out, "    mov r1, r0\n");
+        fprintf(out, "    load r0, [r1]\n");
+    } else if (match_tok(TOK_AMP)) {
+        /* Address-of: &var or &arr[index] */
+        token *id = cur_tok();
+        expect_tok(TOK_IDENT, "variable after '&'");
+        char name[MAX_IDENT];
+        strncpy(name, id->text, sizeof(name) - 1);
+        name[sizeof(name) - 1] = '\0';
+
+        int loc = find_local(name);
+        if (match_tok(TOK_LBRACKET)) {
+            parse_expression(out); /* index into r0 */
+            expect_tok(TOK_RBRACKET, "']' after array index");
+            gen_array_addr(out, name, loc);
+            fprintf(out, "    mov r0, r1\n");
+        } else if (loc >= 0) {
+            gen_local_addr(out, loc);
+            fprintf(out, "    mov r0, r1\n");
+        } else if (is_global(name)) {
+            fprintf(out, "    li r0, g_%s\n", name);
+        } else {
+            fprintf(stderr, "k3cc:%d: error: undeclared variable '%s' in '&'\n", id->line, name);
+            exit(1);
+        }
     } else if (match_tok(TOK_SIZEOF)) {
         /* sizeof type: r0 = size of type (1 word) */
         fprintf(out, "    li r0, #1\n");
@@ -976,6 +1001,42 @@ static token_type array_assign_op(void)
     return TOK_EOF;
 }
 
+/* Detect `*IDENT op` or `*( ... ) op` where op is `=` or a compound op.
+ * Returns the operator token or TOK_EOF.  The cursor is left unchanged. */
+static token_type deref_assign_op(void)
+{
+    if (cur_tok()->type != TOK_STAR) {
+        return TOK_EOF;
+    }
+    /* Case 1: *IDENT op */
+    if (g_tokens[g_token_pos + 1].type == TOK_IDENT) {
+        token_type op = g_tokens[g_token_pos + 2].type;
+        if (op == TOK_ASSIGN || is_compound_op(op)) {
+            return op;
+        }
+    }
+    /* Case 2: *( ... ) op */
+    if (g_tokens[g_token_pos + 1].type == TOK_LPAREN) {
+        size_t i = g_token_pos + 2;
+        int depth = 1;
+        while (i < g_token_count && g_tokens[i].type != TOK_EOF) {
+            if (g_tokens[i].type == TOK_LPAREN) depth++;
+            else if (g_tokens[i].type == TOK_RPAREN) {
+                depth--;
+                if (depth == 0) break;
+            }
+            i++;
+        }
+        if (i < g_token_count && g_tokens[i].type == TOK_RPAREN) {
+            token_type op = g_tokens[i + 1].type;
+            if (op == TOK_ASSIGN || is_compound_op(op)) {
+                return op;
+            }
+        }
+    }
+    return TOK_EOF;
+}
+
 /* Detect `IDENT . IDENT [ ... ] op` where op is `=` or a compound op.
  * Returns the operator token or TOK_EOF.  The cursor is left unchanged. */
 static token_type member_array_assign_op(void)
@@ -1005,6 +1066,57 @@ static token_type member_array_assign_op(void)
 /* Assignment and Full Expression */
 static void parse_expression(FILE *out)
 {
+    /* Pointer assignment: *ptr = expr or *(ptr + offset) = expr */
+    token_type dop = deref_assign_op();
+    if (dop != TOK_EOF) {
+        advance_tok(); /* consume '*' */
+
+        if (cur_tok()->type == TOK_LPAREN) {
+            advance_tok(); /* '(' */
+            parse_expression(out); /* target pointer address in r0 */
+            expect_tok(TOK_RPAREN, "')' after pointer expression");
+        } else {
+            token *id = cur_tok();
+            char name[MAX_IDENT];
+            strncpy(name, id->text, sizeof(name) - 1);
+            name[sizeof(name) - 1] = '\0';
+            advance_tok(); /* ident */
+
+            int loc = find_local(name);
+            if (loc >= 0) {
+                gen_local_addr(out, loc);
+                fprintf(out, "    load r0, [r1]\n");
+            } else if (is_global(name)) {
+                fprintf(out, "    li r1, g_%s\n", name);
+                fprintf(out, "    load r0, [r1]\n");
+            } else {
+                fprintf(stderr, "k3cc:%d: error: undeclared pointer '%s'\n", id->line, name);
+                exit(1);
+            }
+        }
+
+        fprintf(out, "    mov r1, r0\n");
+        fprintf(out, "    push r1\n"); /* save target address */
+
+        if (dop != TOK_ASSIGN) {
+            fprintf(out, "    load r0, [r1]\n");
+            fprintf(out, "    push r0\n"); /* save lhs value */
+        }
+
+        expect_tok(dop, "assignment operator after pointer dereference");
+        parse_expression(out); /* RHS value in r0 */
+
+        if (dop != TOK_ASSIGN) {
+            fprintf(out, "    mov r1, r0\n");
+            fprintf(out, "    pop r0\n");
+            emit_compound_op(out, dop);
+        }
+
+        fprintf(out, "    pop r1\n"); /* recover target address */
+        fprintf(out, "    store r0, [r1]\n");
+        return;
+    }
+
     /* Member array assignment: var.field[index] = expr */
     if (member_array_assign_op() != TOK_EOF) {
         char vname[MAX_IDENT];
@@ -1353,6 +1465,7 @@ static void parse_declaration(FILE *out)
         }
     }
 
+    match_tok(TOK_STAR); /* allow pointer declaration: int *p; */
     token *id = cur_tok();
     expect_tok(TOK_IDENT, "identifier in variable declaration");
 
@@ -1863,6 +1976,7 @@ static void parse_program(FILE *out)
         }
 
         expect_tok(TOK_INT, "type 'int'");
+        match_tok(TOK_STAR); /* allow int *func or int *global */
         token *id = cur_tok();
         expect_tok(TOK_IDENT, "identifier");
 
@@ -1880,6 +1994,7 @@ static void parse_program(FILE *out)
             if (cur_tok()->type != TOK_RPAREN) {
                 while (1) {
                     expect_tok(TOK_INT, "type 'int' for parameter");
+                    match_tok(TOK_STAR); /* allow int *param */
                     token *pid = cur_tok();
                     expect_tok(TOK_IDENT, "parameter name");
 
