@@ -40,6 +40,9 @@ static int64_t s_disk_count = K3_DISK_SECTOR_WORDS;
 static int64_t s_disk_status = K3_DISK_STATUS_IDLE;
 static char s_disk_path[512] = { 0 };
 
+/* Video RAM & Display Controller State */
+static bt_word s_vram[K3_MMIO_VRAM_SIZE];
+
 static uint64_t xorshift64(void)
 {
     uint64_t x = s_rng_state;
@@ -225,6 +228,18 @@ static bool standard_peripheral_read(k3_vm *vm, uint16_t address, bt_word *out)
         val = K3_DISK_MAX_SECTORS;
         break;
 
+    case K3_MMIO_VRAM_CTRL:
+        val = 0;
+        break;
+
+    case K3_MMIO_VRAM_COLS:
+        val = 20;
+        break;
+
+    case K3_MMIO_VRAM_ROWS:
+        val = 5;
+        break;
+
     default:
         return false;
     }
@@ -358,6 +373,25 @@ static bool standard_peripheral_write(k3_vm *vm, uint16_t address, const bt_word
         }
         return true;
 
+    case K3_MMIO_VRAM_CTRL:
+        if (val == 1) {
+            printf("+--------------------+\n");
+            for (int r = 0; r < 5; ++r) {
+                putchar('|');
+                for (int c = 0; c < 20; ++c) {
+                    int64_t ch_val = 0;
+                    bt_word_to_i64(&s_vram[r * 20 + c], &ch_val);
+                    int ch = (int)(ch_val & 0xFF);
+                    if (ch < 32 || ch > 126) ch = ' ';
+                    putchar(ch);
+                }
+                printf("|\n");
+            }
+            printf("+--------------------+\n");
+            fflush(stdout);
+        }
+        return true;
+
     default:
         return false;
     }
@@ -376,6 +410,9 @@ void k3_io_init(void)
     s_disk_status = K3_DISK_STATUS_IDLE;
     for (size_t i = 0; i < K3_DISK_MAX_SECTORS * K3_DISK_SECTOR_WORDS; ++i) {
         bt_word_zero(&s_disk[i]);
+    }
+    for (size_t i = 0; i < K3_MMIO_VRAM_SIZE; ++i) {
+        bt_word_zero(&s_vram[i]);
     }
     init_time_base();
 }
@@ -424,6 +461,12 @@ bool k3_io_mmio_read(void *user, k3_vm *vm, uint16_t address, bt_word *out)
         }
     }
 
+    /* Check Video RAM range 5030..5129 */
+    if (address >= K3_MMIO_VRAM_BASE && address <= K3_MMIO_VRAM_END) {
+        *out = s_vram[address - K3_MMIO_VRAM_BASE];
+        return true;
+    }
+
     /* Check registered custom devices */
     for (size_t i = 0; i < s_device_count; ++i) {
         if (address >= s_devices[i].base &&
@@ -446,6 +489,12 @@ bool k3_io_mmio_write(void *user, k3_vm *vm, uint16_t address, const bt_word *va
         if (standard_peripheral_write(vm, address, value)) {
             return true;
         }
+    }
+
+    /* Check Video RAM range 5030..5129 */
+    if (address >= K3_MMIO_VRAM_BASE && address <= K3_MMIO_VRAM_END) {
+        s_vram[address - K3_MMIO_VRAM_BASE] = *value;
+        return true;
     }
 
     /* Check registered custom devices */
