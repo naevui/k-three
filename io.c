@@ -192,6 +192,14 @@ static bool standard_peripheral_read(k3_vm *vm, uint16_t address, bt_word *out)
         val = K3_VM_MEMORY_WORDS;
         break;
 
+    case K3_MMIO_SYS_USER_BASE:
+        val = vm ? vm->user_base : 0;
+        break;
+
+    case K3_MMIO_SYS_USER_LIMIT:
+        val = vm ? vm->user_limit : K3_VM_MAX_ADDRESS;
+        break;
+
     /* Block Device / Disk Registers */
     case K3_MMIO_DISK_SECTOR:
         val = s_disk_sector;
@@ -289,6 +297,18 @@ static bool standard_peripheral_write(k3_vm *vm, uint16_t address, const bt_word
 
     case K3_MMIO_SYS_LEDS:
         s_leds = val;
+        return true;
+
+    case K3_MMIO_SYS_USER_BASE:
+        if (vm != NULL && vm->mode == K3_MODE_KERNEL) {
+            vm->user_base = (val >= 0 && val <= K3_VM_MAX_ADDRESS) ? (uint16_t)val : 0;
+        }
+        return true;
+
+    case K3_MMIO_SYS_USER_LIMIT:
+        if (vm != NULL && vm->mode == K3_MODE_KERNEL) {
+            vm->user_limit = (val >= 0 && val <= K3_VM_MAX_ADDRESS) ? (uint16_t)val : K3_VM_MAX_ADDRESS;
+        }
         return true;
 
     /* Block Device / Disk Registers */
