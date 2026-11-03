@@ -370,6 +370,112 @@ static void test_hardware_interrupts(void)
     CHECK_EQ_I64(helper_get_reg(&vm, 2), 777);
 }
 
+static void test_disk_controller(void)
+{
+    k3_vm vm;
+    k3_vm_init(&vm, NULL);
+    k3_io_init();
+    k3_io_attach(&vm);
+
+    bt_word halt_op = encode_none(OP_HALT);
+
+    /* 1. Query disk capacity: LI r1, #5025; LOAD r0, [r1]; HALT */
+    encode_li(&vm, 0, 1, K3_MMIO_DISK_CAPACITY);
+    encode_load(&vm, 2, 0, 1);
+    k3_vm_set_mem(&vm, 3, &halt_op);
+
+    uint64_t executed = 0;
+    k3_vm_status status = k3_vm_run(&vm, 100, &executed);
+    CHECK_EQ_I64(status, K3_VM_HALTED);
+    CHECK_EQ_I64(helper_get_reg(&vm, 0), K3_DISK_MAX_SECTORS);
+
+    /* 2. Write pattern into RAM at 200..203 */
+    k3_vm_reset(&vm);
+    k3_io_attach(&vm);
+    for (int i = 0; i < 4; ++i) {
+        bt_word w;
+        bt_word_from_i64(100 + i * 11, &w);
+        CHECK(k3_vm_set_mem(&vm, (uint16_t)(200 + i), &w));
+    }
+
+    /* Program to trigger DMA Write of 4 words from RAM 200 to sector 12:
+     * 0: LI r0, #12;   LI r1, #5020; STORE r0, [r1]  ; sector = 12
+     * 6: LI r0, #200;  LI r1, #5021; STORE r0, [r1]  ; dma_addr = 200
+     * 12: LI r0, #4;   LI r1, #5022; STORE r0, [r1]  ; count = 4
+     * 18: LI r0, #2;   LI r1, #5023; STORE r0, [r1]  ; cmd = DISK_CMD_WRITE (2)
+     * 24: LI r1, #5024; LOAD r0, [r1]                ; load status
+     * 27: HALT
+     */
+    encode_li(&vm, 0, 0, 12);
+    encode_li(&vm, 2, 1, K3_MMIO_DISK_SECTOR);
+    encode_store(&vm, 4, 0, 1);
+
+    encode_li(&vm, 5, 0, 200);
+    encode_li(&vm, 7, 1, K3_MMIO_DISK_DMA_ADDR);
+    encode_store(&vm, 9, 0, 1);
+
+    encode_li(&vm, 10, 0, 4);
+    encode_li(&vm, 12, 1, K3_MMIO_DISK_COUNT);
+    encode_store(&vm, 14, 0, 1);
+
+    encode_li(&vm, 15, 0, K3_DISK_CMD_WRITE);
+    encode_li(&vm, 17, 1, K3_MMIO_DISK_CMD);
+    encode_store(&vm, 19, 0, 1);
+
+    encode_li(&vm, 20, 1, K3_MMIO_DISK_STATUS);
+    encode_load(&vm, 22, 0, 1);
+    k3_vm_set_mem(&vm, 23, &halt_op);
+
+    status = k3_vm_run(&vm, 100, &executed);
+    CHECK_EQ_I64(status, K3_VM_HALTED);
+    CHECK_EQ_I64(helper_get_reg(&vm, 0), K3_DISK_STATUS_IDLE);
+
+    /* 3. Clear RAM at 300..303 and DMA Read from sector 12 into RAM 300 */
+    k3_vm_reset(&vm);
+    k3_io_attach(&vm);
+
+    /* Program to trigger DMA Read from sector 12 into RAM 300:
+     * 0: LI r0, #12;   LI r1, #5020; STORE r0, [r1]  ; sector = 12
+     * 5: LI r0, #300;  LI r1, #5021; STORE r0, [r1]  ; dma_addr = 300
+     * 10: LI r0, #4;   LI r1, #5022; STORE r0, [r1]  ; count = 4
+     * 15: LI r0, #1;   LI r1, #5023; STORE r0, [r1]  ; cmd = DISK_CMD_READ (1)
+     * 20: LI r1, #5024; LOAD r0, [r1]                ; load status
+     * 23: HALT
+     */
+    encode_li(&vm, 0, 0, 12);
+    encode_li(&vm, 2, 1, K3_MMIO_DISK_SECTOR);
+    encode_store(&vm, 4, 0, 1);
+
+    encode_li(&vm, 5, 0, 300);
+    encode_li(&vm, 7, 1, K3_MMIO_DISK_DMA_ADDR);
+    encode_store(&vm, 9, 0, 1);
+
+    encode_li(&vm, 10, 0, 4);
+    encode_li(&vm, 12, 1, K3_MMIO_DISK_COUNT);
+    encode_store(&vm, 14, 0, 1);
+
+    encode_li(&vm, 15, 0, K3_DISK_CMD_READ);
+    encode_li(&vm, 17, 1, K3_MMIO_DISK_CMD);
+    encode_store(&vm, 19, 0, 1);
+
+    encode_li(&vm, 20, 1, K3_MMIO_DISK_STATUS);
+    encode_load(&vm, 22, 0, 1);
+    k3_vm_set_mem(&vm, 23, &halt_op);
+
+    status = k3_vm_run(&vm, 100, &executed);
+    CHECK_EQ_I64(status, K3_VM_HALTED);
+    CHECK_EQ_I64(helper_get_reg(&vm, 0), K3_DISK_STATUS_IDLE);
+
+    /* Verify RAM at 300..303 matches the original pattern */
+    for (int i = 0; i < 4; ++i) {
+        bt_word read_w;
+        int64_t val = 0;
+        CHECK(k3_vm_get_mem(&vm, (uint16_t)(300 + i), &read_w));
+        CHECK(bt_word_to_i64(&read_w, &val));
+        CHECK_EQ_I64(val, 100 + i * 11);
+    }
+}
+
 static void test_fallback_to_memory(void)
 {
     k3_vm vm;
@@ -400,6 +506,7 @@ int main(void)
     test_standard_mmio_write();
     test_custom_device();
     test_hardware_interrupts();
+    test_disk_controller();
     test_fallback_to_memory();
 
     printf("test_io: %d checks, %d failures\n", g_checks, g_failures);
