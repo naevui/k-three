@@ -68,6 +68,9 @@ int k3_proc_uptime(char *buf, size_t max_len)
                     (unsigned long long)sec, (unsigned long long)frac, (unsigned long long)sec);
 }
 
+extern unsigned long k3_get_irq_count(unsigned int irq);
+extern const char *k3_get_irq_name(unsigned int irq);
+
 /*
  * /proc/interrupts: displays hardware IRQ counts.
  */
@@ -75,10 +78,15 @@ int k3_proc_interrupts(char *buf, size_t max_len)
 {
     return snprintf(buf, max_len,
         "           CPU0\n"
-        "  0:       %llu   K3-TIMER   timer tick\n"
-        "  1:          0   K3-SYSCALL trap vector\n"
-        "  2:          0   K3-MMIO    uart rx/tx\n"
-        "  3:          0   K3-DMA     block storage\n",
-        (unsigned long long)k3_get_jiffies()
+        "  0:       %lu   K3-TIMER   %s\n"
+        "  1:       %lu   K3-SYSCALL %s\n"
+        "  2:       %lu   K3-FAULT   %s\n"
+        "  3:       %lu   K3-ILLEGAL %s\n"
+        "  4:       %lu   K3-OVERFLW %s\n",
+        k3_get_irq_count(0), k3_get_irq_name(0),
+        k3_get_irq_count(1), k3_get_irq_name(1),
+        k3_get_irq_count(2), k3_get_irq_name(2),
+        k3_get_irq_count(3), k3_get_irq_name(3),
+        k3_get_irq_count(4), k3_get_irq_name(4)
     );
 }
