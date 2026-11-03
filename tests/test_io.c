@@ -525,7 +525,7 @@ static void test_memory_protection(void)
     k3_vm_reset(&vm);
     k3_vm_set_user_bounds(&vm, 2000, 4000);
     encode_li(&vm, 2000, 0, 42);
-    encode_li(&vm, 2002, 1, 5012);
+    encode_li(&vm, 2002, 1, K3_MMIO_SYS_LEDS);
     encode_store(&vm, 2004, 0, 1);
     vm.pc = 2000;
     k3_vm_set_mode(&vm, K3_MODE_USER);
