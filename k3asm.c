@@ -1209,6 +1209,7 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "IO_SYS_TICKS_L", 5013);
     add_predefined_equ(as, "IO_SYS_TICKS_H", 5014);
     add_predefined_equ(as, "IO_SYS_MEMSIZE", 5015);
+    add_predefined_equ(as, "IO_SYS_IRQ_CTRL", 5016);
 }
 
 int main(int argc, char **argv)
