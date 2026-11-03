@@ -54,15 +54,15 @@ void k3_init_scheduler(void)
     s_tasks[0].priority = 20;
     s_tasks[0].timeslice = 5;
 
-    /* Task 1: /sbin/init */
+    /* Task 1: /sbin/kinit */
     s_tasks[1].pid = 1;
     s_tasks[1].ppid = 0;
-    strncpy(s_tasks[1].comm, "init", sizeof(s_tasks[1].comm) - 1);
+    strncpy(s_tasks[1].comm, "kinit", sizeof(s_tasks[1].comm) - 1);
     s_tasks[1].state = TASK_RUNNING;
     s_tasks[1].priority = 20;
     s_tasks[1].timeslice = 5;
 
-    s_current_pid = 1; /* Start with init */
+    s_current_pid = 1; /* Start with kinit */
     s_jiffies = 0;
 }
 
