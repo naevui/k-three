@@ -603,6 +603,75 @@ else
     ok
 fi
 
+# Test 33: structs with scalar fields (local instance, read/write)
+cat << 'EOF' > "$TMP/struct_basic.c"
+struct Point {
+    int x;
+    int y;
+};
+int main() {
+    struct Point p;
+    p.x = 10;
+    p.y = 20;
+    return p.x + p.y;
+}
+EOF
+build struct_basic
+expect_reg test_struct_basic r0 30
+
+# Test 34: struct with an array field (member array read/write)
+cat << 'EOF' > "$TMP/struct_array.c"
+struct Person {
+    int age;
+    int scores[3];
+};
+int main() {
+    struct Person p;
+    p.age = 25;
+    p.scores[0] = 10;
+    p.scores[1] = 20;
+    p.scores[2] = 30;
+    return p.age + p.scores[0] + p.scores[1] + p.scores[2];
+}
+EOF
+build struct_array
+expect_reg test_struct_array r0 85
+
+# Test 35: global struct instance with compound member assignment
+cat << 'EOF' > "$TMP/struct_global.c"
+struct Point {
+    int x;
+    int y;
+};
+struct Point origin;
+int main() {
+    origin.x = 3;
+    origin.y = 4;
+    origin.x += 10;
+    return origin.x * origin.y;
+}
+EOF
+build struct_global
+expect_reg test_struct_global r0 52
+
+# Test 36: unknown member is rejected at compile time
+cat << 'EOF' > "$TMP/struct_bad.c"
+struct Point {
+    int x;
+    int y;
+};
+int main() {
+    struct Point p;
+    p.z = 1;
+    return p.z;
+}
+EOF
+if "$K3CC" "$TMP/struct_bad.c" -o "$TMP/struct_bad.s" 2>/dev/null; then
+    bad test_struct_bad "expected unknown struct member to fail"
+else
+    ok
+fi
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
