@@ -730,6 +730,24 @@ EOF
 build libc_test
 expect_reg test_libc_test r0 30
 
+# Test 41: first-class string pointers (global, local, puts(var), char index)
+cat << 'EOF' > "$TMP/str_first_class.c"
+int *g_greeting = "K3-Hello\n";
+int inspect_first(int *s) {
+    puts(s);
+    return s[0];
+}
+int main() {
+    int *loc_str = "K3-World\n";
+    puts(loc_str);
+    int c1 = inspect_first(g_greeting); // 'K' = 75
+    int c2 = loc_str[3]; // 'W' = 87
+    return c1 + c2; // 75 + 87 = 162
+}
+EOF
+build str_first_class
+expect_reg test_str_first_class r0 162
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
