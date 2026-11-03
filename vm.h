@@ -63,6 +63,20 @@ typedef struct k3_vm_callbacks {
      * Returns true if handled (VM stays running), or false to fault/trap.
      */
     bool (*on_syscall)(void *user, k3_vm *vm, int32_t code);
+
+    /*
+     * Optional Memory-Mapped I/O (MMIO) read handler.
+     * Intercepts LOAD rd, [ra] at address. If returns true, *out is loaded into rd.
+     * If returns false, falls back to physical memory.
+     */
+    bool (*on_mmio_read)(void *user, k3_vm *vm, uint16_t address, bt_word *out);
+
+    /*
+     * Optional Memory-Mapped I/O (MMIO) write handler.
+     * Intercepts STORE rd, [ra] at address with value. If returns true, handled.
+     * If returns false, falls back to physical memory.
+     */
+    bool (*on_mmio_write)(void *user, k3_vm *vm, uint16_t address, const bt_word *value);
 } k3_vm_callbacks;
 
 /*
