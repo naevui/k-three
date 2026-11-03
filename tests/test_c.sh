@@ -761,6 +761,19 @@ else
     bad test_c_hardware "expected examples/c_hardware.c output"
 fi
 
+# Test 43: the examples/c_os.c shell compiles and runs
+"$K3CC" "$ROOT/examples/c_os.c" -o "$TMP/c_os.s"
+"$K3ASM" "$TMP/c_os.s" -o "$TMP/c_os.k3"
+out=$("$K3VM" -d "$TMP/c_os.k3")
+if printf '%s\n' "$out" | grep -Fq 'K-Three Operating System (Pure C Edition)' && \
+   printf '%s\n' "$out" | grep -Fq 'Disk DMA Sector 3 Transfer: [PASSED]' && \
+   printf '%s\n' "$out" | grep -Fq 'K3-OS C Shell' && \
+   printf '%s\n' "$out" | grep -Fq 'r0 = 42'; then
+    ok
+else
+    bad test_c_os "expected examples/c_os.c output"
+fi
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
