@@ -169,6 +169,13 @@ K-Three provides a pure hardware MMIO architecture starting at base address `500
 | `5013` | `IO_SYS_TICKS_L` | R | Instruction step counter (low 9 trits) |
 | `5014` | `IO_SYS_TICKS_H` | R | Instruction step counter (high 9 trits) |
 | `5015` | `IO_SYS_MEMSIZE` | R | Total physical memory words (6561) |
+| `5016` | `IO_SYS_IRQ_CTRL` | R/W | Interrupt subsystem control (enable, status, trigger, acknowledge) |
+| `5020` | `IO_DISK_SECTOR` | R/W | Block device target sector (0..255) |
+| `5021` | `IO_DISK_DMA_ADDR` | R/W | Block device RAM DMA transfer address (0..6560) |
+| `5022` | `IO_DISK_COUNT` | R/W | Words per sector transfer (default 64) |
+| `5023` | `IO_DISK_CMD` | W | Disk command: 1=Read, 2=Write, 3=Sync |
+| `5024` | `IO_DISK_STATUS` | R | Disk status (0=Idle/Success, 1=Busy, -1=Error) |
+| `5025` | `IO_DISK_CAPACITY` | R | Total sectors available (256) |
 
 Custom peripheral devices can be registered at run time using `k3_io_register_device(base, size, read_fn, write_fn, user)`.
 
