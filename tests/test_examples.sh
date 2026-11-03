@@ -155,6 +155,14 @@ if expect_match snake "K3 TERNARY SNAKE" && \
     good
 fi
 
+# io_hardware: hardware MMIO demo prints string and halts cleanly with rc 0.
+run io_hardware
+if expect_match io_hardware "K-Three Hardware MMIO!" && \
+   expect io_hardware "r0 = 42" && \
+   expect_rc io_hardware 0; then
+    good
+fi
+
 # The documented step limit exits with status 3.
 set +e
 "$K3VM" -q -s 1 "$OUT/counter.k3" >/dev/null 2>&1
