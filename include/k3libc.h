@@ -10,30 +10,37 @@
 #ifndef K3_LIBC_H
 #define K3_LIBC_H
 
-/* Hardware MMIO Register Addresses (Page 6) */
-#define HW_UART_DATA        5000
-#define HW_UART_STAT        5001
-#define HW_UART_CTRL        5002
-#define HW_TIMER_L          5004
-#define HW_TIMER_H          5005
-#define HW_TIMER_INT        5006
-#define HW_TIMER_CTRL       5007
-#define HW_RNG_WORD         5008
-#define HW_RNG_TRIT         5009
-#define HW_SYS_RESET        5010
-#define HW_SYS_HALT         5011
-#define HW_SYS_LEDS         5012
-#define HW_SYS_TICKS_L      5013
-#define HW_SYS_TICKS_H      5014
-#define HW_SYS_MEMSIZE      5015
-#define HW_SYS_IRQ_CTRL     5016
+/* Hardware MMIO Register Addresses (Page 8) */
+#define HW_UART_DATA        6000
+#define HW_UART_STAT        6001
+#define HW_UART_CTRL        6002
+#define HW_TIMER_L          6004
+#define HW_TIMER_H          6005
+#define HW_TIMER_INT        6006
+#define HW_TIMER_CTRL       6007
+#define HW_RNG_WORD         6008
+#define HW_RNG_TRIT         6009
+#define HW_SYS_RESET        6010
+#define HW_SYS_HALT         6011
+#define HW_SYS_LEDS         6012
+#define HW_SYS_TICKS_L      6013
+#define HW_SYS_TICKS_H      6014
+#define HW_SYS_MEMSIZE      6015
+#define HW_SYS_IRQ_CTRL     6016
 
-#define HW_DISK_SECTOR      5020
-#define HW_DISK_DMA         5021
-#define HW_DISK_COUNT       5022
-#define HW_DISK_CMD         5023
-#define HW_DISK_STATUS      5024
-#define HW_DISK_CAPACITY    5025
+#define HW_DISK_SECTOR      6020
+#define HW_DISK_DMA         6021
+#define HW_DISK_COUNT       6022
+#define HW_DISK_CMD         6023
+#define HW_DISK_STATUS      6024
+#define HW_DISK_CAPACITY    6025
+
+#define HW_VRAM_CTRL        6026
+#define HW_VRAM_COLS        6027
+#define HW_VRAM_ROWS        6028
+#define HW_VRAM_BASE        6030
+#define HW_VRAM_SIZE        100
+#define HW_VRAM_END         6129
 
 /* Heap Memory Allocator State */
 int g_heap_ptr = 3000;
@@ -162,6 +169,86 @@ int k3_disk_write(int sector, int *dma_buf, int count) {
     *c_reg = count;
     *cmd   = 2; /* DISK_CMD_WRITE */
     return *stat;
+}
+
+int k3_vram_flush() {
+    int *reg = HW_VRAM_CTRL;
+    *reg = 1;
+    return 0;
+}
+
+/* Print decimal integer */
+int k3_print_num(int n) {
+    if (n < 0) {
+        k3_uart_putc('-');
+        n = -n;
+    }
+    if (n >= 10) {
+        k3_print_num(n / 10);
+    }
+    k3_uart_putc('0' + (n % 10));
+    return 0;
+}
+
+/* Print 9-trit balanced ternary representation (+0-0+0--) */
+int k3_print_trits(int n) {
+    int trits[9];
+    int rem = n;
+    int i;
+    for (i = 0; i < 9; i++) {
+        int m = rem % 3;
+        if (m == 2 || m == -1) {
+            trits[i] = -1;
+            rem = (rem + 1) / 3;
+        } else if (m == -2 || m == 1) {
+            trits[i] = 1;
+            rem = (rem - 1) / 3;
+        } else {
+            trits[i] = 0;
+            rem = rem / 3;
+        }
+    }
+    for (i = 8; i >= 0; i--) {
+        if (trits[i] == 1) k3_uart_putc('+');
+        else if (trits[i] == -1) k3_uart_putc('-');
+        else k3_uart_putc('0');
+    }
+    return 0;
+}
+
+/* Formatted print engine (%d, %s, %c, %t, %%) */
+int k3_printf(int *fmt, int a1, int a2, int a3, int a4) {
+    int arg_idx = 0;
+    int i = 0;
+    while (*(fmt + i) != 0) {
+        int ch = *(fmt + i);
+        if (ch == '%' && *(fmt + i + 1) != 0) {
+            i++;
+            int spec = *(fmt + i);
+            int val = 0;
+            if (arg_idx == 0) val = a1;
+            else if (arg_idx == 1) val = a2;
+            else if (arg_idx == 2) val = a3;
+            else if (arg_idx == 3) val = a4;
+            arg_idx++;
+
+            if (spec == 'd') {
+                k3_print_num(val);
+            } else if (spec == 's') {
+                k3_uart_puts(val);
+            } else if (spec == 'c') {
+                k3_uart_putc(val);
+            } else if (spec == 't') {
+                k3_print_trits(val);
+            } else if (spec == '%') {
+                k3_uart_putc('%');
+            }
+        } else {
+            k3_uart_putc(ch);
+        }
+        i++;
+    }
+    return i;
 }
 
 #endif /* K3_LIBC_H */
