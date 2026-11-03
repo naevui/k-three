@@ -56,7 +56,7 @@ str_dmesg_boot:
 str_dmesg_mem:
     .string "[    0.000000] Memory: "
 str_dmesg_mem2:
-    .string " words available (3 pages of 729 words, NOMMU)\n[    0.000000] Trap Vector registered at address 0x0000\n[    0.000000] Calibrating delay loop... 42.00 BogoMIPS\n[    0.000000] VFS: Mounted root (ternary-romfs) readonly.\n\e[1;32m[    0.000000] Freeing unused kernel memory... Done\e[0m\n\e[1;33m[    0.000000] Run /sbin/init as init process (pid 1)\e[0m\n\n"
+    .string " words available (3 pages of 729 words, NOMMU)\n[    0.000000] Trap Vector registered at address 0x0000\n[    0.000000] Calibrating delay loop... 42.00 BogoMIPS\n[    0.000000] VFS: Mounted root (ternary-romfs) readonly.\n\e[1;32m[    0.000000] Freeing unused kernel memory... Done\e[0m\n\e[1;33m[    0.000000] Run /sbin/kinit as init process (pid 1)\e[0m\n\n"
 
 str_dmesg_ready:
     .string "Welcome to K-Three Linux!\n"
