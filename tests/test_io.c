@@ -476,6 +476,67 @@ static void test_disk_controller(void)
     }
 }
 
+static void test_memory_protection(void)
+{
+    k3_vm vm;
+    k3_vm_init(&vm, NULL);
+    k3_io_init();
+    k3_io_attach(&vm);
+
+    /* Set user space bounds: 2000..4000 */
+    k3_vm_set_user_bounds(&vm, 2000, 4000);
+    uint16_t b = 0, l = 0;
+    k3_vm_get_user_bounds(&vm, &b, &l);
+    CHECK_EQ_I64(b, 2000);
+    CHECK_EQ_I64(l, 4000);
+
+    /* 1. In User Mode, code at 2000 loads from 2500 (inside bounds): succeeds */
+    bt_word w;
+    bt_word_from_i64(555, &w);
+    CHECK(k3_vm_set_mem(&vm, 2500, &w));
+
+    /* Code at 2000: LI r1, #2500; LOAD r0, [r1]; */
+    encode_li(&vm, 2000, 1, 2500);
+    encode_load(&vm, 2002, 0, 1);
+    /* In user mode, HALT traps as ILLEGAL, so we leave it to stop or check */
+    vm.pc = 2000;
+    k3_vm_set_mode(&vm, K3_MODE_USER);
+
+    k3_vm_step(&vm); /* executes LI r1, #2500, pc -> 2002 */
+    CHECK_EQ_I64(vm.status, K3_VM_RUNNING);
+    k3_vm_step(&vm); /* executes LOAD r0, [r1], pc -> 2003 */
+    CHECK_EQ_I64(vm.status, K3_VM_RUNNING);
+    CHECK_EQ_I64(helper_get_reg(&vm, 0), 555);
+
+    /* 2. In User Mode, attempting to LOAD from address 500 (below user_base 2000) traps with MEMORY */
+    k3_vm_reset(&vm);
+    k3_vm_set_user_bounds(&vm, 2000, 4000);
+    encode_li(&vm, 2000, 1, 500);
+    encode_load(&vm, 2002, 0, 1);
+    vm.pc = 2000;
+    k3_vm_set_mode(&vm, K3_MODE_USER);
+
+    k3_vm_step(&vm); /* LI r1, #500 */
+    k3_vm_step(&vm); /* LOAD r0, [r1] where r1=500 -> TRAP MEMORY! */
+    CHECK_EQ_I64(vm.status, K3_VM_TRAPPED);
+    CHECK_EQ_I64(vm.trap_reason, K3_TRAP_MEMORY);
+
+    /* 3. In User Mode, attempting to STORE to address 5012 (above user_limit 4000) traps with MEMORY */
+    k3_vm_reset(&vm);
+    k3_vm_set_user_bounds(&vm, 2000, 4000);
+    encode_li(&vm, 2000, 0, 42);
+    encode_li(&vm, 2002, 1, 5012);
+    encode_store(&vm, 2004, 0, 1);
+    vm.pc = 2000;
+    k3_vm_set_mode(&vm, K3_MODE_USER);
+
+    k3_vm_step(&vm); /* LI r0, #42 */
+    k3_vm_step(&vm); /* LI r1, #5012 */
+    k3_vm_step(&vm); /* STORE r0, [r1] where r1=5012 -> TRAP MEMORY! */
+    CHECK_EQ_I64(vm.status, K3_VM_TRAPPED);
+    CHECK_EQ_I64(vm.trap_reason, K3_TRAP_MEMORY);
+}
+
 static void test_fallback_to_memory(void)
 {
     k3_vm vm;
@@ -507,6 +568,7 @@ int main(void)
     test_custom_device();
     test_hardware_interrupts();
     test_disk_controller();
+    test_memory_protection();
     test_fallback_to_memory();
 
     printf("test_io: %d checks, %d failures\n", g_checks, g_failures);
