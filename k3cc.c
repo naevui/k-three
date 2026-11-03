@@ -261,13 +261,29 @@ static int decode_escape_char(char c)
     }
 }
 
+#define MAX_MACROS 256
+typedef struct {
+    char name[MAX_IDENT];
+    int64_t val;
+} macro_def;
+
+static macro_def g_macros[MAX_MACROS];
+static int g_macro_count = 0;
+
+static int find_macro(const char *name)
+{
+    for (int i = 0; i < g_macro_count; ++i) {
+        if (strcmp(g_macros[i].name, name) == 0) return i;
+    }
+    return -1;
+}
+
 /* Lexer */
-static void lex(const char *src)
+static void lex_internal(const char *src, const char *basedir, int depth)
 {
     const char *p = src;
     int line = 1;
 
-    g_token_count = 0;
     while (*p && g_token_count < MAX_TOKENS - 1) {
         if (isspace((unsigned char)*p)) {
             if (*p == '\n') line++;
@@ -288,6 +304,98 @@ static void lex(const char *src)
                 p++;
             }
             if (*p) p += 2;
+            continue;
+        }
+
+        /* Preprocessor directives (#include, #define, header guards) */
+        if (*p == '#') {
+            p++;
+            while (*p == ' ' || *p == '\t') p++;
+            if (strncmp(p, "include", 7) == 0 &&
+                (p[7] == ' ' || p[7] == '\t' || p[7] == '"' || p[7] == '<')) {
+                p += 7;
+                while (*p == ' ' || *p == '\t') p++;
+                char delim = *p;
+                if (delim == '"' || delim == '<') {
+                    char end_delim = (delim == '"') ? '"' : '>';
+                    p++;
+                    char inc_name[512];
+                    size_t k = 0;
+                    while (*p && *p != end_delim && *p != '\n' &&
+                           k < sizeof(inc_name) - 1) {
+                        inc_name[k++] = *p++;
+                    }
+                    inc_name[k] = '\0';
+                    if (*p == end_delim) p++;
+
+                    char full_path[1024];
+                    if (basedir != NULL && basedir[0] != '\0' && inc_name[0] != '/') {
+                        snprintf(full_path, sizeof(full_path), "%s/%s", basedir, inc_name);
+                    } else {
+                        snprintf(full_path, sizeof(full_path), "%s", inc_name);
+                    }
+
+                    FILE *finc = fopen(full_path, "rb");
+                    if (!finc) {
+                        finc = fopen(inc_name, "rb");
+                    }
+                    if (finc) {
+                        fseek(finc, 0, SEEK_END);
+                        long isz = ftell(finc);
+                        fseek(finc, 0, SEEK_SET);
+                        char *isrc = (char *)malloc((size_t)isz + 1);
+                        if (isrc) {
+                            if (fread(isrc, 1, (size_t)isz, finc) == (size_t)isz) {
+                                isrc[isz] = '\0';
+                                char new_basedir[1024];
+                                strncpy(new_basedir, full_path, sizeof(new_basedir) - 1);
+                                new_basedir[sizeof(new_basedir) - 1] = '\0';
+                                char *s = strrchr(new_basedir, '/');
+                                if (s) *s = '\0'; else new_basedir[0] = '\0';
+
+                                if (depth < 8) {
+                                    lex_internal(isrc, new_basedir, depth + 1);
+                                }
+                            }
+                            free(isrc);
+                        }
+                        fclose(finc);
+                    }
+                }
+            } else if (strncmp(p, "define", 6) == 0 &&
+                       (p[6] == ' ' || p[6] == '\t')) {
+                p += 6;
+                while (*p == ' ' || *p == '\t') p++;
+                if (isalpha((unsigned char)*p) || *p == '_') {
+                    char mname[MAX_IDENT];
+                    size_t k = 0;
+                    while ((isalnum((unsigned char)*p) || *p == '_') &&
+                           k < sizeof(mname) - 1) {
+                        mname[k++] = *p++;
+                    }
+                    mname[k] = '\0';
+                    while (*p == ' ' || *p == '\t') p++;
+                    if (isdigit((unsigned char)*p) || *p == '-' || *p == '+' || *p == '\'') {
+                        int64_t mval = 0;
+                        if (*p == '\'') {
+                            p++;
+                            mval = (unsigned char)*p++;
+                            if (*p == '\'') p++;
+                        } else {
+                            char *end = NULL;
+                            mval = strtoll(p, &end, 10);
+                            p = end;
+                        }
+                        if (g_macro_count < MAX_MACROS) {
+                            int existing = find_macro(mname);
+                            int idx = (existing >= 0) ? existing : g_macro_count++;
+                            snprintf(g_macros[idx].name, sizeof(g_macros[idx].name), "%s", mname);
+                            g_macros[idx].val = mval;
+                        }
+                    }
+                }
+            }
+            while (*p && *p != '\n') p++;
             continue;
         }
 
@@ -379,6 +487,13 @@ static void lex(const char *src)
             }
             tok->text[i] = '\0';
 
+            int mi = find_macro(tok->text);
+            if (mi >= 0) {
+                tok->type = TOK_NUM;
+                tok->val = g_macros[mi].val;
+                continue;
+            }
+
             if (strcmp(tok->text, "int") == 0) tok->type = TOK_INT;
             else if (strcmp(tok->text, "const") == 0) tok->type = TOK_INT;
             else if (strcmp(tok->text, "enum") == 0) tok->type = TOK_INT;
@@ -440,8 +555,15 @@ static void lex(const char *src)
             exit(1);
         }
     }
+}
+
+static void lex(const char *src, const char *basedir)
+{
+    g_token_count = 0;
+    g_macro_count = 0;
+    lex_internal(src, basedir, 0);
     g_tokens[g_token_count].type = TOK_EOF;
-    g_tokens[g_token_count].line = line;
+    g_tokens[g_token_count].line = 1;
 }
 
 static token *cur_tok(void)
@@ -524,14 +646,25 @@ static void parse_lvalue_load(FILE *out)
         }
         if ((loc >= 0 && g_locals[loc].size <= 1) ||
             (loc < 0 && g_global_sizes[gl] <= 1)) {
-            fprintf(stderr, "k3cc:%d: error: '%s' is not an array\n",
-                    id->line, name);
-            exit(1);
+            /* Pointer indexing: ptr[index] */
+            parse_expression(out); /* index in r0 */
+            expect_tok(TOK_RBRACKET, "']' after array index");
+            fprintf(out, "    push r0\n"); /* save index */
+            if (loc >= 0) {
+                gen_local_addr(out, loc);
+            } else {
+                fprintf(out, "    li r1, g_%s\n", name);
+            }
+            fprintf(out, "    load r1, [r1]\n"); /* r1 = pointer base */
+            fprintf(out, "    pop r0\n"); /* r0 = index */
+            fprintf(out, "    add r1, r1, r0\n"); /* r1 = pointer + index */
+            fprintf(out, "    load r0, [r1]\n");
+        } else {
+            parse_expression(out);
+            expect_tok(TOK_RBRACKET, "']' after array index");
+            gen_array_addr(out, name, loc);
+            fprintf(out, "    load r0, [r1]\n");
         }
-        parse_expression(out);
-        expect_tok(TOK_RBRACKET, "']' after array index");
-        gen_array_addr(out, name, loc);
-        fprintf(out, "    load r0, [r1]\n");
     } else if (loc >= 0) {
         gen_local_addr(out, loc);
         fprintf(out, "    load r0, [r1]\n");
@@ -703,22 +836,27 @@ static void parse_primary(FILE *out)
                             tok->line, name);
                     exit(1);
                 }
-                if (loc >= 0 && g_locals[loc].size <= 1) {
-                    fprintf(stderr,
-                            "k3cc:%d: error: '%s' is not an array\n",
-                            tok->line, name);
-                    exit(1);
+                if ((loc >= 0 && g_locals[loc].size <= 1) ||
+                    (loc < 0 && g_global_sizes[gl] <= 1)) {
+                    /* Pointer indexing: ptr[index] */
+                    parse_expression(out); /* index in r0 */
+                    expect_tok(TOK_RBRACKET, "']' after array index");
+                    fprintf(out, "    push r0\n"); /* save index */
+                    if (loc >= 0) {
+                        gen_local_addr(out, loc);
+                    } else {
+                        fprintf(out, "    li r1, g_%s\n", name);
+                    }
+                    fprintf(out, "    load r1, [r1]\n"); /* r1 = pointer base */
+                    fprintf(out, "    pop r0\n"); /* r0 = index */
+                    fprintf(out, "    add r1, r1, r0\n"); /* r1 = pointer + index */
+                    fprintf(out, "    load r0, [r1]\n");
+                } else {
+                    parse_expression(out);
+                    expect_tok(TOK_RBRACKET, "']' after array index");
+                    gen_array_addr(out, name, loc);
+                    fprintf(out, "    load r0, [r1]\n");
                 }
-                if (loc < 0 && g_global_sizes[gl] <= 1) {
-                    fprintf(stderr,
-                            "k3cc:%d: error: '%s' is not an array\n",
-                            tok->line, name);
-                    exit(1);
-                }
-                parse_expression(out);
-                expect_tok(TOK_RBRACKET, "']' after array index");
-                gen_array_addr(out, name, loc);
-                fprintf(out, "    load r0, [r1]\n");
             } else if (loc >= 0) {
                 gen_local_addr(out, loc);
                 fprintf(out, "    load r0, [r1]\n");
@@ -1295,14 +1433,25 @@ static void parse_expression(FILE *out)
         }
         if ((loc >= 0 && g_locals[loc].size <= 1) ||
             (loc < 0 && g_global_sizes[gl] <= 1)) {
-            fprintf(stderr, "k3cc: error: '%s' is not an array\n", name);
-            exit(1);
+            /* Pointer indexing assignment: ptr[index] = expr */
+            parse_expression(out); /* index in r0 */
+            expect_tok(TOK_RBRACKET, "']' after array index");
+            fprintf(out, "    push r0\n"); /* save index */
+            if (loc >= 0) {
+                gen_local_addr(out, loc);
+            } else {
+                fprintf(out, "    li r1, g_%s\n", name);
+            }
+            fprintf(out, "    load r1, [r1]\n"); /* r1 = pointer base */
+            fprintf(out, "    pop r0\n"); /* r0 = index */
+            fprintf(out, "    add r1, r1, r0\n"); /* r1 = pointer + index */
+            fprintf(out, "    push r1\n"); /* save element address */
+        } else {
+            parse_expression(out); /* index in r0 */
+            expect_tok(TOK_RBRACKET, "']' after array index");
+            gen_array_addr(out, name, loc);
+            fprintf(out, "    push r1\n");   /* save element address */
         }
-
-        parse_expression(out); /* index in r0 */
-        expect_tok(TOK_RBRACKET, "']' after array index");
-        gen_array_addr(out, name, loc);
-        fprintf(out, "    push r1\n");   /* save element address */
         if (arr_op != TOK_ASSIGN) {
             fprintf(out, "    load r0, [r1]\n");
             fprintf(out, "    push r0\n");
@@ -2252,7 +2401,13 @@ int main(int argc, char **argv)
     src[sz] = '\0';
     fclose(fin);
 
-    lex(src);
+    char basedir[1024];
+    strncpy(basedir, in_path, sizeof(basedir) - 1);
+    basedir[sizeof(basedir) - 1] = '\0';
+    char *slash = strrchr(basedir, '/');
+    if (slash) *slash = '\0'; else basedir[0] = '\0';
+
+    lex(src, basedir);
     free(src);
 
     FILE *fout = stdout;
