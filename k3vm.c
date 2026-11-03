@@ -17,6 +17,7 @@
 
 #include "disasm.h"
 #include "image.h"
+#include "io.h"
 #include "syscall.h"
 #include "ternary.h"
 #include "vm.h"
@@ -207,11 +208,16 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (enable_io) {
+        k3_io_init();
+    }
     k3_vm_callbacks callbacks = {
         .user = NULL,
         .on_step = NULL,
         .on_stop = NULL,
         .on_syscall = enable_io ? k3_host_syscall : NULL,
+        .on_mmio_read = enable_io ? k3_io_mmio_read : NULL,
+        .on_mmio_write = enable_io ? k3_io_mmio_write : NULL,
     };
     k3_vm_init(&vm, &callbacks);
     if (!k3_vm_load(&vm, words, count, 0)) {
