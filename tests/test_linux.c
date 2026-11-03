@@ -15,6 +15,9 @@
 #include "arch/k3/include/asm/unistd.h"
 #include "arch/k3/include/asm/processor.h"
 #include "arch/k3/include/asm/uaccess.h"
+#include "arch/k3/include/asm/atomic.h"
+#include "arch/k3/include/asm/bitops.h"
+#include "arch/k3/include/asm/io.h"
 
 static int g_checks = 0;
 static int g_failures = 0;
@@ -53,6 +56,49 @@ extern int k3_proc_meminfo(char *buf, size_t max_len);
 extern int k3_proc_version(char *buf, size_t max_len);
 extern int k3_proc_uptime(char *buf, size_t max_len);
 extern int k3_proc_interrupts(char *buf, size_t max_len);
+
+extern int k3_trap_to_signal(k3_trap_reason reason);
+extern struct thread_struct *k3_get_init_thread(void);
+
+static void test_linux_traps_and_atomics(void)
+{
+    /* 1. Linux signal mapping for K-Three hardware traps */
+    CHECK_EQ_I64(k3_trap_to_signal(K3_TRAP_OVERFLOW), 8);  /* SIGFPE */
+    CHECK_EQ_I64(k3_trap_to_signal(K3_TRAP_SHIFT), 8);     /* SIGFPE */
+    CHECK_EQ_I64(k3_trap_to_signal(K3_TRAP_MEMORY), 11);   /* SIGSEGV */
+    CHECK_EQ_I64(k3_trap_to_signal(K3_TRAP_ILLEGAL), 4);   /* SIGILL */
+    CHECK_EQ_I64(k3_trap_to_signal(K3_TRAP_EXPLICIT), 5);  /* SIGTRAP */
+
+    /* 2. Initial thread context */
+    struct thread_struct *thr = k3_get_init_thread();
+    CHECK(thr != NULL);
+    CHECK_EQ_I64(thr->ksp, 6560);
+    CHECK_EQ_I64(thr->mode, K3_MODE_KERNEL);
+
+    /* 3. Atomics */
+    atomic_t val = ATOMIC_INIT(10);
+    CHECK_EQ_I64(atomic_read(&val), 10);
+    atomic_add(5, &val);
+    CHECK_EQ_I64(atomic_read(&val), 15);
+    atomic_sub(3, &val);
+    CHECK_EQ_I64(atomic_read(&val), 12);
+    atomic_inc(&val);
+    CHECK_EQ_I64(atomic_read(&val), 13);
+    atomic_dec(&val);
+    CHECK_EQ_I64(atomic_read(&val), 12);
+    CHECK_EQ_I64(atomic_cmpxchg(&val, 12, 100), 12);
+    CHECK_EQ_I64(atomic_read(&val), 100);
+
+    /* 4. Bitops */
+    unsigned long bitmap = 0;
+    set_bit(3, &bitmap);
+    CHECK(test_bit(3, &bitmap));
+    CHECK(!test_bit(4, &bitmap));
+    clear_bit(3, &bitmap);
+    CHECK(!test_bit(3, &bitmap));
+    change_bit(5, &bitmap);
+    CHECK(test_bit(5, &bitmap));
+}
 
 static void test_linux_scheduler(void)
 {
@@ -183,6 +229,7 @@ int main(void)
     test_linux_syscalls();
     test_linux_procfs();
     test_linux_uaccess();
+    test_linux_traps_and_atomics();
 
     printf("test_linux: %d checks, %d failures\n", g_checks, g_failures);
     return (g_failures == 0) ? 0 : 1;
