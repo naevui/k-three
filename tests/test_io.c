@@ -15,7 +15,9 @@ enum {
     OP_HALT = 1,
     OP_LOAD = 15,
     OP_STORE = 16,
-    OP_LI = 23
+    OP_LI = 23,
+    OP_ERET = 25,
+    OP_SETVEC = 26
 };
 
 static int g_checks = 0;
@@ -266,6 +268,108 @@ static void test_custom_device(void)
     CHECK_EQ_I64(helper_get_reg(&vm, 0), 30);
 }
 
+/* Encode: SETVEC ra */
+static void encode_setvec(k3_vm *vm, uint16_t addr, uint8_t ra)
+{
+    bt_word op;
+    bt_word_zero(&op);
+    set_base3(op.t, 3, OP_SETVEC);
+    set_base3(&op.t[3], 2, ra);
+    k3_vm_set_mem(vm, addr, &op);
+}
+
+/* Encode: ERET */
+static void encode_eret(k3_vm *vm, uint16_t addr)
+{
+    bt_word op = encode_none(OP_ERET);
+    k3_vm_set_mem(vm, addr, &op);
+}
+
+static void test_hardware_interrupts(void)
+{
+    k3_vm vm;
+    k3_vm_init(&vm, NULL);
+    k3_io_init();
+    k3_io_attach(&vm);
+
+    /* Trap/Interrupt handler at address 30 */
+    /* Code: LI r2, #888; ERET */
+    encode_li(&vm, 30, 2, 888);
+    encode_eret(&vm, 32);
+
+    /* Main code at address 0 */
+    /* Code:
+     * 0: LI r0, #30
+     * 2: SETVEC r0
+     * 3: NOP
+     * 4: HALT
+     */
+    encode_li(&vm, 0, 0, 30);
+    encode_setvec(&vm, 2, 0);
+    bt_word nop_op = encode_none(OP_NOP);
+    k3_vm_set_mem(&vm, 3, &nop_op);
+    bt_word halt_op = encode_none(OP_HALT);
+    k3_vm_set_mem(&vm, 4, &halt_op);
+
+    /* Test 1: Step to setvec */
+    k3_vm_step(&vm); /* executes LI r0, #30 (pc -> 2) */
+    k3_vm_step(&vm); /* executes SETVEC r0 (pc -> 3, trap_vector -> 30) */
+    CHECK_EQ_I64(k3_vm_get_trap_vector(&vm), 30);
+
+    /* Raise IRQ line 1 manually */
+    k3_vm_raise_irq(&vm, 1);
+    CHECK_EQ_I64(k3_vm_pending_irqs(&vm), 2); /* bit 1 */
+
+    /* Next step vectors to 30 and executes LI r2, #888 at 30: pc -> 32, r2 -> 888 */
+    k3_vm_step(&vm);
+    CHECK_EQ_I64(vm.pc, 32);
+    CHECK_EQ_I64(helper_get_reg(&vm, 2), 888);
+    CHECK_EQ_I64(vm.saved_pc, 3); /* saved return address is NOP at 3 */
+
+    /* Next step executes ERET at 32: restores pc = 3, active_irq = -1 */
+    k3_vm_step(&vm);
+    CHECK_EQ_I64(vm.pc, 3);
+    CHECK_EQ_I64(k3_vm_active_irq(&vm), -1);
+    CHECK(k3_vm_irq_enabled(&vm));
+
+    /* Next step executes NOP at 3 */
+    k3_vm_step(&vm); /* NOP */
+    CHECK_EQ_I64(vm.pc, 4);
+
+    /* Next step executes HALT at 4 */
+    k3_vm_step(&vm); /* HALT */
+    CHECK_EQ_I64(vm.status, K3_VM_HALTED);
+    CHECK_EQ_I64(helper_get_reg(&vm, 2), 888);
+
+    /* Test 2: Trigger IRQ via MMIO register write to IO_SYS_IRQ_CTRL */
+    k3_vm_reset(&vm);
+    k3_io_attach(&vm);
+    encode_li(&vm, 30, 2, 777);
+    encode_eret(&vm, 32);
+
+    /* Main code:
+     * 0: LI r0, #30
+     * 2: SETVEC r0
+     * 3: LI r0, #(1 | (1 << 9))   ; enable IRQ and raise line 0 via MMIO
+     * 5: LI r1, #5016             ; IO_SYS_IRQ_CTRL
+     * 7: STORE r0, [r1]           ; triggers IRQ 0
+     * 8: NOP
+     * 9: HALT
+     */
+    encode_li(&vm, 0, 0, 30);
+    encode_setvec(&vm, 2, 0);
+    encode_li(&vm, 3, 0, (1 | (1 << 9)));
+    encode_li(&vm, 5, 1, K3_MMIO_SYS_IRQ_CTRL);
+    encode_store(&vm, 7, 0, 1);
+    k3_vm_set_mem(&vm, 8, &nop_op);
+    k3_vm_set_mem(&vm, 9, &halt_op);
+
+    uint64_t executed = 0;
+    k3_vm_status status = k3_vm_run(&vm, 100, &executed);
+    CHECK_EQ_I64(status, K3_VM_HALTED);
+    CHECK_EQ_I64(helper_get_reg(&vm, 2), 777);
+}
+
 static void test_fallback_to_memory(void)
 {
     k3_vm vm;
@@ -295,6 +399,7 @@ int main(void)
     test_standard_mmio_read();
     test_standard_mmio_write();
     test_custom_device();
+    test_hardware_interrupts();
     test_fallback_to_memory();
 
     printf("test_io: %d checks, %d failures\n", g_checks, g_failures);
