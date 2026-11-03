@@ -748,6 +748,19 @@ EOF
 build str_first_class
 expect_reg test_str_first_class r0 162
 
+# Test 42: the examples/c_hardware.c showcase compiles and runs
+"$K3CC" "$ROOT/examples/c_hardware.c" -o "$TMP/c_hardware.s"
+"$K3ASM" "$TMP/c_hardware.s" -o "$TMP/c_hardware.k3"
+out=$("$K3VM" -d "$TMP/c_hardware.k3")
+if printf '%s\n' "$out" | grep -Fq 'K-Three Bare-Metal C Hardware Showcase' && \
+   printf '%s\n' "$out" | grep -Fq 'Disk DMA transfer: OK' && \
+   printf '%s\n' "$out" | grep -Fq 'Hardware test completed successfully!' && \
+   printf '%s\n' "$out" | grep -Fq 'r0 = 43'; then
+    ok
+else
+    bad test_c_hardware "expected examples/c_hardware.c output"
+fi
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
