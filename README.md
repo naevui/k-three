@@ -158,6 +158,7 @@ Example programs live in `examples/`:
 | `hello_c.c` | C source compiled by `k3cc` (recursive factorial) | prints `120`, `r0 = 120` |
 | `c_demo.c` | C showcase: strings, arrays, `switch`, `do/while`, ternary, `++` | prints `28`, `100`, `r0 = 41` |
 | `c_hardware.c` | Bare-metal C hardware showcase: MMIO drivers, disk DMA, heap allocator | prints banner, `Disk DMA transfer: OK`, `r0 = 43` |
+| `c_os.c` | 100% pure C operating system shell: MMIO drivers, VRAM text box, disk DMA | prints banner, menu, VRAM box, `r0 = 42` |
 
 `k3vm` exit status: `0` halted, `2` trapped, `3` step limit, `1` usage/load
 error.
