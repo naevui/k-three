@@ -1193,36 +1193,44 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "SYS_FILE_EXISTS", 38);
     add_predefined_equ(as, "SYS_BANK_SWITCH", 39);
 
-    /* Hardware MMIO Peripheral Architecture (base 5000) */
-    add_predefined_equ(as, "IO_UART_DATA", 5000);
-    add_predefined_equ(as, "IO_UART_STAT", 5001);
-    add_predefined_equ(as, "IO_UART_CTRL", 5002);
-    add_predefined_equ(as, "IO_TIMER_L", 5004);
-    add_predefined_equ(as, "IO_TIMER_H", 5005);
-    add_predefined_equ(as, "IO_TIMER_INT", 5006);
-    add_predefined_equ(as, "IO_TIMER_CTRL", 5007);
-    add_predefined_equ(as, "IO_RNG_WORD", 5008);
-    add_predefined_equ(as, "IO_RNG_TRIT", 5009);
-    add_predefined_equ(as, "IO_SYS_RESET", 5010);
-    add_predefined_equ(as, "IO_SYS_HALT", 5011);
-    add_predefined_equ(as, "IO_SYS_LEDS", 5012);
-    add_predefined_equ(as, "IO_SYS_TICKS_L", 5013);
-    add_predefined_equ(as, "IO_SYS_TICKS_H", 5014);
-    add_predefined_equ(as, "IO_SYS_MEMSIZE", 5015);
-    add_predefined_equ(as, "IO_SYS_IRQ_CTRL", 5016);
-    add_predefined_equ(as, "IO_SYS_USER_BASE", 5017);
-    add_predefined_equ(as, "IO_SYS_USER_LIMIT", 5018);
+    /* Hardware MMIO Peripheral Architecture (base 6000) */
+    add_predefined_equ(as, "IO_UART_DATA", 6000);
+    add_predefined_equ(as, "IO_UART_STAT", 6001);
+    add_predefined_equ(as, "IO_UART_CTRL", 6002);
+    add_predefined_equ(as, "IO_TIMER_L", 6004);
+    add_predefined_equ(as, "IO_TIMER_H", 6005);
+    add_predefined_equ(as, "IO_TIMER_INT", 6006);
+    add_predefined_equ(as, "IO_TIMER_CTRL", 6007);
+    add_predefined_equ(as, "IO_RNG_WORD", 6008);
+    add_predefined_equ(as, "IO_RNG_TRIT", 6009);
+    add_predefined_equ(as, "IO_SYS_RESET", 6010);
+    add_predefined_equ(as, "IO_SYS_HALT", 6011);
+    add_predefined_equ(as, "IO_SYS_LEDS", 6012);
+    add_predefined_equ(as, "IO_SYS_TICKS_L", 6013);
+    add_predefined_equ(as, "IO_SYS_TICKS_H", 6014);
+    add_predefined_equ(as, "IO_SYS_MEMSIZE", 6015);
+    add_predefined_equ(as, "IO_SYS_IRQ_CTRL", 6016);
+    add_predefined_equ(as, "IO_SYS_USER_BASE", 6017);
+    add_predefined_equ(as, "IO_SYS_USER_LIMIT", 6018);
 
     /* Hardware Block Storage / Disk Controller */
-    add_predefined_equ(as, "IO_DISK_SECTOR", 5020);
-    add_predefined_equ(as, "IO_DISK_DMA_ADDR", 5021);
-    add_predefined_equ(as, "IO_DISK_COUNT", 5022);
-    add_predefined_equ(as, "IO_DISK_CMD", 5023);
-    add_predefined_equ(as, "IO_DISK_STATUS", 5024);
-    add_predefined_equ(as, "IO_DISK_CAPACITY", 5025);
+    add_predefined_equ(as, "IO_DISK_SECTOR", 6020);
+    add_predefined_equ(as, "IO_DISK_DMA_ADDR", 6021);
+    add_predefined_equ(as, "IO_DISK_COUNT", 6022);
+    add_predefined_equ(as, "IO_DISK_CMD", 6023);
+    add_predefined_equ(as, "IO_DISK_STATUS", 6024);
+    add_predefined_equ(as, "IO_DISK_CAPACITY", 6025);
     add_predefined_equ(as, "DISK_CMD_READ", 1);
     add_predefined_equ(as, "DISK_CMD_WRITE", 2);
     add_predefined_equ(as, "DISK_CMD_SYNC", 3);
+
+    /* Hardware Text Framebuffer / Video RAM Display Controller */
+    add_predefined_equ(as, "IO_VRAM_CTRL", 6026);
+    add_predefined_equ(as, "IO_VRAM_COLS", 6027);
+    add_predefined_equ(as, "IO_VRAM_ROWS", 6028);
+    add_predefined_equ(as, "IO_VRAM_BASE", 6030);
+    add_predefined_equ(as, "IO_VRAM_SIZE", 100);
+    add_predefined_equ(as, "IO_VRAM_END", 6129);
 }
 
 int main(int argc, char **argv)
