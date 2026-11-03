@@ -403,9 +403,10 @@ each can be changed before the ISA is frozen.
 12. **`LI` literal hazard.** v0 allows execution to branch into the literal
     word. Alternative: forbid labels/targets inside an `LI` pair, or add an
     explicit alignment/instruction-boundary rule.
-13. **I/O.** v0 has no architectural I/O at all. Alternative: memory-mapped
-    I/O, trap-based host calls, or a separate I/O instruction space. The VM's
-    callback interface is not a program-visible I/O mechanism.
+13. **I/O.** Implemented via Memory-Mapped I/O (MMIO) at base address 5000
+    (hardware UART serial console, real-time monotonic timer, hardware
+    balanced-ternary RNG, system control, tick counters and front-panel LEDs)
+    accessible via standard `LOAD`/`STORE`, plus software syscalls via `TRAP`.
 14. **Calls and stack.** The ISA has no `CALL`/`RET` and no architectural
     stack. `k3asm` provides a software convention: `r7` is a downward stack
     pointer and `r6` is the link register. Alternative: a hardware stack or a
