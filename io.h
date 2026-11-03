@@ -33,33 +33,33 @@
  *   5015: IO_SYS_MEMSIZE - R: total memory words (6561)
  */
 
-#define K3_MMIO_BASE            5000
-#define K3_MMIO_UART_DATA       5000
-#define K3_MMIO_UART_STAT       5001
-#define K3_MMIO_UART_CTRL       5002
-#define K3_MMIO_TIMER_L         5004
-#define K3_MMIO_TIMER_H         5005
-#define K3_MMIO_TIMER_INT       5006
-#define K3_MMIO_TIMER_CTRL      5007
-#define K3_MMIO_RNG_WORD        5008
-#define K3_MMIO_RNG_TRIT        5009
-#define K3_MMIO_SYS_RESET       5010
-#define K3_MMIO_SYS_HALT        5011
-#define K3_MMIO_SYS_LEDS        5012
-#define K3_MMIO_SYS_TICKS_L     5013
-#define K3_MMIO_SYS_TICKS_H     5014
-#define K3_MMIO_SYS_MEMSIZE     5015
-#define K3_MMIO_SYS_IRQ_CTRL    5016
-#define K3_MMIO_SYS_USER_BASE   5017
-#define K3_MMIO_SYS_USER_LIMIT  5018
+#define K3_MMIO_BASE            6000
+#define K3_MMIO_UART_DATA       6000
+#define K3_MMIO_UART_STAT       6001
+#define K3_MMIO_UART_CTRL       6002
+#define K3_MMIO_TIMER_L         6004
+#define K3_MMIO_TIMER_H         6005
+#define K3_MMIO_TIMER_INT       6006
+#define K3_MMIO_TIMER_CTRL      6007
+#define K3_MMIO_RNG_WORD        6008
+#define K3_MMIO_RNG_TRIT        6009
+#define K3_MMIO_SYS_RESET       6010
+#define K3_MMIO_SYS_HALT        6011
+#define K3_MMIO_SYS_LEDS        6012
+#define K3_MMIO_SYS_TICKS_L     6013
+#define K3_MMIO_SYS_TICKS_H     6014
+#define K3_MMIO_SYS_MEMSIZE     6015
+#define K3_MMIO_SYS_IRQ_CTRL    6016
+#define K3_MMIO_SYS_USER_BASE   6017
+#define K3_MMIO_SYS_USER_LIMIT  6018
 
 /* Hardware Storage / Block Device Controller */
-#define K3_MMIO_DISK_SECTOR     5020
-#define K3_MMIO_DISK_DMA_ADDR   5021
-#define K3_MMIO_DISK_COUNT      5022
-#define K3_MMIO_DISK_CMD        5023
-#define K3_MMIO_DISK_STATUS     5024
-#define K3_MMIO_DISK_CAPACITY   5025
+#define K3_MMIO_DISK_SECTOR     6020
+#define K3_MMIO_DISK_DMA_ADDR   6021
+#define K3_MMIO_DISK_COUNT      6022
+#define K3_MMIO_DISK_CMD        6023
+#define K3_MMIO_DISK_STATUS     6024
+#define K3_MMIO_DISK_CAPACITY   6025
 
 #define K3_DISK_SECTOR_WORDS    64
 #define K3_DISK_MAX_SECTORS     256
@@ -72,6 +72,14 @@
 #define K3_DISK_STATUS_IDLE     0
 #define K3_DISK_STATUS_BUSY     1
 #define K3_DISK_STATUS_ERROR    (-1)
+
+/* Hardware Text Video RAM & Display Controller */
+#define K3_MMIO_VRAM_CTRL       6026
+#define K3_MMIO_VRAM_COLS       6027
+#define K3_MMIO_VRAM_ROWS       6028
+#define K3_MMIO_VRAM_BASE       6030
+#define K3_MMIO_VRAM_SIZE       100
+#define K3_MMIO_VRAM_END        6129
 
 #define K3_MMIO_MAX_DEVICES     16
 
