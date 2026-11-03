@@ -105,6 +105,11 @@ struct k3_vm {
     uint16_t saved_pc;         /* PC saved on exception */
     int16_t trap_vector;       /* Kernel trap vector address (-1 = none / host callback) */
 
+    /* Hardware Interrupt Subsystem */
+    uint8_t irq_enabled;       /* Global interrupt enable flag (1 = enabled, 0 = masked) */
+    uint8_t irq_pending;       /* Pending IRQ lines bitmask (lines 0..7) */
+    int8_t active_irq;         /* Currently servicing IRQ line (-1 = none) */
+
     k3_vm_callbacks callbacks;
 };
 
@@ -168,5 +173,13 @@ int16_t k3_vm_get_trap_vector(const k3_vm *vm);
 void k3_vm_set_mode(k3_vm *vm, k3_vm_mode mode);
 k3_vm_mode k3_vm_get_mode(const k3_vm *vm);
 uint16_t k3_vm_get_saved_pc(const k3_vm *vm);
+
+/* Hardware Interrupt Subsystem API */
+void k3_vm_raise_irq(k3_vm *vm, uint8_t irq_line);
+void k3_vm_clear_irq(k3_vm *vm, uint8_t irq_line);
+void k3_vm_enable_irq(k3_vm *vm, bool enable);
+bool k3_vm_irq_enabled(const k3_vm *vm);
+uint8_t k3_vm_pending_irqs(const k3_vm *vm);
+int8_t k3_vm_active_irq(const k3_vm *vm);
 
 #endif /* K3_VM_H */
