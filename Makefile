@@ -19,14 +19,16 @@ TEST_ISA := $(BUILD)/test_isa
 TEST_PACKED := $(BUILD)/test_packed
 TEST_SYSCALL := $(BUILD)/test_syscall
 TEST_IMAGE := $(BUILD)/test_image
+TEST_IO := $(BUILD)/test_io
 TEST_TERNARY_DEBUG := $(BUILD)/test_ternary_debug
 TEST_VM_DEBUG := $(BUILD)/test_vm_debug
 TEST_ISA_DEBUG := $(BUILD)/test_isa_debug
 TEST_PACKED_DEBUG := $(BUILD)/test_packed_debug
 TEST_SYSCALL_DEBUG := $(BUILD)/test_syscall_debug
 TEST_IMAGE_DEBUG := $(BUILD)/test_image_debug
+TEST_IO_DEBUG := $(BUILD)/test_io_debug
 
-LIB_OBJS := $(BUILD)/ternary.o $(BUILD)/vm.o $(BUILD)/isa.o $(BUILD)/packed.o $(BUILD)/syscall.o $(BUILD)/image.o
+LIB_OBJS := $(BUILD)/ternary.o $(BUILD)/vm.o $(BUILD)/isa.o $(BUILD)/packed.o $(BUILD)/syscall.o $(BUILD)/image.o $(BUILD)/io.o
 
 TOOL_OBJS := $(BUILD)/k3asm.o $(BUILD)/k3vm.o $(BUILD)/k3dis.o \
              $(BUILD)/k3dbg.o $(BUILD)/image.o $(BUILD)/disasm.o
@@ -37,20 +39,24 @@ TEST_ISA_OBJS := $(BUILD)/test_isa.o
 TEST_PACKED_OBJS := $(BUILD)/test_packed.o
 TEST_SYSCALL_OBJS := $(BUILD)/test_syscall.o
 TEST_IMAGE_OBJS := $(BUILD)/test_image.o
+TEST_IO_OBJS := $(BUILD)/test_io.o
 
 DEBUG_TERNARY_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/test_ternary_debug.o
 DEBUG_VM_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o \
                  $(BUILD)/isa_debug.o $(BUILD)/packed_debug.o \
-                 $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/test_vm_debug.o
+                 $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/io_debug.o $(BUILD)/test_vm_debug.o
 DEBUG_ISA_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/isa_debug.o \
                   $(BUILD)/test_isa_debug.o
 DEBUG_PACKED_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/packed_debug.o \
                     $(BUILD)/test_packed_debug.o
 DEBUG_SYSCALL_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o \
                       $(BUILD)/isa_debug.o $(BUILD)/packed_debug.o \
-                      $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/test_syscall_debug.o
+                      $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/io_debug.o $(BUILD)/test_syscall_debug.o
 DEBUG_IMAGE_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/packed_debug.o \
                     $(BUILD)/image_debug.o $(BUILD)/test_image_debug.o
+DEBUG_IO_OBJS := $(BUILD)/ternary_debug.o $(BUILD)/vm_debug.o \
+                 $(BUILD)/isa_debug.o $(BUILD)/packed_debug.o \
+                 $(BUILD)/syscall_debug.o $(BUILD)/image_debug.o $(BUILD)/io_debug.o $(BUILD)/test_io_debug.o
 
 DEBUG_FLAGS := -O0 -g3 -fsanitize=address,undefined \
                -fno-omit-frame-pointer
@@ -82,6 +88,9 @@ $(BUILD)/packed.o: packed.c | $(BUILD)
 $(BUILD)/syscall.o: syscall.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
+$(BUILD)/io.o: io.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
 $(BUILD)/ternary_debug.o: ternary.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
@@ -95,6 +104,9 @@ $(BUILD)/packed_debug.o: packed.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/syscall_debug.o: syscall.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(BUILD)/io_debug.o: io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/image_debug.o: image.c | $(BUILD)
@@ -118,6 +130,9 @@ $(BUILD)/test_syscall.o: tests/test_syscall.c | $(BUILD)
 $(BUILD)/test_image.o: tests/test_image.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
+$(BUILD)/test_io.o: tests/test_io.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
 $(BUILD)/test_ternary_debug.o: tests/test_ternary.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
@@ -134,6 +149,9 @@ $(BUILD)/test_syscall_debug.o: tests/test_syscall.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/test_image_debug.o: tests/test_image.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(BUILD)/test_io_debug.o: tests/test_io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/k3asm.o: k3asm.c | $(BUILD)
@@ -208,6 +226,9 @@ $(TEST_SYSCALL): $(TEST_SYSCALL_OBJS) $(LIB)
 $(TEST_IMAGE): $(TEST_IMAGE_OBJS) $(LIB)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
+$(TEST_IO): $(TEST_IO_OBJS) $(LIB)
+	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -o $@
+
 $(TEST_TERNARY_DEBUG): $(DEBUG_TERNARY_OBJS)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $^ -o $@
 
@@ -226,19 +247,22 @@ $(TEST_SYSCALL_DEBUG): $(DEBUG_SYSCALL_OBJS)
 $(TEST_IMAGE_DEBUG): $(DEBUG_IMAGE_OBJS)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $^ -o $@
 
+$(TEST_IO_DEBUG): $(DEBUG_IO_OBJS)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $^ -o $@
+
 $(BUILD)/k3asm_debug: k3asm.c image.c ternary.c packed.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3vm_debug: k3vm.c vm.c isa.c ternary.c packed.c syscall.c image.c disasm.c | $(BUILD)
+$(BUILD)/k3vm_debug: k3vm.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD)/k3dis_debug: k3dis.c isa.c ternary.c packed.c image.c disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3dbg_debug: k3dbg.c vm.c isa.c ternary.c packed.c syscall.c image.c disasm.c | $(BUILD)
+$(BUILD)/k3dbg_debug: k3dbg.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3forth_debug: k3forth.c vm.c isa.c ternary.c packed.c syscall.c image.c | $(BUILD)
+$(BUILD)/k3forth_debug: k3forth.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
 $(BUILD)/k3cc_debug: k3cc.c | $(BUILD)
@@ -261,13 +285,14 @@ examples: $(TOOLS)
 		$(BUILD)/k3asm kernel/vmlinux.s -o $(BUILD)/vmlinux.k3 -l $(BUILD)/vmlinux.lst; \
 	fi
 
-test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TEST_IMAGE) examples
+test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TEST_IMAGE) $(TEST_IO) examples
 	./$(TEST_TERNARY)
 	./$(TEST_VM)
 	./$(TEST_ISA)
 	./$(TEST_PACKED)
 	./$(TEST_SYSCALL)
 	./$(TEST_IMAGE)
+	./$(TEST_IO)
 	K3ASM=$(abspath $(BUILD)/k3asm) K3DIS=$(abspath $(BUILD)/k3dis) \
 	TMP=$(abspath $(BUILD)/asm-tests) sh tests/test_asm.sh
 	K3ASM=$(abspath $(BUILD)/k3asm) K3DIS=$(abspath $(BUILD)/k3dis) \
@@ -280,13 +305,14 @@ test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TE
 	K3VM=$(abspath $(BUILD)/k3vm) \
 	TMP=$(abspath $(BUILD)/c-tests) sh tests/test_c.sh
 
-debug: $(TEST_TERNARY_DEBUG) $(TEST_VM_DEBUG) $(TEST_ISA_DEBUG) $(TEST_PACKED_DEBUG) $(TEST_SYSCALL_DEBUG) $(TEST_IMAGE_DEBUG) $(DEBUG_TOOLS)
+debug: $(TEST_TERNARY_DEBUG) $(TEST_VM_DEBUG) $(TEST_ISA_DEBUG) $(TEST_PACKED_DEBUG) $(TEST_SYSCALL_DEBUG) $(TEST_IMAGE_DEBUG) $(TEST_IO_DEBUG) $(DEBUG_TOOLS)
 	$(ASAN_ENV) ./$(TEST_TERNARY_DEBUG)
 	$(ASAN_ENV) ./$(TEST_VM_DEBUG)
 	$(ASAN_ENV) ./$(TEST_ISA_DEBUG)
 	$(ASAN_ENV) ./$(TEST_PACKED_DEBUG)
 	$(ASAN_ENV) ./$(TEST_SYSCALL_DEBUG)
 	$(ASAN_ENV) ./$(TEST_IMAGE_DEBUG)
+	$(ASAN_ENV) ./$(TEST_IO_DEBUG)
 	$(ASAN_ENV) K3ASM=$(abspath $(BUILD)/k3asm_debug) \
 		K3DIS=$(abspath $(BUILD)/k3dis_debug) \
 		TMP=$(abspath $(BUILD)/asm-tests-debug) \
