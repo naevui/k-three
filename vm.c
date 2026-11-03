@@ -301,7 +301,9 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
 
     case K3_OP_LOAD: {
         int64_t address = word_value(&vm->regs[in.b]);
-        if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS) {
+        if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS ||
+            (vm->mode == K3_MODE_USER &&
+             ((uint16_t)address < vm->user_base || (uint16_t)address > vm->user_limit))) {
             return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
         }
         if (vm->callbacks.on_mmio_read != NULL &&
@@ -314,7 +316,9 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
 
     case K3_OP_STORE: {
         int64_t address = word_value(&vm->regs[in.b]);
-        if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS) {
+        if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS ||
+            (vm->mode == K3_MODE_USER &&
+             ((uint16_t)address < vm->user_base || (uint16_t)address > vm->user_limit))) {
             return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
         }
         if (vm->callbacks.on_mmio_write != NULL &&
@@ -327,7 +331,9 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
 
     case K3_OP_JMP: {
         int64_t target = word_value(&vm->regs[in.a]);
-        if (target < 0 || target > (int64_t)K3_VM_MAX_ADDRESS) {
+        if (target < 0 || target > (int64_t)K3_VM_MAX_ADDRESS ||
+            (vm->mode == K3_MODE_USER &&
+             ((uint16_t)target < vm->user_base || (uint16_t)target > vm->user_limit))) {
             return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
         }
         vm->pc = (uint16_t)target;
@@ -340,7 +346,9 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
     case K3_OP_BRP:
         if (branch_taken(in.opcode, word_value(&vm->regs[in.a]))) {
             int64_t target = (int64_t)pc + 1 + (int64_t)in.imm;
-            if (target < 0 || target > (int64_t)K3_VM_MAX_ADDRESS) {
+            if (target < 0 || target > (int64_t)K3_VM_MAX_ADDRESS ||
+                (vm->mode == K3_MODE_USER &&
+                 ((uint16_t)target < vm->user_base || (uint16_t)target > vm->user_limit))) {
                 return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
             }
             vm->pc = (uint16_t)target;
@@ -424,6 +432,8 @@ void k3_vm_init(k3_vm *vm, const k3_vm_callbacks *callbacks)
     vm->irq_enabled = 1;
     vm->irq_pending = 0;
     vm->active_irq = -1;
+    vm->user_base = 0;
+    vm->user_limit = K3_VM_MAX_ADDRESS;
 
     k3_vm_set_callbacks(vm, callbacks);
 }
@@ -448,6 +458,8 @@ void k3_vm_reset(k3_vm *vm)
     vm->irq_enabled = 1;
     vm->irq_pending = 0;
     vm->active_irq = -1;
+    vm->user_base = 0;
+    vm->user_limit = K3_VM_MAX_ADDRESS;
 }
 
 void k3_vm_set_callbacks(k3_vm *vm, const k3_vm_callbacks *callbacks)
@@ -590,7 +602,9 @@ k3_vm_status k3_vm_step(k3_vm *vm)
         }
     }
 
-    if (vm->pc > K3_VM_MAX_ADDRESS) {
+    if (vm->pc > K3_VM_MAX_ADDRESS ||
+        (vm->mode == K3_MODE_USER &&
+         (vm->pc < vm->user_base || vm->pc > vm->user_limit))) {
         k3_vm_status status = set_trap(vm, K3_TRAP_MEMORY, 0, vm->pc);
         notify_stop(vm);
         return status;
@@ -693,4 +707,18 @@ uint8_t k3_vm_pending_irqs(const k3_vm *vm)
 int8_t k3_vm_active_irq(const k3_vm *vm)
 {
     return vm != NULL ? vm->active_irq : -1;
+}
+
+void k3_vm_set_user_bounds(k3_vm *vm, uint16_t base, uint16_t limit)
+{
+    if (vm != NULL) {
+        vm->user_base = base <= K3_VM_MAX_ADDRESS ? base : K3_VM_MAX_ADDRESS;
+        vm->user_limit = limit <= K3_VM_MAX_ADDRESS ? limit : K3_VM_MAX_ADDRESS;
+    }
+}
+
+void k3_vm_get_user_bounds(const k3_vm *vm, uint16_t *base, uint16_t *limit)
+{
+    if (base != NULL) *base = vm ? vm->user_base : 0;
+    if (limit != NULL) *limit = vm ? vm->user_limit : K3_VM_MAX_ADDRESS;
 }
