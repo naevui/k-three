@@ -716,6 +716,20 @@ EOF
 build ptr_func
 expect_reg test_ptr_func r0 60
 
+# Test 40: #include "include/k3libc.h" and hardware driver library
+cat << 'EOF' > "$TMP/libc_test.c"
+#include "include/k3libc.h"
+int main() {
+    k3_init_heap(2000);
+    int *buf = k3_malloc(8);
+    k3_memset(buf, 15, 8);
+    k3_leds_set(buf[0] + buf[7]); // 15 + 15 = 30
+    return k3_leds_get(); // 30
+}
+EOF
+build libc_test
+expect_reg test_libc_test r0 30
+
 # Test 32: the examples/c_demo.c showcase compiles and runs
 "$K3CC" "$ROOT/examples/c_demo.c" -o "$TMP/c_demo.s"
 "$K3ASM" "$TMP/c_demo.s" -o "$TMP/c_demo.k3"
