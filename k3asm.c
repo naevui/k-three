@@ -1210,6 +1210,8 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "IO_SYS_TICKS_H", 5014);
     add_predefined_equ(as, "IO_SYS_MEMSIZE", 5015);
     add_predefined_equ(as, "IO_SYS_IRQ_CTRL", 5016);
+    add_predefined_equ(as, "IO_SYS_USER_BASE", 5017);
+    add_predefined_equ(as, "IO_SYS_USER_LIMIT", 5018);
 
     /* Hardware Block Storage / Disk Controller */
     add_predefined_equ(as, "IO_DISK_SECTOR", 5020);
