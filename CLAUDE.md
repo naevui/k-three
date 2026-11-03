@@ -148,7 +148,33 @@ Key Syscall Codes:
 
 ---
 
-## 5. Critical Code Guidelines & Gotchas
+## 5. Hardware Memory-Mapped I/O (MMIO) Architecture (`io.h`)
+
+K-Three provides a pure hardware MMIO architecture starting at base address `5000` (Page 6), accessible directly through `LOAD` and `STORE` without software trap overhead:
+
+| Address | Constant | Type | Description |
+|---|---|---|---|
+| `5000` | `IO_UART_DATA` | R/W | Read char from serial stdin (-1 on EOF), write char to serial stdout |
+| `5001` | `IO_UART_STAT` | R | Serial status: trit 0 = RX data ready, trit 1 = TX buffer ready |
+| `5002` | `IO_UART_CTRL` | R/W | Serial controller mode / baud control |
+| `5004` | `IO_TIMER_L` | R | Hardware monotonic timestamp (low 9 trits) |
+| `5005` | `IO_TIMER_H` | R | Hardware monotonic timestamp (high 9 trits) |
+| `5006` | `IO_TIMER_INT` | R/W | Hardware timer alarm / interval reload value |
+| `5007` | `IO_TIMER_CTRL` | R/W | Hardware timer control & status |
+| `5008` | `IO_RNG_WORD` | R | Hardware balanced-ternary entropy generator `[-9841..+9841]` |
+| `5009` | `IO_RNG_TRIT` | R | Hardware random balanced trit `{-1, 0, +1}` |
+| `5010` | `IO_SYS_RESET` | W | Writing 1 triggers CPU hardware reset (`k3_vm_reset`) |
+| `5011` | `IO_SYS_HALT` | W | Writing 1 halts CPU (`K3_VM_HALTED`) |
+| `5012` | `IO_SYS_LEDS` | R/W | Front-panel 9-trit hardware LED diagnostic register |
+| `5013` | `IO_SYS_TICKS_L` | R | Instruction step counter (low 9 trits) |
+| `5014` | `IO_SYS_TICKS_H` | R | Instruction step counter (high 9 trits) |
+| `5015` | `IO_SYS_MEMSIZE` | R | Total physical memory words (6561) |
+
+Custom peripheral devices can be registered at run time using `k3_io_register_device(base, size, read_fn, write_fn, user)`.
+
+---
+
+## 6. Critical Code Guidelines & Gotchas
 
 1. **Immediate Boundaries:**
    * Branch offsets (`BRZ`, `BRNZ`, `BRN`, `BRP`) and ALU immediates (`ADDI`, `SUBI`, `LDI`, `CMPI`) **must fit in 4 trits (`-40 .. +40`)**.
@@ -164,7 +190,7 @@ Key Syscall Codes:
 
 ---
 
-## 6. `k3cc` C-Subset Compiler
+## 7. `k3cc` C-Subset Compiler
 
 `k3cc.c` is a single-pass compiler that emits K-Three assembly (`.s`) which is
 then assembled by `k3asm`. It has no external dependencies and is built as
