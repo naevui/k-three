@@ -50,6 +50,8 @@
 #define K3_MMIO_SYS_TICKS_H     5014
 #define K3_MMIO_SYS_MEMSIZE     5015
 #define K3_MMIO_SYS_IRQ_CTRL    5016
+#define K3_MMIO_SYS_USER_BASE   5017
+#define K3_MMIO_SYS_USER_LIMIT  5018
 
 /* Hardware Storage / Block Device Controller */
 #define K3_MMIO_DISK_SECTOR     5020
