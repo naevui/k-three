@@ -304,6 +304,10 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
         if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS) {
             return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
         }
+        if (vm->callbacks.on_mmio_read != NULL &&
+            vm->callbacks.on_mmio_read(vm->callbacks.user, vm, (uint16_t)address, &vm->regs[in.a])) {
+            return K3_VM_RUNNING;
+        }
         vm->regs[in.a] = vm->memory[(size_t)address];
         return K3_VM_RUNNING;
     }
@@ -312,6 +316,10 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
         int64_t address = word_value(&vm->regs[in.b]);
         if (address < 0 || address > (int64_t)K3_VM_MAX_ADDRESS) {
             return set_trap(vm, K3_TRAP_MEMORY, 0, pc);
+        }
+        if (vm->callbacks.on_mmio_write != NULL &&
+            vm->callbacks.on_mmio_write(vm->callbacks.user, vm, (uint16_t)address, &vm->regs[in.a])) {
+            return K3_VM_RUNNING;
         }
         vm->memory[(size_t)address] = vm->regs[in.a];
         return K3_VM_RUNNING;
@@ -441,6 +449,8 @@ void k3_vm_set_callbacks(k3_vm *vm, const k3_vm_callbacks *callbacks)
         vm->callbacks.on_step = NULL;
         vm->callbacks.on_stop = NULL;
         vm->callbacks.on_syscall = NULL;
+        vm->callbacks.on_mmio_read = NULL;
+        vm->callbacks.on_mmio_write = NULL;
     } else {
         vm->callbacks = *callbacks;
     }
