@@ -30,7 +30,7 @@ static void kernel_step_hook(void *user, const k3_vm *vm)
 
 int main(int argc, char **argv)
 {
-    const char *init_image = "build/userspace/init.k3";
+    const char *init_image = "build/userspace/kinit.k3";
     if (argc > 1) {
         init_image = argv[1];
     }
