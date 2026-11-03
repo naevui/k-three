@@ -1210,6 +1210,17 @@ static void init_assembler(assembler_t *as, const char *path)
     add_predefined_equ(as, "IO_SYS_TICKS_H", 5014);
     add_predefined_equ(as, "IO_SYS_MEMSIZE", 5015);
     add_predefined_equ(as, "IO_SYS_IRQ_CTRL", 5016);
+
+    /* Hardware Block Storage / Disk Controller */
+    add_predefined_equ(as, "IO_DISK_SECTOR", 5020);
+    add_predefined_equ(as, "IO_DISK_DMA_ADDR", 5021);
+    add_predefined_equ(as, "IO_DISK_COUNT", 5022);
+    add_predefined_equ(as, "IO_DISK_CMD", 5023);
+    add_predefined_equ(as, "IO_DISK_STATUS", 5024);
+    add_predefined_equ(as, "IO_DISK_CAPACITY", 5025);
+    add_predefined_equ(as, "DISK_CMD_READ", 1);
+    add_predefined_equ(as, "DISK_CMD_WRITE", 2);
+    add_predefined_equ(as, "DISK_CMD_SYNC", 3);
 }
 
 int main(int argc, char **argv)
