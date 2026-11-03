@@ -131,8 +131,16 @@ static bool standard_peripheral_read(k3_vm *vm, uint16_t address, bt_word *out)
         break;
 
     case K3_MMIO_TIMER_CTRL:
-        val = s_timer_ctrl;
+        val = s_timer_ctrl | ((vm && (vm->irq_pending & 1)) ? 8 : 0);
         break;
+
+    case K3_MMIO_SYS_IRQ_CTRL: {
+        int64_t enabled = vm ? vm->irq_enabled : 0;
+        int64_t pending = vm ? vm->irq_pending : 0;
+        int64_t active = vm ? (int64_t)(vm->active_irq + 1) : 0;
+        val = enabled | (pending << 1) | (active << 9);
+        break;
+    }
 
     case K3_MMIO_RNG_WORD: {
         uint64_t r = xorshift64();
@@ -210,6 +218,28 @@ static bool standard_peripheral_write(k3_vm *vm, uint16_t address, const bt_word
 
     case K3_MMIO_TIMER_CTRL:
         s_timer_ctrl = val;
+        if (vm != NULL) {
+            if (val & 2) {
+                k3_vm_clear_irq(vm, 0);
+            }
+            if (val & 4) {
+                k3_vm_raise_irq(vm, 0);
+            }
+        }
+        return true;
+
+    case K3_MMIO_SYS_IRQ_CTRL:
+        if (vm != NULL) {
+            if (val & 1) {
+                vm->irq_enabled = 1;
+            } else if (val & (1 << 8)) {
+                vm->irq_enabled = 0;
+            }
+            uint8_t to_clear = (uint8_t)((val >> 1) & 0x7F);
+            vm->irq_pending &= ~to_clear;
+            uint8_t to_raise = (uint8_t)((val >> 9) & 0xFF);
+            vm->irq_pending |= to_raise;
+        }
         return true;
 
     case K3_MMIO_SYS_RESET:
