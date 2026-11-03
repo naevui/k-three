@@ -102,6 +102,7 @@ Supported language:
 | Literals | decimal integers, `'c'` character literals with escapes, `"..."` strings for `puts()` |
 | Variables | globals with constant initialisers, locals, block scoping |
 | Arrays | `int a[N];` or `int a[N] = {c1, c2, ...};` as globals or locals, `a[i]` read/write, no bounds checks |
+| Structs | `struct S { int a; int b[N]; };` definitions; `struct S v;` local or global instances; `v.a` (read/write, `+=` etc.) and `v.b[i]` member-array access |
 | Functions | up to 5 `int` parameters, `return`, recursion |
 | Statements | `if` / `else`, `while`, `do ... while`, `for`, `switch` / `case` / `default`, `break`, `continue`, blocks, expression statements |
 | Operators | `+ - * / %`, unary `-`/`!`, `=`, `+= -= *= /= %=`, `++`/`--` (pre/post), `< > <= >= == !=`, `&&`, `||` (short-circuit), `?:` |
