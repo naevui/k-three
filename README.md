@@ -189,7 +189,7 @@ k3dis.c              disassembler
 k3dbg.c              scriptable interactive debugger
 k3forth.c            Forth compiler for the K-Three VM
 k3cc.c               C-subset compiler (emits K-Three assembly)
-arch/k3/             Linux-style architecture layer (boot, setup, process, entry)
+arch/k3/             balanced-ternary Linux architecture port (Kconfig, sched, sys_k3, procfs, uaccess, entry)
 kernel/vmlinux.s     bootable kernel image source
 userspace/init.s     PID 1 init process
 tests/test_ternary.c exhaustive, edge-case and random arithmetic tests
