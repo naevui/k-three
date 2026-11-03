@@ -51,6 +51,26 @@
 #define K3_MMIO_SYS_MEMSIZE     5015
 #define K3_MMIO_SYS_IRQ_CTRL    5016
 
+/* Hardware Storage / Block Device Controller */
+#define K3_MMIO_DISK_SECTOR     5020
+#define K3_MMIO_DISK_DMA_ADDR   5021
+#define K3_MMIO_DISK_COUNT      5022
+#define K3_MMIO_DISK_CMD        5023
+#define K3_MMIO_DISK_STATUS     5024
+#define K3_MMIO_DISK_CAPACITY   5025
+
+#define K3_DISK_SECTOR_WORDS    64
+#define K3_DISK_MAX_SECTORS     256
+
+#define K3_DISK_CMD_NONE        0
+#define K3_DISK_CMD_READ        1
+#define K3_DISK_CMD_WRITE       2
+#define K3_DISK_CMD_SYNC        3
+
+#define K3_DISK_STATUS_IDLE     0
+#define K3_DISK_STATUS_BUSY     1
+#define K3_DISK_STATUS_ERROR    (-1)
+
 #define K3_MMIO_MAX_DEVICES     16
 
 typedef bool (*k3_mmio_read_fn)(void *user, k3_vm *vm, uint16_t address, bt_word *out);
@@ -66,6 +86,9 @@ bool k3_io_mmio_write(void *user, k3_vm *vm, uint16_t address, const bt_word *va
 
 /* Attach standard MMIO handlers to a VM callback structure */
 void k3_io_attach(k3_vm *vm);
+
+/* Attach virtual disk image path (NULL for internal RAM-backed disk) */
+bool k3_io_disk_attach(const char *image_path);
 
 /* Register custom MMIO peripheral device */
 bool k3_io_register_device(uint16_t base, uint16_t size,
