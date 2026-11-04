@@ -1,6 +1,6 @@
 # Build outputs
 build/
-bin/
+/bin/
 *.o
 *.d
 *.a
