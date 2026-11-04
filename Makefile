@@ -1,7 +1,7 @@
 CC ?= cc
 CFLAGS ?= -O2
 CPPFLAGS ?=
-INCLUDES := -I.
+INCLUDES := -I. -Ilinux
 WARNFLAGS := -Wall -Wextra -Wpedantic
 STD := -std=c11
 
@@ -209,55 +209,55 @@ $(BUILD)/k3forth: $(BUILD)/k3forth.o $(BUILD)/image.o $(LIB)
 $(BUILD)/k3cc: k3cc.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
-$(BUILD)/boot.o: arch/k3/boot.c | $(BUILD)
+$(BUILD)/boot.o: linux/arch/k3/boot.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/setup.o: arch/k3/kernel/setup.c | $(BUILD)
+$(BUILD)/setup.o: linux/arch/k3/kernel/setup.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/process.o: arch/k3/kernel/process.c | $(BUILD)
+$(BUILD)/process.o: linux/arch/k3/kernel/process.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/sched.o: arch/k3/kernel/sched.c | $(BUILD)
+$(BUILD)/sched.o: linux/arch/k3/kernel/sched.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/sys_k3.o: arch/k3/kernel/sys_k3.c | $(BUILD)
+$(BUILD)/sys_k3.o: linux/arch/k3/kernel/sys_k3.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/procfs.o: arch/k3/fs/procfs.c | $(BUILD)
+$(BUILD)/procfs.o: linux/arch/k3/fs/procfs.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/traps.o: arch/k3/kernel/traps.c | $(BUILD)
+$(BUILD)/traps.o: linux/arch/k3/kernel/traps.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/init_task.o: arch/k3/kernel/init_task.c | $(BUILD)
+$(BUILD)/init_task.o: linux/arch/k3/kernel/init_task.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/irq.o: arch/k3/kernel/irq.c | $(BUILD)
+$(BUILD)/irq.o: linux/arch/k3/kernel/irq.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/setup_debug.o: arch/k3/kernel/setup.c | $(BUILD)
+$(BUILD)/setup_debug.o: linux/arch/k3/kernel/setup.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/process_debug.o: arch/k3/kernel/process.c | $(BUILD)
+$(BUILD)/process_debug.o: linux/arch/k3/kernel/process.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/sched_debug.o: arch/k3/kernel/sched.c | $(BUILD)
+$(BUILD)/sched_debug.o: linux/arch/k3/kernel/sched.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/sys_k3_debug.o: arch/k3/kernel/sys_k3.c | $(BUILD)
+$(BUILD)/sys_k3_debug.o: linux/arch/k3/kernel/sys_k3.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/procfs_debug.o: arch/k3/fs/procfs.c | $(BUILD)
+$(BUILD)/procfs_debug.o: linux/arch/k3/fs/procfs.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/traps_debug.o: arch/k3/kernel/traps.c | $(BUILD)
+$(BUILD)/traps_debug.o: linux/arch/k3/kernel/traps.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/init_task_debug.o: arch/k3/kernel/init_task.c | $(BUILD)
+$(BUILD)/init_task_debug.o: linux/arch/k3/kernel/init_task.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/irq_debug.o: arch/k3/kernel/irq.c | $(BUILD)
+$(BUILD)/irq_debug.o: linux/arch/k3/kernel/irq.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/k3linux: $(BUILD)/boot.o $(BUILD)/setup.o $(BUILD)/process.o $(BUILD)/sched.o $(BUILD)/sys_k3.o $(BUILD)/procfs.o $(BUILD)/traps.o $(BUILD)/init_task.o $(BUILD)/irq.o $(LIB)
@@ -345,9 +345,9 @@ examples: $(TOOLS)
 		echo "AS userspace/kinit.s"; \
 		$(BUILD)/k3asm userspace/kinit.s -o $(BUILD)/userspace/kinit.k3; \
 	fi
-	@if [ -f kernel/vmlinux.s ]; then \
-		echo "AS kernel/vmlinux.s"; \
-		$(BUILD)/k3asm kernel/vmlinux.s -o $(BUILD)/vmlinux.k3 -l $(BUILD)/vmlinux.lst; \
+	@if [ -f linux/kernel/vmlinux.s ]; then \
+		echo "AS linux/kernel/vmlinux.s"; \
+		$(BUILD)/k3asm linux/kernel/vmlinux.s -o $(BUILD)/vmlinux.k3 -l $(BUILD)/vmlinux.lst; \
 	fi
 
 test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TEST_IMAGE) $(TEST_IO) $(TEST_LINUX) examples
