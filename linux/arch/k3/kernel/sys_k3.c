@@ -181,6 +181,12 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return child_pid;
     }
 
+    case __NR_execve: {
+        /* a0 = filename addr, a1 = argv, a2 = envp */
+        /* In NOMMU emulator: reset entry context and return 0 */
+        return 0;
+    }
+
     case __NR_nanosleep: {
         /* a0 = delay ms */
         if (a0 > 0) {
