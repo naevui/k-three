@@ -60,10 +60,15 @@ k3_trap_entry:
 .try_getpid:
     mov r0, r2
     cmpi r0, #20            ; SYS_GETPID
-    brz r0, .do_getpid
-    jmp .trap_done
-.do_getpid:
+    brnz r0, .try_nanosleep
     jmp .trap_sys_getpid
+.try_nanosleep:
+    li r0, #162             ; SYS_NANOSLEEP
+    cmp r0, r0, r2
+    brz r0, .do_nanosleep
+    jmp .trap_done
+.do_nanosleep:
+    jmp .trap_sys_nanosleep
 
 .trap_sys_putc:
     ; Fetch user r1 from [r7 + 5]
@@ -115,6 +120,17 @@ k3_trap_entry:
     mov r4, r7
     addi r4, #6
     store r0, [r4]
+    jmp .trap_done
+
+.trap_sys_nanosleep:
+    mov r4, r7
+    addi r4, #5
+    load r0, [r4]           ; user r1 = sleep ms
+    call k3_msleep
+    ldi r0, #0
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]          ; return 0 in user r0
     jmp .trap_done
 
 .trap_sys_exit:
