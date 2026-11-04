@@ -20,6 +20,7 @@
 #include "arch/k3/include/asm/io.h"
 #include "arch/k3/include/asm/irq.h"
 #include "arch/k3/include/asm/irqflags.h"
+#include "arch/k3/include/asm/signal.h"
 
 static int g_checks = 0;
 static int g_failures = 0;
@@ -69,6 +70,48 @@ extern void free_irq(unsigned int irq, void *dev_id);
 extern void do_IRQ(k3_vm *vm, unsigned int irq, struct pt_regs *regs);
 extern unsigned long k3_get_irq_count(unsigned int irq);
 extern const char *k3_get_irq_name(unsigned int irq);
+
+extern void init_signals(void);
+extern int k3_do_sigaction(int pid, int sig, const struct sigaction *act, struct sigaction *oldact);
+extern int k3_send_signal(k3_vm *vm, int pid, int sig);
+extern bool k3_has_pending_signal(int pid, int *out_sig);
+
+static int s_test_sig_handled = 0;
+static void test_sig_handler(int sig)
+{
+    s_test_sig_handled = sig;
+}
+
+static void test_linux_signals(void)
+{
+    k3_vm vm;
+    k3_vm_init(&vm, NULL);
+    init_signals();
+
+    struct sigaction act = {
+        .sa_handler = test_sig_handler,
+        .sa_flags = 0,
+        .sa_mask = 0
+    };
+    struct sigaction oldact;
+
+    /* Register SIGINT handler for PID 1 */
+    CHECK_EQ_I64(k3_do_sigaction(1, SIGINT, &act, &oldact), 0);
+
+    /* SIGKILL cannot be caught (-EINVAL = -22) */
+    CHECK_EQ_I64(k3_do_sigaction(1, SIGKILL, &act, &oldact), -22);
+
+    /* Send SIGINT to PID 1 */
+    CHECK_EQ_I64(k3_send_signal(&vm, 1, SIGINT), 0);
+
+    /* Check pending signal */
+    int sig_received = 0;
+    CHECK(k3_has_pending_signal(1, &sig_received));
+    CHECK_EQ_I64(sig_received, SIGINT);
+
+    /* No more pending signals */
+    CHECK(!k3_has_pending_signal(1, &sig_received));
+}
 
 static int s_test_irq_fired = 0;
 static int test_irq_handler(int irq, void *dev_id)
@@ -278,6 +321,7 @@ int main(void)
     test_linux_uaccess();
     test_linux_traps_and_atomics();
     test_linux_irq_subsystem();
+    test_linux_signals();
 
     printf("test_linux: %d checks, %d failures\n", g_checks, g_failures);
     return (g_failures == 0) ? 0 : 1;
