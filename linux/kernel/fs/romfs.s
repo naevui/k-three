@@ -20,7 +20,7 @@ k3_romfs_read_file:
     ; Read in 16-word chunks via DMA
 .romfs_loop:
     cmpi r2, #16
-    brn .romfs_small
+    brn r2, .romfs_small
     ; Read full 16 words
     push r0
     push r1
