@@ -61,6 +61,7 @@ _start:
     jmp kinit_user_entry
 
 ; --- Included Kernel Subsystems ---
+.include "lib/string.s"
 .include "drivers/uart.s"
 .include "drivers/timer.s"
 .include "drivers/disk.s"
@@ -71,6 +72,7 @@ _start:
 .include "time/sleep.s"
 .include "sync/spinlock.s"
 .include "power/reboot.s"
+.include "security/capability.s"
 .include "sched/pcb.s"
 .include "sched/switch.s"
 .include "sched/fork.s"
@@ -79,6 +81,7 @@ _start:
 .include "mm/page_alloc.s"
 .include "fs/vfs/vfs.s"
 .include "fs/vfs/sysfs.s"
+.include "fs/devfs/devfs.s"
 .include "fs/romfs.s"
 .include "ipc/pipe.s"
 .include "traps/entry.s"
