@@ -158,6 +158,23 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return child_pid;
     }
 
+    case __NR_nanosleep: {
+        /* a0 = delay ms */
+        if (a0 > 0) {
+            /* Busy-wait / delay loop simulation for NOMMU */
+            for (volatile int64_t i = 0; i < a0 * 1000; ++i) { }
+        }
+        return 0;
+    }
+
+    case __NR_reboot: {
+        bt_word w;
+        bt_word_from_i64(1, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_SYS_RESET, &w);
+        k3_exit_current_task(vm, 0);
+        return 0;
+    }
+
     /* K-Three Architecture Extensions */
     case __NR_k3_uptime: {
         bt_word w;
