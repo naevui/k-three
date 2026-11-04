@@ -122,21 +122,29 @@ k3_trap_entry:
     jmp .trap_done
 
 .trap_sys_execve:
-    ; User r1 = filename pointer
+    ; User r1 = filename pointer, user r2 = argv, user r3 = argc
     mov r4, r7
     addi r4, #5
     load r0, [r4]           ; r0 = filename
     call k3_romfs_lookup    ; returns r0 = start sector, r1 = size
     cmpi r0, #-1
     brz r0, .exec_fail
-    ; Load file into user space at 1458
+
+    ; 1. Load file into user space at 1458
     mov r2, r1              ; r2 = size
     li r1, #1458            ; r1 = user base
     call k3_romfs_read_file
-    ; Reset user stack and set EPC to entry point (1458)
-    li r0, #5999
-    mov r7, r0
-    ; Set return code 0
+
+    ; 2. Fetch argc (r3) and argv (r2) from caller stack
+    mov r4, r7
+    addi r4, #3
+    load r0, [r4]           ; r0 = argc
+    mov r4, r7
+    addi r4, #4
+    load r1, [r4]           ; r1 = argv pointer
+    call k3_setup_user_stack
+
+    ; 3. Setup user stack return context
     ldi r0, #0
     mov r4, r7
     addi r4, #6
