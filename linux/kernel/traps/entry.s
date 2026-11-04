@@ -35,9 +35,14 @@ k3_trap_entry:
 .try_putc:
     mov r0, r2
     cmpi r0, #1             ; SYS_PUTC
-    brnz r0, .try_puts
+    brnz r0, .try_fork
     jmp .trap_sys_putc
-.try_puts:
+.try_fork:
+    mov r0, r2
+    cmpi r0, #2             ; SYS_FORK
+    brnz r0, .try_read
+    jmp .trap_sys_fork
+.try_read:
     mov r0, r2
     cmpi r0, #3             ; SYS_READ
     brnz r0, .try_write
@@ -66,6 +71,13 @@ k3_trap_entry:
     addi r4, #5
     load r0, [r4]
     call k3_kputc
+    jmp .trap_done
+
+.trap_sys_fork:
+    call k3_sys_fork
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]          ; return child PID in user r0
     jmp .trap_done
 
 .trap_sys_read:
