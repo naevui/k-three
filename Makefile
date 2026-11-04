@@ -1,7 +1,7 @@
 CC ?= cc
 CFLAGS ?= -O2
 CPPFLAGS ?=
-INCLUDES := -I. -Ilinux
+INCLUDES := -I. -Icore -Itools -Ilinux -Iinclude
 WARNFLAGS := -Wall -Wextra -Wpedantic
 STD := -std=c11
 
@@ -80,43 +80,43 @@ tools: $(TOOLS)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/ternary.o: ternary.c | $(BUILD)
+$(BUILD)/ternary.o: core/ternary.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/vm.o: vm.c | $(BUILD)
+$(BUILD)/vm.o: core/vm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/isa.o: isa.c | $(BUILD)
+$(BUILD)/isa.o: core/isa.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/packed.o: packed.c | $(BUILD)
+$(BUILD)/packed.o: core/packed.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/syscall.o: syscall.c | $(BUILD)
+$(BUILD)/syscall.o: core/syscall.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/io.o: io.c | $(BUILD)
+$(BUILD)/io.o: core/io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/ternary_debug.o: ternary.c | $(BUILD)
+$(BUILD)/ternary_debug.o: core/ternary.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/vm_debug.o: vm.c | $(BUILD)
+$(BUILD)/vm_debug.o: core/vm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/isa_debug.o: isa.c | $(BUILD)
+$(BUILD)/isa_debug.o: core/isa.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/packed_debug.o: packed.c | $(BUILD)
+$(BUILD)/packed_debug.o: core/packed.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/syscall_debug.o: syscall.c | $(BUILD)
+$(BUILD)/syscall_debug.o: core/syscall.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/io_debug.o: io.c | $(BUILD)
+$(BUILD)/io_debug.o: core/io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/image_debug.o: image.c | $(BUILD)
+$(BUILD)/image_debug.o: core/image.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(BUILD)/test_ternary.o: tests/test_ternary.c | $(BUILD)
@@ -167,25 +167,25 @@ $(BUILD)/test_io_debug.o: tests/test_io.c | $(BUILD)
 $(BUILD)/test_linux_debug.o: tests/test_linux.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3asm.o: k3asm.c | $(BUILD)
+$(BUILD)/k3asm.o: tools/k3asm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3vm.o: k3vm.c | $(BUILD)
+$(BUILD)/k3vm.o: tools/k3vm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3dis.o: k3dis.c | $(BUILD)
+$(BUILD)/k3dis.o: tools/k3dis.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3dbg.o: k3dbg.c | $(BUILD)
+$(BUILD)/k3dbg.o: tools/k3dbg.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/k3forth.o: k3forth.c | $(BUILD)
+$(BUILD)/k3forth.o: tools/k3forth.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/image.o: image.c | $(BUILD)
+$(BUILD)/image.o: core/image.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(BUILD)/disasm.o: disasm.c | $(BUILD)
+$(BUILD)/disasm.o: core/disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(LIB): $(LIB_OBJS)
@@ -206,7 +206,7 @@ $(BUILD)/k3dbg: $(BUILD)/k3dbg.o $(BUILD)/image.o $(BUILD)/disasm.o $(LIB)
 $(BUILD)/k3forth: $(BUILD)/k3forth.o $(BUILD)/image.o $(LIB)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(BUILD)/k3cc: k3cc.c | $(BUILD)
+$(BUILD)/k3cc: tools/k3cc.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
 $(BUILD)/boot.o: linux/arch/k3/boot.c | $(BUILD)
@@ -311,23 +311,23 @@ $(TEST_IO_DEBUG): $(DEBUG_IO_OBJS)
 $(TEST_LINUX_DEBUG): $(DEBUG_LINUX_OBJS)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $^ -o $@
 
-$(BUILD)/k3asm_debug: k3asm.c image.c ternary.c packed.c | $(BUILD)
+$(BUILD)/k3asm_debug: tools/k3asm.c core/image.c core/ternary.c core/packed.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3vm_debug: k3vm.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c disasm.c | $(BUILD)
+$(BUILD)/k3vm_debug: tools/k3vm.c core/vm.c core/isa.c core/ternary.c core/packed.c core/syscall.c core/image.c core/io.c core/disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3dis_debug: k3dis.c isa.c ternary.c packed.c image.c disasm.c | $(BUILD)
+$(BUILD)/k3dis_debug: tools/k3dis.c core/isa.c core/ternary.c core/packed.c core/image.c core/disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3dbg_debug: k3dbg.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c disasm.c | $(BUILD)
+$(BUILD)/k3dbg_debug: tools/k3dbg.c core/vm.c core/isa.c core/ternary.c core/packed.c core/syscall.c core/image.c core/io.c core/disasm.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3forth_debug: k3forth.c vm.c isa.c ternary.c packed.c syscall.c image.c io.c | $(BUILD)
+$(BUILD)/k3forth_debug: tools/k3forth.c core/vm.c core/isa.c core/ternary.c core/packed.c core/syscall.c core/image.c core/io.c | $(BUILD)
 	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $^ -o $@
 
-$(BUILD)/k3cc_debug: k3cc.c | $(BUILD)
-	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $< -o $@
+$(BUILD)/k3cc_debug: tools/k3cc.c | $(BUILD)
+	$(CC) $(STD) $(WARNFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) $(INCLUDES) $< -o $@
 
 examples: $(TOOLS)
 	@mkdir -p $(BUILD)/examples
