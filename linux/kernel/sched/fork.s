@@ -14,8 +14,9 @@ k3_sys_fork:
     ldi r2, #1              ; Start from Task 1 (Task 0 is parent/idle)
 .fork_search_loop:
     cmpi r2, #4
-    brz r2, .fork_fail
-
+    brnz r2, .fork_check_slot
+    jmp .fork_fail
+.fork_check_slot:
     mov r4, r2
     li r5, #16              ; PCB_ENTRY_SIZE
     mul r4, r4, r5
