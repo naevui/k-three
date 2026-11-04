@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   42 +
+ arch/k3/include/asm/unistd.h        |   43 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  218 +
+ arch/k3/kernel/sys_k3.c             |  235 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 1966 insertions(+)
+ 39 files changed, 1984 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,43 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1277,6 +1277,7 @@ index 0000000..1111111
 +#define __NR_uname              122
 +#define __NR_sched_yield        158
 +#define __NR_nanosleep          162
++#define __NR_reboot             169
 +
 +/* K-Three Balanced Ternary Hardware Extensions */
 +#define __NR_k3_uptime          200   /* Monotonic hardware timer ms */
@@ -1923,7 +1924,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,218 @@
+@@ -0,0 +1,235 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2082,6 +2083,23 @@ index 0000000..1111111
 +        /* Create a child task cloned from current task */
 +        int child_pid = k3_create_task("forked_child", (uint16_t)a0, (uint16_t)a1);
 +        return child_pid;
++    }
++
++    case __NR_nanosleep: {
++        /* a0 = delay ms */
++        if (a0 > 0) {
++            /* Busy-wait / delay loop simulation for NOMMU */
++            for (volatile int64_t i = 0; i < a0 * 1000; ++i) { }
++        }
++        return 0;
++    }
++
++    case __NR_reboot: {
++        bt_word w;
++        bt_word_from_i64(1, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_SYS_RESET, &w);
++        k3_exit_current_task(vm, 0);
++        return 0;
 +    }
 +
 +    /* K-Three Architecture Extensions */
