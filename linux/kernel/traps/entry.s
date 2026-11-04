@@ -25,24 +25,32 @@ k3_trap_entry:
     ; User's original r0 is at [r7 + 6]
     mov r4, r7
     addi r4, #6
-    load r0, [r4]
+    load r2, [r4]
 
     ; 3. Dispatch system calls
+    mov r0, r2
     cmpi r0, #0             ; SYS_EXIT
-    brz r0, .trap_sys_exit
-
+    brnz r0, .try_putc
+    jmp .trap_sys_exit
+.try_putc:
+    mov r0, r2
     cmpi r0, #1             ; SYS_PUTC
-    brz r0, .trap_sys_putc
-
+    brnz r0, .try_puts
+    jmp .trap_sys_putc
+.try_puts:
+    mov r0, r2
     cmpi r0, #4             ; SYS_PUTS
-    brz r0, .trap_sys_puts
-
+    brnz r0, .try_time
+    jmp .trap_sys_puts
+.try_time:
+    mov r0, r2
     cmpi r0, #13            ; SYS_TIME
-    brz r0, .trap_sys_time
-
+    brnz r0, .try_getpid
+    jmp .trap_sys_time
+.try_getpid:
+    mov r0, r2
     cmpi r0, #20            ; SYS_GETPID
     brz r0, .trap_sys_getpid
-
     jmp .trap_done
 
 .trap_sys_putc:
