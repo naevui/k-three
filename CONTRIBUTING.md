@@ -52,19 +52,12 @@ make debug
 ## 3. Repository Structure
 
 * `ternary.h` / `ternary.c`: Public balanced ternary arithmetic API (addition, subtraction, multiplication, shifting).
-* `packed.h` / `packed.c`: 2-bit per trit compact binary encoding (18-bit words, 4 words per 9 bytes).
-* `isa.h` / `isa.c`: Instruction field layout, opcode definitions (0..26), and instruction decoder.
-* `vm.h` / `vm.c`: Processor architectural state (`r0..r7`, PC, 6561-word memory, trap vectors, privilege modes).
-* `syscall.h` / `syscall.c`: Standard K-Three host syscall dispatcher (I/O, files, telemetry, desktop).
-* `image.h` / `image.c`: Word-image text format reader and writer.
-* `disasm.h` / `disasm.c`: Instruction formatting and disassembler core.
-* `k3asm.c`: Two-pass assembler (labels, directives, macros, equates).
-* `k3vm.c`: Command-line program runner with register/memory dumping and instruction tracing.
-* `k3dis.c`: Disassembler CLI.
-* `k3dbg.c`: Interactive scriptable debugger with CPU dashboard.
-* `k3forth.c`: Minimal Forth compiler and interactive REPL.
-* `linux/`: Ternary Linux architecture port (`arch/k3/` port, dmesg boot, trap vectors, preemptive scheduler, procfs).
-* `examples/`: K-Three assembly programs (`k3os.s`, `snake.s`, `factorial.s`, `counter.s`, etc.).
+* `core/`: K-Three processor architectural state, arithmetic, instruction decoder, MMIO, host syscalls, image reader.
+* `tools/`: Toolchain CLI programs (`k3asm`, `k3vm`, `k3dis`, `k3dbg`, `k3forth`, `k3cc`).
+* `linux/`: Ternary Linux architecture port (`arch/k3/` port, dmesg boot, trap vectors, preemptive scheduler, procfs, kernel patch).
+* `userspace/`: Linux userspace init daemons (`kinit.c`, `kinit.s`, `init.s`).
+* `include/`: Standalone C standard library and hardware drivers (`k3libc.h`).
+* `examples/`: K-Three assembly and C programs (`c_os.c`, `c_hardware.c`, `k3os.s`, `snake.s`, `factorial.s`, etc.).
 * `tests/`: C unit test suites and shell test runners.
 
 ---
