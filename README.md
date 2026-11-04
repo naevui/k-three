@@ -189,9 +189,8 @@ k3dis.c              disassembler
 k3dbg.c              scriptable interactive debugger
 k3forth.c            Forth compiler for the K-Three VM
 k3cc.c               C-subset compiler (emits K-Three assembly)
-arch/k3/             balanced-ternary Linux architecture port (Kconfig, sched, sys_k3, procfs, uaccess, entry)
-kernel/vmlinux.s     bootable kernel image source
-userspace/init.s     PID 1 init process
+linux/               Linux monorepo tree (arch/k3/ architecture port, kernel/vmlinux.s)
+userspace/           PID 1 kinit daemon (kinit.c, kinit.s, init.s)
 tests/test_ternary.c exhaustive, edge-case and random arithmetic tests
 tests/test_vm.c      opcode, trap, control-flow and callback tests
 tests/test_isa.c     decoder field, opcode and immediate tests
