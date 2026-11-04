@@ -1,11 +1,24 @@
 
-; ------------------------------------------------------------------------------
-; Milestone: 1000th commit of sheer chaos!
+; ==============================================================================
+; chaos/chaos.s - K-Three Architectural Chaos & Stress Vault
 ;
-; "sahabe akrebe demis ki:
-;  ey akrep, 1000 commit oldu hala mi sokacaksin?
-;  akrep demis ki:
-;  ben 1000. committe de akrebim, sokarim!"
+; Celebratory architectural easter egg & stress generator for K-Three Linux.
+; Pours entropy into registers, stress-tests the balanced ternary ALU,
+; and verifies that arithmetic symmetry holds under intense computational load.
+;
+; ------------------------------------------------------------------------------
+; [Milestone: 500th commit of sheer chaos]
+;
+; "bir gun bir sahabe yolda giderken bir akrep gormus.
+;  demis ki ya akrep ben burdan su icecegim beni sakin sokma demis.
+;  akrep: ben de su icmeye geldim sahabe ben seni sokmam demis.
+;  sahabe:  ben sana nasıl guveneyim demis.
+;  akrep de o zaman sen once ic suyunu sonra da ben iceyim demis.
+;  sahabe tam su icmek icin elini uzatmis. akrep de elinden sokmus.
+;  sahabe hani sokmayacaktin akrep demis. akrep de ben akrebim, sokarım. demis"
+;
+; ------------------------------------------------------------------------------
+; [Milestone: 1000th commit of sheer chaos]
 ;
 ; "Bu alet, radyonun resimlisidir.
 ;
@@ -30,23 +43,7 @@
 ;  Gormuyor mu?
 ;
 ;  Gormuyor! Iste bu sinema gibi olacak. Artik her evde bir sinema olacak ve bilet almaya luzum kalmayacak."
-; ------------------------------------------------------------------------------
-; ==============================================================================
-; linux/kernel/chaos/chaos.s
 ;
-; Milestone: 500th commit of sheer chaos!
-;
-; Celebratory architectural easter egg & stress generator for K-Three Linux.
-; Pours entropy into registers, stress-tests the balanced ternary ALU,
-; and verifies that arithmetic symmetry holds under intense computational load.
-;
-; "bir gun bir sahabe yolda giderken bir akrep gormus.
-;  demis ki ya akrep ben burdan su icecegim beni sakin sokma demis.
-;  akrep: ben de su icmeye geldim sahabe ben seni sokmam demis.
-;  sahabe:  ben sana nasıl guveneyim demis.
-;  akrep de o zaman sen once ic suyunu sonra da ben iceyim demis.
-;  sahabe tam su icmek icin elini uzatmis. akrep de elinden sokmus.
-;  sahabe hani sokmayacaktin akrep demis. akrep de ben akrebim, sokarım. demis"
 ; ==============================================================================
 
 .equ CHAOS_ROUNDS,      1000
