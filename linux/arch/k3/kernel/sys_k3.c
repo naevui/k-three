@@ -193,6 +193,25 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0;
     }
 
+    case __NR_k3_disk_dma: {
+        /* a0 = sector, a1 = dma buffer addr, a2 = cmd (1=read, 2=write) */
+        bt_word w;
+        bt_word_from_i64(a0, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_SECTOR, &w);
+        bt_word_from_i64(a1, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_DMA, &w);
+        bt_word_from_i64(16, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_COUNT, &w);
+        bt_word_from_i64(a2, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_CMD, &w);
+        if (k3_io_mmio_read(NULL, vm, K3_MMIO_DISK_STATUS, &w)) {
+            int64_t stat = 0;
+            bt_word_to_i64(&w, &stat);
+            return stat;
+        }
+        return -1;
+    }
+
     default:
         return -38; /* -ENOSYS: Function not implemented */
     }
