@@ -119,6 +119,23 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         k3_exit_current_task(vm, (int)a0);
         return 0;
 
+    case __NR_gettimeofday: {
+        /* a0 = struct timeval *tv (sec at a0, usec at a0+1) */
+        bt_word w;
+        int64_t t = 0;
+        if (k3_io_mmio_read(NULL, vm, K3_MMIO_TIMER_L, &w)) {
+            bt_word_to_i64(&w, &t);
+        }
+        if (a0 > 0) {
+            bt_word w_sec, w_usec;
+            bt_word_from_i64(t / 1000, &w_sec);
+            bt_word_from_i64((t % 1000) * 1000, &w_usec);
+            k3_vm_set_mem(vm, (uint16_t)a0, &w_sec);
+            k3_vm_set_mem(vm, (uint16_t)(a0 + 1), &w_usec);
+        }
+        return 0;
+    }
+
     case __NR_uname:
         return k3_sys_uname(vm, (uint16_t)a0);
 
