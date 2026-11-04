@@ -63,7 +63,7 @@ make debug
 * `k3dis.c`: Disassembler CLI.
 * `k3dbg.c`: Interactive scriptable debugger with CPU dashboard.
 * `k3forth.c`: Minimal Forth compiler and interactive REPL.
-* `arch/k3/`: Ternary Linux architecture layer (dmesg boot, trap vectors, task switching).
+* `linux/`: Ternary Linux architecture port (`arch/k3/` port, dmesg boot, trap vectors, preemptive scheduler, procfs).
 * `examples/`: K-Three assembly programs (`k3os.s`, `snake.s`, `factorial.s`, `counter.s`, etc.).
 * `tests/`: C unit test suites and shell test runners.
 
