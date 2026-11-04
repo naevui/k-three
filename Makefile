@@ -351,6 +351,18 @@ examples: $(TOOLS)
 		echo "AS userspace/kinit.s"; \
 		$(BUILD)/k3asm userspace/kinit.s -o $(BUILD)/userspace/kinit.k3; \
 	fi
+	@if [ -f userspace/sh.s ]; then \
+		echo "AS userspace/sh.s"; \
+		$(BUILD)/k3asm userspace/sh.s -o $(BUILD)/userspace/sh.k3; \
+	fi
+	@if [ -f userspace/echo.s ]; then \
+		echo "AS userspace/echo.s"; \
+		$(BUILD)/k3asm userspace/echo.s -o $(BUILD)/userspace/echo.k3; \
+	fi
+	@if [ -f userspace/cat.s ]; then \
+		echo "AS userspace/cat.s"; \
+		$(BUILD)/k3asm userspace/cat.s -o $(BUILD)/userspace/cat.k3; \
+	fi
 	@if [ -f linux/kernel/vmlinux.s ]; then \
 		echo "AS linux/kernel/vmlinux.s"; \
 		$(BUILD)/k3asm linux/kernel/vmlinux.s -o $(BUILD)/vmlinux.k3 -l $(BUILD)/vmlinux.lst; \
