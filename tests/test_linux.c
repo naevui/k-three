@@ -257,10 +257,11 @@ static void test_linux_syscalls(void)
     int64_t stat = k3_dispatch_linux_syscall(&vm, __NR_k3_disk_dma, 0, 2500, 1);
     CHECK_EQ_I64(stat, 0);
 
-    /* 7. sys_nanosleep(), sys_reboot(), sys_gettimeofday() */
+    /* 7. sys_nanosleep(), sys_reboot(), sys_gettimeofday(), sys_execve() */
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_nanosleep, 1, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_reboot, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_gettimeofday, 3200, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_execve, 3300, 0, 0), 0);
 }
 
 static void test_linux_procfs(void)
