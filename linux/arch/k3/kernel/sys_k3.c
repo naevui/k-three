@@ -199,7 +199,7 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         bt_word_from_i64(a0, &w);
         k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_SECTOR, &w);
         bt_word_from_i64(a1, &w);
-        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_DMA, &w);
+        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_DMA_ADDR, &w);
         bt_word_from_i64(16, &w);
         k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_COUNT, &w);
         bt_word_from_i64(a2, &w);
