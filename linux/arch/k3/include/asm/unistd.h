@@ -28,6 +28,7 @@
 #define __NR_getgid             104
 #define __NR_geteuid            107
 #define __NR_getegid            108
+#define __NR_gettimeofday       110
 #define __NR_sysinfo            116
 #define __NR_clone              120
 #define __NR_uname              122
