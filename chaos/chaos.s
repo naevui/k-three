@@ -6,6 +6,30 @@
 ;  ey akrep, 1000 commit oldu hala mi sokacaksin?
 ;  akrep demis ki:
 ;  ben 1000. committe de akrebim, sokarim!"
+;
+; "Bu alet, radyonun resimlisidir.
+;
+;  Nasil yani?
+;
+;  Ya guzel kardesim! Simdi radyoda Zeki Muren sarki soylemiyor mu?
+;
+;  Soyluyor.
+;
+;  Iste onu soylerken hem dinleyip hem goreceksiniz, ayni anda.
+;
+;  Peki Zeki Muren de bizi gorecek mi?
+;
+;  Vallahi orasini ben de bilmiyorum.
+;
+;  E gorurse iyi degil. Ev halidir kardesim, insan icabinda donla geziyor. Koskoca Zeki Muren'e karsi olur mu?
+;
+;  Ya Zeki Muren hadi neyse, sarkicidir. Peki ajans saatlerinde n'olacak? Basbakan cikar, Reis-i Cumhur cikar, evde de boyle kravatla butun gun oturamayiz ki.
+;
+;  Ya sacma sapan konusmayin be! Sinemada artistler sizi goruyor mu?
+;
+;  Gormuyor mu?
+;
+;  Gormuyor! Iste bu sinema gibi olacak. Artik her evde bir sinema olacak ve bilet almaya luzum kalmayacak."
 ; ------------------------------------------------------------------------------
 ; ==============================================================================
 ; linux/kernel/chaos/chaos.s
