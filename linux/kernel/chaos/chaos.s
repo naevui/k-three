@@ -6,6 +6,14 @@
 ; Celebratory architectural easter egg & stress generator for K-Three Linux.
 ; Pours entropy into registers, stress-tests the balanced ternary ALU,
 ; and verifies that arithmetic symmetry holds under intense computational load.
+;
+; "bir gun bir sahabe yolda giderken bir akrep gormus.
+;  demis ki ya akrep ben burdan su icecegim beni sakin sokma demis.
+;  akrep: ben de su icmeye geldim sahabe ben seni sokmam demis.
+;  sahabe:  ben sana nasıl guveneyim demis.
+;  akrep de o zaman sen once ic suyunu sonra da ben iceyim demis.
+;  sahabe tam su icmek icin elini uzatmis. akrep de elinden sokmus.
+;  sahabe hani sokmayacaktin akrep demiş. akrep de ben akrebim, sokarım. demis"
 ; ==============================================================================
 
 .equ CHAOS_ROUNDS,      500
