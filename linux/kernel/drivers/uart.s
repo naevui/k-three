@@ -32,6 +32,8 @@ k3_kputs:
 ; Input: r0 = signed 9-trit integer
 ; Clobbers: r0, r1, r2, r4
 k3_kprint_num:
+    push r6
+    push r4
     brn r0, .knum_neg
     jmp .knum_pos
 .knum_neg:
@@ -41,13 +43,10 @@ k3_kprint_num:
     call k3_kputc
     pop r0
 .knum_pos:
+    mov r4, r0              ; r4 = original number
     cmpi r0, #10
     brn r0, .knum_single
-    ; Recursive division by 10
-    mov r4, r0
-    ; r0 = r4 / 10, r1 = r4 % 10
-    ldi r1, #10
-    ; Divide loop
+    ; Recursive division of r4 by 10
     ldi r0, #0
 .knum_div_loop:
     subi r4, #10
@@ -59,7 +58,17 @@ k3_kprint_num:
     push r4                 ; save remainder
     call k3_kprint_num
     pop r0                  ; restore remainder
-.knum_single:
-    addi r0, #48            ; '0' + digit
+    addi r0, #40
+    addi r0, #8             ; '0' + digit
     call k3_kputc
+    pop r4
+    pop r6
+    ret
+.knum_single:
+    mov r0, r4
+    addi r0, #40
+    addi r0, #8             ; +48 ('0' + digit)
+    call k3_kputc
+    pop r4
+    pop r6
     ret
