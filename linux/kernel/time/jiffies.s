@@ -17,8 +17,9 @@ k3_do_timer_tick:
     li r1, k3_jiffies_l
     load r0, [r1]
     addi r0, #1
-    cmpi r0, #9841          ; Word maximum limit
-    brp r0, .jiffies_overflow
+    li r2, #9841
+    cmp r2, r0, r2          ; compare jiffies with maximum limit
+    brp r2, .jiffies_overflow
     store r0, [r1]
     ret
 
