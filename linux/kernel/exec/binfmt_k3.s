@@ -3,10 +3,48 @@
 ;
 ; Native K3 Binary Loader & Execve Engine for K-Three Linux
 ; Loads executable 9-trit word programs into user space memory (1458..5999)
-; and prepares register/stack frame for execution.
+; and prepares the initial stack frame with argc, argv[] and envp[].
 ; ==============================================================================
 
-.equ BINFMT_K3_MAGIC,   19683   ; Balanced ternary signature 3^9
+.equ BINFMT_K3_MAGIC,   7290    ; Balanced ternary signature 10 * 729
+.equ USER_STACK_TOP,    5999    ; Top of userspace memory
+
+; --- Setup User Stack with Arguments ---
+; Prepares initial user stack frame layout:
+;   [sp - 0] = argc
+;   [sp - 1] = argv[0] pointer
+;   [sp - 2] = argv[1] pointer (or 0)
+;   [sp - 3] = NULL terminator (0)
+; Input: r0 = argc (arg count)
+;        r1 = argv pointer array
+; Output: r7 = initialized user stack pointer
+; Clobbers: r2, r3, r4
+k3_setup_user_stack:
+    li r7, #5999            ; USER_STACK_TOP
+
+    ; Push argv pointers in reverse order if argc > 0
+    cmpi r0, #0
+    brz r0, .stack_push_argc
+
+    ; Push NULL terminator
+    ldi r2, #0
+    push r2
+
+    ; Push argv elements
+    mov r3, r0              ; r3 = count
+.stack_push_argv:
+    brz r3, .stack_push_argc
+    subi r3, #1
+    mov r4, r1
+    add r4, r4, r3
+    load r2, [r4]           ; r2 = argv[r3]
+    push r2
+    jmp .stack_push_argv
+
+.stack_push_argc:
+    ; Push argc
+    push r0
+    ret
 
 ; --- Load and Execute Binary Image ---
 ; Input: r0 = pointer to executable image in memory or block storage
