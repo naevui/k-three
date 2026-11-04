@@ -25,7 +25,7 @@
 #define MAX_VARS 256
 #define MAX_FUNCS 64
 #define MAX_IDENT 64
-#define MAX_ARGS 5 /* r0..r4 */
+#define MAX_ARGS 5 /* r0, r1, r2, r4, r5 (r3 is reserved as frame pointer) */
 #define K3_MAX_WORDS 6561 /* total VM memory words (3^8) */
 #define MAX_STRINGS 256
 #define MAX_STR 1024 /* matches k3asm's quoted-string buffer */
@@ -818,9 +818,11 @@ static void parse_primary(FILE *out)
                 exit(1);
             }
 
-            /* Custom function: Pop arguments into registers r0..r4 in reverse */
+            /* Custom function: Pop arguments into argument registers in reverse.
+             * Note: r3 is the frame pointer, so argument registers are: r0, r1, r2, r4, r5 */
+            static const int arg_regs[MAX_ARGS] = {0, 1, 2, 4, 5};
             for (int a = arg_count - 1; a >= 0; --a) {
-                fprintf(out, "    pop r%d\n", a);
+                fprintf(out, "    pop r%d\n", arg_regs[a]);
             }
             fprintf(out, "    push r6\n");
             fprintf(out, "    push r3\n");
@@ -2177,9 +2179,10 @@ static void parse_program(FILE *out)
 
             fprintf(out, "fn_%s:\n", func_name);
 
-            /* Push parameters from registers r0..r4 to stack */
+            /* Push parameters from argument registers (r0, r1, r2, r4, r5) to stack */
+            static const int arg_regs[MAX_ARGS] = {0, 1, 2, 4, 5};
             for (int p = 0; p < param_count; ++p) {
-                fprintf(out, "    push r%d\n", p);
+                fprintf(out, "    push r%d\n", arg_regs[p]);
             }
 
             /* Establish the frame pointer r3 = r7 + param_count, i.e. one
