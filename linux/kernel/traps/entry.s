@@ -65,10 +65,15 @@ k3_trap_entry:
 .try_nanosleep:
     li r0, #162             ; SYS_NANOSLEEP
     cmp r0, r0, r2
-    brz r0, .do_nanosleep
-    jmp .trap_done
-.do_nanosleep:
+    brnz r0, .try_reboot
     jmp .trap_sys_nanosleep
+.try_reboot:
+    li r0, #169             ; SYS_REBOOT
+    cmp r0, r0, r2
+    brz r0, .do_reboot
+    jmp .trap_done
+.do_reboot:
+    jmp .trap_sys_reboot
 
 .trap_sys_putc:
     ; Fetch user r1 from [r7 + 5]
@@ -131,6 +136,10 @@ k3_trap_entry:
     mov r4, r7
     addi r4, #6
     store r0, [r4]          ; return 0 in user r0
+    jmp .trap_done
+
+.trap_sys_reboot:
+    call k3_sys_reset
     jmp .trap_done
 
 .trap_sys_exit:
