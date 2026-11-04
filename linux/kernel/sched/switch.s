@@ -25,7 +25,7 @@ k3_schedule_next:
     load r0, [r1]
     addi r0, #1
     cmpi r0, #4
-    brn .sched_keep
+    brn r0, .sched_keep
     ldi r0, #0
 .sched_keep:
     ; Update current task
