@@ -60,8 +60,13 @@ k3_trap_entry:
 .try_getpid:
     mov r0, r2
     cmpi r0, #20            ; SYS_GETPID
-    brnz r0, .try_nanosleep
+    brnz r0, .try_kill
     jmp .trap_sys_getpid
+.try_kill:
+    mov r0, r2
+    cmpi r0, #37            ; SYS_KILL
+    brnz r0, .try_nanosleep
+    jmp .trap_sys_kill
 .try_nanosleep:
     li r0, #162             ; SYS_NANOSLEEP
     cmp r0, r0, r2
@@ -125,6 +130,18 @@ k3_trap_entry:
     mov r4, r7
     addi r4, #6
     store r0, [r4]
+    jmp .trap_done
+
+.trap_sys_kill:
+    mov r4, r7
+    addi r4, #5
+    load r0, [r4]           ; user r1 = target PID
+    addi r4, #-1
+    load r1, [r4]           ; user r2 = sig
+    call k3_sys_kill_task
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]          ; return code
     jmp .trap_done
 
 .trap_sys_nanosleep:
