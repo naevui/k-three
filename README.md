@@ -167,30 +167,11 @@ error.
 ## Layout
 
 ```
-ternary.h            public arithmetic API
-ternary.c            implementation
-packed.h             packed 2-bit-per-trit word/stream API
-packed.c             implementation
-isa.h                instruction layout, opcode enum and decoder API
-isa.c                decoder implementation (core library, no I/O)
-vm.h                 VM core state, privilege modes, status/trap API, callbacks
-vm.c                 VM execution core (uses isa.h)
-image.h              text and .k3b word-image reader/writer (host tools)
-image.c              implementation
-disasm.h             instruction formatting (host tools, uses stdio)
-disasm.c             implementation
-syscall.h            host syscall numbers and ABI
-syscall.c            syscall layer, terminal control and GUI desktop
-io.h                 memory-mapped I/O (MMIO) hardware architecture
-io.c                 hardware peripherals (UART, timer, RNG, system control)
-k3asm.c              assembler (labels, directives, pseudoinstructions)
-k3vm.c               command-line loader/runner
-k3dis.c              disassembler
-k3dbg.c              scriptable interactive debugger
-k3forth.c            Forth compiler for the K-Three VM
-k3cc.c               C-subset compiler (emits K-Three assembly)
-linux/               Linux monorepo tree (arch/k3/ architecture port, kernel/vmlinux.s)
-userspace/           PID 1 kinit daemon (kinit.c, kinit.s, init.s)
+core/                K-Three processor core & VM (ternary, vm, isa, packed, io, syscall, image, disasm)
+tools/               K-Three toolchain (k3asm, k3vm, k3dis, k3dbg, k3forth, k3cc)
+linux/               Linux monorepo tree (arch/k3/ architecture port, kernel/vmlinux.s, patches/)
+userspace/           userspace init services (kinit.c, kinit.s, init.s)
+include/             C standard library & hardware drivers (k3libc.h)
 tests/test_ternary.c exhaustive, edge-case and random arithmetic tests
 tests/test_vm.c      opcode, trap, control-flow and callback tests
 tests/test_isa.c     decoder field, opcode and immediate tests
