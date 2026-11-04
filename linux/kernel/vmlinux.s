@@ -44,8 +44,9 @@ _start:
     li r0, str_dmesg_sched
     call k3_kputs
 
-    ; 7. Mount Root Virtual Filesystem
+    ; 7. Mount Root Virtual Filesystem and ROMFS
     call k3_vfs_init
+    call k3_romfs_mount
     li r0, str_dmesg_vfs
     call k3_kputs
 
