@@ -362,6 +362,551 @@ fn_k3_memcmp:
     add r7, r7, r1
     ret
 
+fn_k3_strlen:
+    push r0
+    li r1, #1
+    add r3, r7, r1
+    ldi r0, #0
+    push r0
+    li r0, #0
+    li r1, #-2
+    add r1, r3, r1
+    store r0, [r1]
+.L29:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brnz r2, .L31
+    ldi r0, #0
+    jmp .L32
+.L31:
+    ldi r0, #1
+.L32:
+    brnz r0, .L33
+    jmp .L30
+.L33:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    addi r0, #1
+    store r0, [r1]
+    pop r0
+    jmp .L29
+.L30:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    li r1, #2
+    add r7, r7, r1
+    ret
+    li r1, #1
+    add r7, r7, r1
+    li r1, #1
+    add r7, r7, r1
+    ret
+
+fn_k3_strcmp:
+    push r0
+    push r1
+    li r1, #2
+    add r3, r7, r1
+    ldi r0, #0
+    push r0
+    li r0, #0
+    li r1, #-3
+    add r1, r3, r1
+    store r0, [r1]
+.L34:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brnz r2, .L36
+    ldi r0, #0
+    jmp .L37
+.L36:
+    ldi r0, #1
+.L37:
+    brnz r0, .L40
+    jmp .L38
+.L40:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brnz r2, .L41
+    ldi r0, #0
+    jmp .L42
+.L41:
+    ldi r0, #1
+.L42:
+    brnz r0, .L43
+    jmp .L38
+.L43:
+    ldi r0, #1
+    jmp .L39
+.L38:
+    ldi r0, #0
+.L39:
+    brnz r0, .L44
+    jmp .L35
+.L44:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brnz r2, .L47
+    ldi r0, #0
+    jmp .L48
+.L47:
+    ldi r0, #1
+.L48:
+    brnz r0, .L49
+    jmp .L45
+.L49:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    sub r0, r0, r1
+    li r1, #3
+    add r7, r7, r1
+    ret
+.L45:
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    addi r0, #1
+    store r0, [r1]
+    pop r0
+    jmp .L34
+.L35:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    sub r0, r0, r1
+    li r1, #3
+    add r7, r7, r1
+    ret
+    li r1, #1
+    add r7, r7, r1
+    li r1, #2
+    add r7, r7, r1
+    ret
+
+fn_k3_strcpy:
+    push r0
+    push r1
+    li r1, #2
+    add r3, r7, r1
+    ldi r0, #0
+    push r0
+    li r0, #0
+    li r1, #-3
+    add r1, r3, r1
+    store r0, [r1]
+.L50:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brnz r2, .L52
+    ldi r0, #0
+    jmp .L53
+.L52:
+    ldi r0, #1
+.L53:
+    brnz r0, .L54
+    jmp .L51
+.L54:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    push r1
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    pop r1
+    store r0, [r1]
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    addi r0, #1
+    store r0, [r1]
+    pop r0
+    jmp .L50
+.L51:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    push r1
+    li r0, #0
+    pop r1
+    store r0, [r1]
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    li r1, #3
+    add r7, r7, r1
+    ret
+    li r1, #1
+    add r7, r7, r1
+    li r1, #2
+    add r7, r7, r1
+    ret
+
+fn_k3_atoi:
+    push r0
+    li r1, #1
+    add r3, r7, r1
+    ldi r0, #0
+    push r0
+    li r0, #0
+    li r1, #-2
+    add r1, r3, r1
+    store r0, [r1]
+    ldi r0, #0
+    push r0
+    li r0, #1
+    li r1, #-3
+    add r1, r3, r1
+    store r0, [r1]
+    ldi r0, #0
+    push r0
+    li r0, #0
+    li r1, #-4
+    add r1, r3, r1
+    store r0, [r1]
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #45
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brz r2, .L57
+    ldi r0, #0
+    jmp .L58
+.L57:
+    ldi r0, #1
+.L58:
+    brnz r0, .L59
+    jmp .L55
+.L59:
+    li r0, #1
+    neg r0, r0
+    li r1, #-3
+    add r1, r3, r1
+    store r0, [r1]
+    li r0, #1
+    li r1, #-4
+    add r1, r3, r1
+    store r0, [r1]
+    jmp .L56
+.L55:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #43
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brz r2, .L62
+    ldi r0, #0
+    jmp .L63
+.L62:
+    ldi r0, #1
+.L63:
+    brnz r0, .L64
+    jmp .L60
+.L64:
+    li r0, #1
+    li r1, #-4
+    add r1, r3, r1
+    store r0, [r1]
+.L60:
+.L56:
+.L65:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-4
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #48
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brp r2, .L67
+    brz r2, .L67
+    ldi r0, #0
+    jmp .L68
+.L67:
+    ldi r0, #1
+.L68:
+    brnz r0, .L71
+    jmp .L69
+.L71:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-4
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #57
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brn r2, .L72
+    brz r2, .L72
+    ldi r0, #0
+    jmp .L73
+.L72:
+    ldi r0, #1
+.L73:
+    brnz r0, .L74
+    jmp .L69
+.L74:
+    ldi r0, #1
+    jmp .L70
+.L69:
+    ldi r0, #0
+.L70:
+    brnz r0, .L75
+    jmp .L66
+.L75:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, #10
+    mov r1, r0
+    pop r0
+    mul r0, r0, r1
+    push r0
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-4
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    mov r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #48
+    mov r1, r0
+    pop r0
+    sub r0, r0, r1
+    mov r1, r0
+    pop r0
+    add r0, r0, r1
+    li r1, #-2
+    add r1, r3, r1
+    store r0, [r1]
+    li r1, #-4
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    addi r0, #1
+    store r0, [r1]
+    pop r0
+    jmp .L65
+.L66:
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-3
+    add r1, r3, r1
+    load r0, [r1]
+    mov r1, r0
+    pop r0
+    mul r0, r0, r1
+    li r1, #4
+    add r7, r7, r1
+    ret
+    li r1, #3
+    add r7, r7, r1
+    li r1, #1
+    add r7, r7, r1
+    ret
+
 fn_k3_uart_putc:
     push r0
     li r1, #1
@@ -410,7 +955,7 @@ fn_k3_uart_puts:
     li r1, #-3
     add r1, r3, r1
     store r0, [r1]
-.L29:
+.L76:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -428,15 +973,15 @@ fn_k3_uart_puts:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L31
+    brnz r2, .L78
     ldi r0, #0
-    jmp .L32
-.L31:
+    jmp .L79
+.L78:
     ldi r0, #1
-.L32:
-    brnz r0, .L33
-    jmp .L30
-.L33:
+.L79:
+    brnz r0, .L80
+    jmp .L77
+.L80:
     li r1, #-2
     add r1, r3, r1
     load r0, [r1]
@@ -463,8 +1008,8 @@ fn_k3_uart_puts:
     addi r0, #1
     store r0, [r1]
     pop r0
-    jmp .L29
-.L30:
+    jmp .L76
+.L77:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
@@ -852,15 +1397,15 @@ fn_k3_print_num:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brn r2, .L36
+    brn r2, .L83
     ldi r0, #0
-    jmp .L37
-.L36:
+    jmp .L84
+.L83:
     ldi r0, #1
-.L37:
-    brnz r0, .L38
-    jmp .L34
-.L38:
+.L84:
+    brnz r0, .L85
+    jmp .L81
+.L85:
     li r0, #45
     push r0
     pop r0
@@ -876,7 +1421,7 @@ fn_k3_print_num:
     li r1, #-1
     add r1, r3, r1
     store r0, [r1]
-.L34:
+.L81:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -885,16 +1430,16 @@ fn_k3_print_num:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brp r2, .L41
-    brz r2, .L41
+    brp r2, .L88
+    brz r2, .L88
     ldi r0, #0
-    jmp .L42
-.L41:
+    jmp .L89
+.L88:
     ldi r0, #1
-.L42:
-    brnz r0, .L43
-    jmp .L39
-.L43:
+.L89:
+    brnz r0, .L90
+    jmp .L86
+.L90:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -914,7 +1459,7 @@ fn_k3_print_num:
     call fn_k3_print_num
     pop r3
     pop r6
-.L39:
+.L86:
     li r0, #48
     push r0
     li r1, #-1
@@ -968,7 +1513,7 @@ fn_k3_print_trits:
     li r1, #-12
     add r1, r3, r1
     store r0, [r1]
-.L44:
+.L91:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -977,15 +1522,15 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brn r2, .L46
+    brn r2, .L93
     ldi r0, #0
-    jmp .L47
-.L46:
+    jmp .L94
+.L93:
     ldi r0, #1
-.L47:
-    brnz r0, .L48
-    jmp .L45
-.L48:
+.L94:
+    brnz r0, .L95
+    jmp .L92
+.L95:
     ldi r0, #0
     push r0
     li r1, #-11
@@ -1012,15 +1557,15 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L52
+    brz r2, .L99
     ldi r0, #0
-    jmp .L53
-.L52:
+    jmp .L100
+.L99:
     ldi r0, #1
-.L53:
-    brz r0, .L56
-    jmp .L54
-.L56:
+.L100:
+    brz r0, .L103
+    jmp .L101
+.L103:
     li r1, #-13
     add r1, r3, r1
     load r0, [r1]
@@ -1030,23 +1575,23 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L57
+    brz r2, .L104
     ldi r0, #0
-    jmp .L58
-.L57:
+    jmp .L105
+.L104:
     ldi r0, #1
-.L58:
-    brz r0, .L59
-    jmp .L54
-.L59:
+.L105:
+    brz r0, .L106
+    jmp .L101
+.L106:
     ldi r0, #0
-    jmp .L55
-.L54:
+    jmp .L102
+.L101:
     ldi r0, #1
-.L55:
-    brnz r0, .L60
-    jmp .L50
-.L60:
+.L102:
+    brnz r0, .L107
+    jmp .L97
+.L107:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1078,8 +1623,8 @@ fn_k3_print_trits:
     li r1, #-11
     add r1, r3, r1
     store r0, [r1]
-    jmp .L51
-.L50:
+    jmp .L98
+.L97:
     li r1, #-13
     add r1, r3, r1
     load r0, [r1]
@@ -1089,15 +1634,15 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L63
+    brz r2, .L110
     ldi r0, #0
-    jmp .L64
-.L63:
+    jmp .L111
+.L110:
     ldi r0, #1
-.L64:
-    brz r0, .L67
-    jmp .L65
-.L67:
+.L111:
+    brz r0, .L114
+    jmp .L112
+.L114:
     li r1, #-13
     add r1, r3, r1
     load r0, [r1]
@@ -1106,23 +1651,23 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L68
+    brz r2, .L115
     ldi r0, #0
-    jmp .L69
-.L68:
+    jmp .L116
+.L115:
     ldi r0, #1
-.L69:
-    brz r0, .L70
-    jmp .L65
-.L70:
+.L116:
+    brz r0, .L117
+    jmp .L112
+.L117:
     ldi r0, #0
-    jmp .L66
-.L65:
+    jmp .L113
+.L112:
     ldi r0, #1
-.L66:
-    brnz r0, .L71
-    jmp .L61
-.L71:
+.L113:
+    brnz r0, .L118
+    jmp .L108
+.L118:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1153,8 +1698,8 @@ fn_k3_print_trits:
     li r1, #-11
     add r1, r3, r1
     store r0, [r1]
-    jmp .L62
-.L61:
+    jmp .L109
+.L108:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1180,11 +1725,11 @@ fn_k3_print_trits:
     li r1, #-11
     add r1, r3, r1
     store r0, [r1]
-.L62:
-.L51:
+.L109:
+.L98:
     li r1, #1
     add r7, r7, r1
-.L49:
+.L96:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1192,13 +1737,13 @@ fn_k3_print_trits:
     addi r0, #1
     store r0, [r1]
     pop r0
-    jmp .L44
-.L45:
+    jmp .L91
+.L92:
     li r0, #8
     li r1, #-12
     add r1, r3, r1
     store r0, [r1]
-.L72:
+.L119:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1207,16 +1752,16 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brp r2, .L74
-    brz r2, .L74
+    brp r2, .L121
+    brz r2, .L121
     ldi r0, #0
-    jmp .L75
-.L74:
+    jmp .L122
+.L121:
     ldi r0, #1
-.L75:
-    brnz r0, .L76
-    jmp .L73
-.L76:
+.L122:
+    brnz r0, .L123
+    jmp .L120
+.L123:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1229,15 +1774,15 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L80
+    brz r2, .L127
     ldi r0, #0
-    jmp .L81
-.L80:
+    jmp .L128
+.L127:
     ldi r0, #1
-.L81:
-    brnz r0, .L82
-    jmp .L78
-.L82:
+.L128:
+    brnz r0, .L129
+    jmp .L125
+.L129:
     li r0, #43
     push r0
     pop r0
@@ -1246,8 +1791,8 @@ fn_k3_print_trits:
     call fn_k3_uart_putc
     pop r3
     pop r6
-    jmp .L79
-.L78:
+    jmp .L126
+.L125:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1261,15 +1806,15 @@ fn_k3_print_trits:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L85
+    brz r2, .L132
     ldi r0, #0
-    jmp .L86
-.L85:
+    jmp .L133
+.L132:
     ldi r0, #1
-.L86:
-    brnz r0, .L87
-    jmp .L83
-.L87:
+.L133:
+    brnz r0, .L134
+    jmp .L130
+.L134:
     li r0, #45
     push r0
     pop r0
@@ -1278,8 +1823,8 @@ fn_k3_print_trits:
     call fn_k3_uart_putc
     pop r3
     pop r6
-    jmp .L84
-.L83:
+    jmp .L131
+.L130:
     li r0, #48
     push r0
     pop r0
@@ -1288,9 +1833,9 @@ fn_k3_print_trits:
     call fn_k3_uart_putc
     pop r3
     pop r6
-.L84:
-.L79:
-.L77:
+.L131:
+.L126:
+.L124:
     li r1, #-12
     add r1, r3, r1
     load r0, [r1]
@@ -1298,8 +1843,8 @@ fn_k3_print_trits:
     addi r0, #-1
     store r0, [r1]
     pop r0
-    jmp .L72
-.L73:
+    jmp .L119
+.L120:
     li r0, #0
     li r1, #12
     add r7, r7, r1
@@ -1330,7 +1875,7 @@ fn_k3_printf:
     li r1, #-7
     add r1, r3, r1
     store r0, [r1]
-.L88:
+.L135:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1348,15 +1893,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L90
+    brnz r2, .L137
     ldi r0, #0
-    jmp .L91
-.L90:
+    jmp .L138
+.L137:
     ldi r0, #1
-.L91:
-    brnz r0, .L92
-    jmp .L89
-.L92:
+.L138:
+    brnz r0, .L139
+    jmp .L136
+.L139:
     ldi r0, #0
     push r0
     li r1, #-1
@@ -1382,15 +1927,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L95
+    brz r2, .L142
     ldi r0, #0
-    jmp .L96
-.L95:
+    jmp .L143
+.L142:
     ldi r0, #1
-.L96:
-    brnz r0, .L99
-    jmp .L97
-.L99:
+.L143:
+    brnz r0, .L146
+    jmp .L144
+.L146:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1413,23 +1958,23 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L100
+    brnz r2, .L147
     ldi r0, #0
-    jmp .L101
-.L100:
+    jmp .L148
+.L147:
     ldi r0, #1
-.L101:
-    brnz r0, .L102
-    jmp .L97
-.L102:
+.L148:
+    brnz r0, .L149
+    jmp .L144
+.L149:
     ldi r0, #1
-    jmp .L98
-.L97:
+    jmp .L145
+.L144:
     ldi r0, #0
-.L98:
-    brnz r0, .L103
-    jmp .L93
-.L103:
+.L145:
+    brnz r0, .L150
+    jmp .L140
+.L150:
     li r1, #-7
     add r1, r3, r1
     load r0, [r1]
@@ -1468,23 +2013,23 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L106
+    brz r2, .L153
     ldi r0, #0
-    jmp .L107
-.L106:
+    jmp .L154
+.L153:
     ldi r0, #1
-.L107:
-    brnz r0, .L108
-    jmp .L104
-.L108:
+.L154:
+    brnz r0, .L155
+    jmp .L151
+.L155:
     li r1, #-2
     add r1, r3, r1
     load r0, [r1]
     li r1, #-10
     add r1, r3, r1
     store r0, [r1]
-    jmp .L105
-.L104:
+    jmp .L152
+.L151:
     li r1, #-6
     add r1, r3, r1
     load r0, [r1]
@@ -1493,23 +2038,23 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L111
+    brz r2, .L158
     ldi r0, #0
-    jmp .L112
-.L111:
+    jmp .L159
+.L158:
     ldi r0, #1
-.L112:
-    brnz r0, .L113
-    jmp .L109
-.L113:
+.L159:
+    brnz r0, .L160
+    jmp .L156
+.L160:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
     li r1, #-10
     add r1, r3, r1
     store r0, [r1]
-    jmp .L110
-.L109:
+    jmp .L157
+.L156:
     li r1, #-6
     add r1, r3, r1
     load r0, [r1]
@@ -1518,23 +2063,23 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L116
+    brz r2, .L163
     ldi r0, #0
-    jmp .L117
-.L116:
+    jmp .L164
+.L163:
     ldi r0, #1
-.L117:
-    brnz r0, .L118
-    jmp .L114
-.L118:
+.L164:
+    brnz r0, .L165
+    jmp .L161
+.L165:
     li r1, #-4
     add r1, r3, r1
     load r0, [r1]
     li r1, #-10
     add r1, r3, r1
     store r0, [r1]
-    jmp .L115
-.L114:
+    jmp .L162
+.L161:
     li r1, #-6
     add r1, r3, r1
     load r0, [r1]
@@ -1543,25 +2088,25 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L121
+    brz r2, .L168
     ldi r0, #0
-    jmp .L122
-.L121:
+    jmp .L169
+.L168:
     ldi r0, #1
-.L122:
-    brnz r0, .L123
-    jmp .L119
-.L123:
+.L169:
+    brnz r0, .L170
+    jmp .L166
+.L170:
     li r1, #-5
     add r1, r3, r1
     load r0, [r1]
     li r1, #-10
     add r1, r3, r1
     store r0, [r1]
-.L119:
-.L115:
-.L110:
-.L105:
+.L166:
+.L162:
+.L157:
+.L152:
     li r1, #-6
     add r1, r3, r1
     load r0, [r1]
@@ -1577,15 +2122,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L126
+    brz r2, .L173
     ldi r0, #0
-    jmp .L127
-.L126:
+    jmp .L174
+.L173:
     ldi r0, #1
-.L127:
-    brnz r0, .L128
-    jmp .L124
-.L128:
+.L174:
+    brnz r0, .L175
+    jmp .L171
+.L175:
     li r1, #-10
     add r1, r3, r1
     load r0, [r1]
@@ -1596,8 +2141,8 @@ fn_k3_printf:
     call fn_k3_print_num
     pop r3
     pop r6
-    jmp .L125
-.L124:
+    jmp .L172
+.L171:
     li r1, #-9
     add r1, r3, r1
     load r0, [r1]
@@ -1606,15 +2151,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L131
+    brz r2, .L178
     ldi r0, #0
-    jmp .L132
-.L131:
+    jmp .L179
+.L178:
     ldi r0, #1
-.L132:
-    brnz r0, .L133
-    jmp .L129
-.L133:
+.L179:
+    brnz r0, .L180
+    jmp .L176
+.L180:
     li r1, #-10
     add r1, r3, r1
     load r0, [r1]
@@ -1625,8 +2170,8 @@ fn_k3_printf:
     call fn_k3_uart_puts
     pop r3
     pop r6
-    jmp .L130
-.L129:
+    jmp .L177
+.L176:
     li r1, #-9
     add r1, r3, r1
     load r0, [r1]
@@ -1635,15 +2180,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L136
+    brz r2, .L183
     ldi r0, #0
-    jmp .L137
-.L136:
+    jmp .L184
+.L183:
     ldi r0, #1
-.L137:
-    brnz r0, .L138
-    jmp .L134
-.L138:
+.L184:
+    brnz r0, .L185
+    jmp .L181
+.L185:
     li r1, #-10
     add r1, r3, r1
     load r0, [r1]
@@ -1654,8 +2199,8 @@ fn_k3_printf:
     call fn_k3_uart_putc
     pop r3
     pop r6
-    jmp .L135
-.L134:
+    jmp .L182
+.L181:
     li r1, #-9
     add r1, r3, r1
     load r0, [r1]
@@ -1664,15 +2209,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L141
+    brz r2, .L188
     ldi r0, #0
-    jmp .L142
-.L141:
+    jmp .L189
+.L188:
     ldi r0, #1
-.L142:
-    brnz r0, .L143
-    jmp .L139
-.L143:
+.L189:
+    brnz r0, .L190
+    jmp .L186
+.L190:
     li r1, #-10
     add r1, r3, r1
     load r0, [r1]
@@ -1683,8 +2228,8 @@ fn_k3_printf:
     call fn_k3_print_trits
     pop r3
     pop r6
-    jmp .L140
-.L139:
+    jmp .L187
+.L186:
     li r1, #-9
     add r1, r3, r1
     load r0, [r1]
@@ -1693,15 +2238,15 @@ fn_k3_printf:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L146
+    brz r2, .L193
     ldi r0, #0
-    jmp .L147
-.L146:
+    jmp .L194
+.L193:
     ldi r0, #1
-.L147:
-    brnz r0, .L148
-    jmp .L144
-.L148:
+.L194:
+    brnz r0, .L195
+    jmp .L191
+.L195:
     li r0, #37
     push r0
     pop r0
@@ -1710,15 +2255,15 @@ fn_k3_printf:
     call fn_k3_uart_putc
     pop r3
     pop r6
-.L144:
-.L140:
-.L135:
-.L130:
-.L125:
+.L191:
+.L187:
+.L182:
+.L177:
+.L172:
     li r1, #2
     add r7, r7, r1
-    jmp .L94
-.L93:
+    jmp .L141
+.L140:
     li r1, #-8
     add r1, r3, r1
     load r0, [r1]
@@ -1729,7 +2274,7 @@ fn_k3_printf:
     call fn_k3_uart_putc
     pop r3
     pop r6
-.L94:
+.L141:
     li r1, #-7
     add r1, r3, r1
     load r0, [r1]
@@ -1739,8 +2284,8 @@ fn_k3_printf:
     pop r0
     li r1, #1
     add r7, r7, r1
-    jmp .L88
-.L89:
+    jmp .L135
+.L136:
     li r1, #-7
     add r1, r3, r1
     load r0, [r1]
@@ -1764,7 +2309,7 @@ fn_k_strcmp:
     li r1, #-3
     add r1, r3, r1
     store r0, [r1]
-.L149:
+.L196:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1782,15 +2327,15 @@ fn_k_strcmp:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L151
+    brnz r2, .L198
     ldi r0, #0
-    jmp .L152
-.L151:
+    jmp .L199
+.L198:
     ldi r0, #1
-.L152:
-    brnz r0, .L155
-    jmp .L153
-.L155:
+.L199:
+    brnz r0, .L202
+    jmp .L200
+.L202:
     li r1, #-2
     add r1, r3, r1
     load r0, [r1]
@@ -1808,23 +2353,23 @@ fn_k_strcmp:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L156
+    brnz r2, .L203
     ldi r0, #0
-    jmp .L157
-.L156:
+    jmp .L204
+.L203:
     ldi r0, #1
-.L157:
-    brnz r0, .L158
-    jmp .L153
-.L158:
+.L204:
+    brnz r0, .L205
+    jmp .L200
+.L205:
     ldi r0, #1
-    jmp .L154
-.L153:
+    jmp .L201
+.L200:
     ldi r0, #0
-.L154:
-    brnz r0, .L159
-    jmp .L150
-.L159:
+.L201:
+    brnz r0, .L206
+    jmp .L197
+.L206:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1853,15 +2398,15 @@ fn_k_strcmp:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brnz r2, .L162
+    brnz r2, .L209
     ldi r0, #0
-    jmp .L163
-.L162:
+    jmp .L210
+.L209:
     ldi r0, #1
-.L163:
-    brnz r0, .L164
-    jmp .L160
-.L164:
+.L210:
+    brnz r0, .L211
+    jmp .L207
+.L211:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1893,7 +2438,7 @@ fn_k_strcmp:
     li r1, #3
     add r7, r7, r1
     ret
-.L160:
+.L207:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
@@ -1901,8 +2446,8 @@ fn_k_strcmp:
     addi r0, #1
     store r0, [r1]
     pop r0
-    jmp .L149
-.L150:
+    jmp .L196
+.L197:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -1951,7 +2496,7 @@ fn_k_readline:
     li r1, #-3
     add r1, r3, r1
     store r0, [r1]
-.L165:
+.L212:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
@@ -1967,15 +2512,15 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brn r2, .L167
+    brn r2, .L214
     ldi r0, #0
-    jmp .L168
-.L167:
+    jmp .L215
+.L214:
     ldi r0, #1
-.L168:
-    brnz r0, .L169
-    jmp .L166
-.L169:
+.L215:
+    brnz r0, .L216
+    jmp .L213
+.L216:
     ldi r0, #0
     push r0
     push r6
@@ -1994,19 +2539,19 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L172
+    brz r2, .L219
     ldi r0, #0
-    jmp .L173
-.L172:
+    jmp .L220
+.L219:
     ldi r0, #1
-.L173:
-    brnz r0, .L174
-    jmp .L170
-.L174:
+.L220:
+    brnz r0, .L221
+    jmp .L217
+.L221:
     li r1, #1
     add r7, r7, r1
-    jmp .L165
-.L170:
+    jmp .L212
+.L217:
     li r1, #-4
     add r1, r3, r1
     load r0, [r1]
@@ -2015,15 +2560,15 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L177
+    brz r2, .L224
     ldi r0, #0
-    jmp .L178
-.L177:
+    jmp .L225
+.L224:
     ldi r0, #1
-.L178:
-    brz r0, .L181
-    jmp .L179
-.L181:
+.L225:
+    brz r0, .L228
+    jmp .L226
+.L228:
     li r1, #-4
     add r1, r3, r1
     load r0, [r1]
@@ -2032,23 +2577,23 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L182
+    brz r2, .L229
     ldi r0, #0
-    jmp .L183
-.L182:
+    jmp .L230
+.L229:
     ldi r0, #1
-.L183:
-    brz r0, .L184
-    jmp .L179
-.L184:
+.L230:
+    brz r0, .L231
+    jmp .L226
+.L231:
     ldi r0, #0
-    jmp .L180
-.L179:
+    jmp .L227
+.L226:
     ldi r0, #1
-.L180:
-    brnz r0, .L185
-    jmp .L175
-.L185:
+.L227:
+    brnz r0, .L232
+    jmp .L222
+.L232:
     li r0, #10
     push r0
     pop r0
@@ -2059,8 +2604,8 @@ fn_k_readline:
     pop r6
     li r1, #1
     add r7, r7, r1
-    jmp .L166
-.L175:
+    jmp .L213
+.L222:
     li r1, #-4
     add r1, r3, r1
     load r0, [r1]
@@ -2069,15 +2614,15 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L188
+    brz r2, .L235
     ldi r0, #0
-    jmp .L189
-.L188:
+    jmp .L236
+.L235:
     ldi r0, #1
-.L189:
-    brz r0, .L192
-    jmp .L190
-.L192:
+.L236:
+    brz r0, .L239
+    jmp .L237
+.L239:
     li r1, #-4
     add r1, r3, r1
     load r0, [r1]
@@ -2086,23 +2631,23 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L193
+    brz r2, .L240
     ldi r0, #0
-    jmp .L194
-.L193:
+    jmp .L241
+.L240:
     ldi r0, #1
-.L194:
-    brz r0, .L195
-    jmp .L190
-.L195:
+.L241:
+    brz r0, .L242
+    jmp .L237
+.L242:
     ldi r0, #0
-    jmp .L191
-.L190:
+    jmp .L238
+.L237:
     ldi r0, #1
-.L191:
-    brnz r0, .L196
-    jmp .L186
-.L196:
+.L238:
+    brnz r0, .L243
+    jmp .L233
+.L243:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
@@ -2111,15 +2656,15 @@ fn_k_readline:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brp r2, .L199
+    brp r2, .L246
     ldi r0, #0
-    jmp .L200
-.L199:
+    jmp .L247
+.L246:
     ldi r0, #1
-.L200:
-    brnz r0, .L201
-    jmp .L197
-.L201:
+.L247:
+    brnz r0, .L248
+    jmp .L244
+.L248:
     li r1, #-3
     add r1, r3, r1
     load r0, [r1]
@@ -2151,11 +2696,11 @@ fn_k_readline:
     call fn_k3_uart_putc
     pop r3
     pop r6
-.L197:
+.L244:
     li r1, #1
     add r7, r7, r1
-    jmp .L165
-.L186:
+    jmp .L212
+.L233:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -2192,8 +2737,8 @@ fn_k_readline:
     pop r6
     li r1, #1
     add r7, r7, r1
-    jmp .L165
-.L166:
+    jmp .L212
+.L213:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -2221,79 +2766,17 @@ fn_k_readline:
     add r7, r7, r1
     ret
 
-fn_applet_uname:
+fn_run_shell:
     li r1, #0
     add r3, r7, r1
-    li r0, __str_3
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, #0
-    ret
-    ret
-
-fn_applet_uptime:
-    li r1, #0
-    add r3, r7, r1
+    li r1, #64
+    sub r7, r7, r1
     ldi r0, #0
     push r0
-    push r6
-    push r3
-    call fn_k3_timer_ms
-    pop r3
-    pop r6
-    li r1, #-1
+    li r0, #1
+    li r1, #-65
     add r1, r3, r1
     store r0, [r1]
-    li r0, __str_4
-    push r0
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, #0
-    li r1, #1
-    add r7, r7, r1
-    ret
-    li r1, #1
-    add r7, r7, r1
-    ret
-
-fn_applet_free:
-    li r1, #0
-    add r3, r7, r1
     li r0, __str_5
     push r0
     li r0, #0
@@ -2314,198 +2797,7 @@ fn_applet_free:
     call fn_k3_printf
     pop r3
     pop r6
-    li r0, __str_6
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, __str_7
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, #0
-    ret
-    ret
-
-fn_applet_rand:
-    li r1, #0
-    add r3, r7, r1
-    ldi r0, #0
-    push r0
-    push r6
-    push r3
-    call fn_k3_rand_word
-    pop r3
-    pop r6
-    li r1, #-1
-    add r1, r3, r1
-    store r0, [r1]
-    li r0, __str_8
-    push r0
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, #0
-    li r1, #1
-    add r7, r7, r1
-    ret
-    li r1, #1
-    add r7, r7, r1
-    ret
-
-fn_applet_cat:
-    li r1, #0
-    add r3, r7, r1
-    li r1, #16
-    sub r7, r7, r1
-    ldi r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
-    li r0, #16
-    push r0
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_disk_read
-    pop r3
-    pop r6
-    li r1, #-17
-    add r1, r3, r1
-    store r0, [r1]
-    li r0, __str_9
-    push r0
-    li r0, #0
-    li r1, #-16
-    add r1, r3, r1
-    add r1, r1, r0
-    load r0, [r1]
-    push r0
-    li r0, #1
-    li r1, #-16
-    add r1, r3, r1
-    add r1, r1, r0
-    load r0, [r1]
-    push r0
-    li r0, #2
-    li r1, #-16
-    add r1, r3, r1
-    add r1, r1, r0
-    load r0, [r1]
-    push r0
-    li r0, #3
-    li r1, #-16
-    add r1, r3, r1
-    add r1, r1, r0
-    load r0, [r1]
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    li r0, #0
-    li r1, #17
-    add r7, r7, r1
-    ret
-    li r1, #17
-    add r7, r7, r1
-    ret
-
-fn_run_kbox_shell:
-    li r1, #0
-    add r3, r7, r1
-    li r1, #64
-    sub r7, r7, r1
-    li r1, g_kbox_banner
-    load r0, [r1]
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    li r0, #0
-    push r0
-    pop r5
-    pop r4
-    pop r2
-    pop r1
-    pop r0
-    push r6
-    push r3
-    call fn_k3_printf
-    pop r3
-    pop r6
-    ldi r0, #0
-    push r0
-    li r0, #1
-    li r1, #-65
-    add r1, r3, r1
-    store r0, [r1]
-.L202:
+.L249:
     li r1, #-65
     add r1, r3, r1
     load r0, [r1]
@@ -2514,17 +2806,16 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L204
+    brz r2, .L251
     ldi r0, #0
-    jmp .L205
-.L204:
+    jmp .L252
+.L251:
     ldi r0, #1
-.L205:
-    brnz r0, .L206
-    jmp .L203
-.L206:
-    li r1, g_kbox_prompt
-    load r0, [r1]
+.L252:
+    brnz r0, .L253
+    jmp .L250
+.L253:
+    li r0, __str_6
     push r0
     li r0, #0
     push r0
@@ -2570,24 +2861,24 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L209
+    brz r2, .L256
     ldi r0, #0
-    jmp .L210
-.L209:
+    jmp .L257
+.L256:
     ldi r0, #1
-.L210:
-    brnz r0, .L211
-    jmp .L207
-.L211:
+.L257:
+    brnz r0, .L258
+    jmp .L254
+.L258:
     li r1, #1
     add r7, r7, r1
-    jmp .L202
-.L207:
+    jmp .L249
+.L254:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
     push r0
-    li r0, __str_10
+    li r0, __str_7
     push r0
     pop r1
     pop r0
@@ -2601,17 +2892,16 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L214
+    brz r2, .L261
     ldi r0, #0
-    jmp .L215
-.L214:
+    jmp .L262
+.L261:
     ldi r0, #1
-.L215:
-    brnz r0, .L216
-    jmp .L212
-.L216:
-    li r1, g_kbox_help_msg
-    load r0, [r1]
+.L262:
+    brnz r0, .L263
+    jmp .L259
+.L263:
+    li r0, __str_8
     push r0
     li r0, #0
     push r0
@@ -2631,8 +2921,57 @@ fn_run_kbox_shell:
     call fn_k3_printf
     pop r3
     pop r6
-    jmp .L213
-.L212:
+    jmp .L260
+.L259:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, __str_9
+    push r0
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k_strcmp
+    pop r3
+    pop r6
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brz r2, .L266
+    ldi r0, #0
+    jmp .L267
+.L266:
+    ldi r0, #1
+.L267:
+    brnz r0, .L268
+    jmp .L264
+.L268:
+    li r0, __str_10
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    jmp .L265
+.L264:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -2651,56 +2990,51 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L219
+    brz r2, .L271
     ldi r0, #0
-    jmp .L220
-.L219:
+    jmp .L272
+.L271:
     ldi r0, #1
-.L220:
-    brnz r0, .L221
-    jmp .L217
-.L221:
+.L272:
+    brnz r0, .L273
+    jmp .L269
+.L273:
+    ldi r0, #0
+    push r0
     push r6
     push r3
-    call fn_applet_uname
+    call fn_k3_timer_ms
     pop r3
     pop r6
-    jmp .L218
-.L217:
-    li r1, #-1
+    li r1, #-67
+    add r1, r3, r1
+    store r0, [r1]
+    li r0, __str_12
+    push r0
+    li r1, #-67
     add r1, r3, r1
     load r0, [r1]
     push r0
-    li r0, __str_12
+    li r0, #0
     push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
     pop r1
     pop r0
     push r6
     push r3
-    call fn_k_strcmp
+    call fn_k3_printf
     pop r3
     pop r6
-    push r0
-    li r0, #0
-    mov r1, r0
-    pop r0
-    cmp r2, r0, r1
-    brz r2, .L224
-    ldi r0, #0
-    jmp .L225
-.L224:
-    ldi r0, #1
-.L225:
-    brnz r0, .L226
-    jmp .L222
-.L226:
-    push r6
-    push r3
-    call fn_applet_uptime
-    pop r3
-    pop r6
-    jmp .L223
-.L222:
+    li r1, #1
+    add r7, r7, r1
+    jmp .L270
+.L269:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -2719,56 +3053,37 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L229
+    brz r2, .L276
     ldi r0, #0
-    jmp .L230
-.L229:
+    jmp .L277
+.L276:
     ldi r0, #1
-.L230:
-    brnz r0, .L231
-    jmp .L227
-.L231:
-    push r6
-    push r3
-    call fn_applet_free
-    pop r3
-    pop r6
-    jmp .L228
-.L227:
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
+.L277:
+    brnz r0, .L278
+    jmp .L274
+.L278:
     li r0, __str_14
     push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
     pop r1
     pop r0
     push r6
     push r3
-    call fn_k_strcmp
+    call fn_k3_printf
     pop r3
     pop r6
-    push r0
-    li r0, #0
-    mov r1, r0
-    pop r0
-    cmp r2, r0, r1
-    brz r2, .L234
-    ldi r0, #0
-    jmp .L235
-.L234:
-    ldi r0, #1
-.L235:
-    brnz r0, .L236
-    jmp .L232
-.L236:
-    push r6
-    push r3
-    call fn_applet_rand
-    pop r3
-    pop r6
-    jmp .L233
-.L232:
+    jmp .L275
+.L274:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
@@ -2787,77 +3102,144 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L239
+    brz r2, .L281
     ldi r0, #0
-    jmp .L240
-.L239:
+    jmp .L282
+.L281:
     ldi r0, #1
-.L240:
-    brnz r0, .L241
-    jmp .L237
-.L241:
+.L282:
+    brnz r0, .L283
+    jmp .L279
+.L283:
+    ldi r0, #0
+    push r0
     push r6
     push r3
-    call fn_applet_cat
+    call fn_k3_rand_word
     pop r3
     pop r6
-    jmp .L238
-.L237:
-    li r1, #-1
+    li r1, #-67
     add r1, r3, r1
-    load r0, [r1]
-    push r0
+    store r0, [r1]
     li r0, __str_16
     push r0
+    li r1, #-67
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-67
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
     pop r1
     pop r0
     push r6
     push r3
-    call fn_k_strcmp
+    call fn_k3_printf
     pop r3
     pop r6
+    li r1, #1
+    add r7, r7, r1
+    jmp .L280
+.L279:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
     push r0
-    li r0, #0
-    mov r1, r0
-    pop r0
-    cmp r2, r0, r1
-    brz r2, .L244
-    ldi r0, #0
-    jmp .L245
-.L244:
-    ldi r0, #1
-.L245:
-    brnz r0, .L246
-    jmp .L242
-.L246:
     li r0, __str_17
     push r0
-    li r0, #0
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k_strcmp
+    pop r3
+    pop r6
     push r0
     li r0, #0
-    push r0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brz r2, .L286
+    ldi r0, #0
+    jmp .L287
+.L286:
+    ldi r0, #1
+.L287:
+    brnz r0, .L288
+    jmp .L284
+.L288:
+    li r1, #16
+    sub r7, r7, r1
     li r0, #0
     push r0
-    li r0, #0
+    li r1, #-67
+    add r1, r3, r1
+    load r0, [r1]
     push r0
-    pop r5
-    pop r4
+    li r0, #16
+    push r0
     pop r2
     pop r1
     pop r0
     push r6
     push r3
-    call fn_k3_printf
+    call fn_k3_disk_read
     pop r3
     pop r6
-    jmp .L243
-.L242:
-    li r1, #-1
-    add r1, r3, r1
-    load r0, [r1]
-    push r0
     li r0, __str_18
     push r0
+    li r0, #0
+    li r1, #-82
+    add r1, r3, r1
+    add r1, r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #1
+    li r1, #-82
+    add r1, r3, r1
+    add r1, r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #2
+    li r1, #-82
+    add r1, r3, r1
+    add r1, r1, r0
+    load r0, [r1]
+    push r0
+    li r0, #3
+    li r1, #-82
+    add r1, r3, r1
+    add r1, r1, r0
+    load r0, [r1]
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    li r1, #16
+    add r7, r7, r1
+    jmp .L285
+.L284:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, __str_19
+    push r0
     pop r1
     pop r0
     push r6
@@ -2870,16 +3252,16 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L249
+    brz r2, .L291
     ldi r0, #0
-    jmp .L250
-.L249:
+    jmp .L292
+.L291:
     ldi r0, #1
-.L250:
-    brnz r0, .L251
-    jmp .L247
-.L251:
-    li r0, __str_19
+.L292:
+    brnz r0, .L293
+    jmp .L289
+.L293:
+    li r0, __str_20
     push r0
     li r0, #0
     push r0
@@ -2899,18 +3281,13 @@ fn_run_kbox_shell:
     call fn_k3_printf
     pop r3
     pop r6
-    push r6
-    push r3
-    call fn_k3_halt
-    pop r3
-    pop r6
-    jmp .L248
-.L247:
+    jmp .L290
+.L289:
     li r1, #-1
     add r1, r3, r1
     load r0, [r1]
     push r0
-    li r0, __str_20
+    li r0, __str_21
     push r0
     pop r1
     pop r0
@@ -2924,22 +3301,55 @@ fn_run_kbox_shell:
     mov r1, r0
     pop r0
     cmp r2, r0, r1
-    brz r2, .L254
+    brz r2, .L296
     ldi r0, #0
-    jmp .L255
-.L254:
+    jmp .L297
+.L296:
     ldi r0, #1
-.L255:
-    brnz r0, .L256
-    jmp .L252
-.L256:
+.L297:
+    brnz r0, .L298
+    jmp .L294
+.L298:
     li r0, #0
     li r1, #-65
     add r1, r3, r1
     store r0, [r1]
-    jmp .L253
-.L252:
-    li r0, __str_21
+    jmp .L295
+.L294:
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, __str_22
+    push r0
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k_strcmp
+    pop r3
+    pop r6
+    push r0
+    li r0, #0
+    mov r1, r0
+    pop r0
+    cmp r2, r0, r1
+    brz r2, .L301
+    ldi r0, #0
+    jmp .L302
+.L301:
+    ldi r0, #1
+.L302:
+    brnz r0, .L303
+    jmp .L299
+.L303:
+    li r0, #0
+    li r1, #-65
+    add r1, r3, r1
+    store r0, [r1]
+    jmp .L300
+.L299:
+    li r0, __str_23
     push r0
     li r1, #-1
     add r1, r3, r1
@@ -2961,19 +3371,19 @@ fn_run_kbox_shell:
     call fn_k3_printf
     pop r3
     pop r6
-.L253:
-.L248:
-.L243:
-.L238:
-.L233:
-.L228:
-.L223:
-.L218:
-.L213:
+.L300:
+.L295:
+.L290:
+.L285:
+.L280:
+.L275:
+.L270:
+.L265:
+.L260:
     li r1, #1
     add r7, r7, r1
-    jmp .L202
-.L203:
+    jmp .L249
+.L250:
     li r0, #0
     li r1, #65
     add r7, r7, r1
@@ -2985,12 +3395,123 @@ fn_run_kbox_shell:
 fn_main:
     li r1, #0
     add r3, r7, r1
+    li r1, g_banner
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
     push r6
     push r3
-    call fn_run_kbox_shell
+    call fn_k3_printf
     pop r3
     pop r6
-    li r0, __str_22
+    li r1, g_vfs_msg
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    li r1, g_hw_msg
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    ldi r0, #0
+    push r0
+    push r6
+    push r3
+    call fn_k3_timer_ms
+    pop r3
+    pop r6
+    li r1, #-1
+    add r1, r3, r1
+    store r0, [r1]
+    ldi r0, #0
+    push r0
+    push r6
+    push r3
+    call fn_k3_rand_word
+    pop r3
+    pop r6
+    li r1, #-2
+    add r1, r3, r1
+    store r0, [r1]
+    li r0, __str_24
+    push r0
+    li r1, #-1
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r1, #-2
+    add r1, r3, r1
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    li r0, #15
+    push r0
+    pop r0
+    push r6
+    push r3
+    call fn_k3_leds_set
+    pop r3
+    pop r6
+    li r1, g_svc_msg
+    load r0, [r1]
     push r0
     li r0, #0
     push r0
@@ -3012,11 +3533,49 @@ fn_main:
     pop r6
     push r6
     push r3
+    call fn_run_shell
+    pop r3
+    pop r6
+    li r1, g_exit_msg
+    load r0, [r1]
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    li r0, #0
+    push r0
+    pop r5
+    pop r4
+    pop r2
+    pop r1
+    pop r0
+    push r6
+    push r3
+    call fn_k3_printf
+    pop r3
+    pop r6
+    li r0, #0
+    push r0
+    pop r0
+    push r6
+    push r3
+    call fn_k3_leds_set
+    pop r3
+    pop r6
+    push r6
+    push r3
     call fn_k3_halt
     pop r3
     pop r6
     li r0, #0
+    li r1, #2
+    add r7, r7, r1
     ret
+    li r1, #2
+    add r7, r7, r1
     ret
 
 ; __k3_divmod: r0 = r0 / r1, r1 = r0 % r1 (toward zero)
@@ -3069,55 +3628,61 @@ __k3_divmod:
 
 ; --- global variables ---
 g_g_heap_ptr: .word 3000
-g_kbox_banner: .word __str_0
-g_kbox_prompt: .word __str_1
-g_kbox_help_msg: .word __str_2
+g_banner: .word __str_0
+g_vfs_msg: .word __str_1
+g_hw_msg: .word __str_2
+g_svc_msg: .word __str_3
+g_exit_msg: .word __str_4
 
 ; --- string literals ---
 __str_0:
-    .string "\033[1;35mkbox\033[0m - K-Three Multi-Call Binary v0.1\nType 'help' for built-in applets.\n\n"
+    .string "\033[1;32m[kinit]\033[0m Starting K-Three Linux Init Service (PID 1)...\n"
 __str_1:
-    .string "\033[1;36mk3box#\033[0m "
+    .string "\033[1;32m[kinit]\033[0m Mounting virtual filesystems: /proc, /sys, /dev...\n"
 __str_2:
-    .string "Applets: help, uname, uptime, free, rand, cat, clear, poweroff, exit\n"
+    .string "\033[1;32m[kinit]\033[0m Probing hardware: MMIO UART, Timer, RNG active.\n"
 __str_3:
-    .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
+    .string "\033[1;32m[kinit]\033[0m Launching multi-call userland (/bin/kbox)...\n\n"
 __str_4:
-    .string "Uptime: %d ms, Clocksource: MMIO Timer (100 Hz)\n"
+    .string "\033[1;33m[kinit]\033[0m All services stopped. Powering off system.\n"
 __str_5:
-    .string "              total        used        free\n"
+    .string "\033[1;35mkbox\033[0m multi-call shell. Type 'help' for commands.\n\n"
 __str_6:
-    .string "Mem:          6561        1458        5103 words\n"
+    .string "\033[1;36mk3box#\033[0m "
 __str_7:
-    .string "Pages:           9           2           7 frames (729w each)\n"
-__str_8:
-    .string "Hardware TRNG: %d (balanced ternary: %t)\n"
-__str_9:
-    .string "Disk Sector 0 DMA: [%d, %d, %d, %d...]\n"
-__str_10:
     .string "help"
-__str_11:
+__str_8:
+    .string "Commands: help, uname, uptime, free, rand, cat, clear, poweroff, exit\n"
+__str_9:
     .string "uname"
-__str_12:
+__str_10:
+    .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
+__str_11:
     .string "uptime"
+__str_12:
+    .string "Uptime: %d ms, Clocksource: MMIO Timer (100 Hz)\n"
 __str_13:
     .string "free"
 __str_14:
-    .string "rand"
+    .string "Mem: 6561 words total, 1458 used, 5103 free (9 pages of 729w)\n"
 __str_15:
-    .string "cat"
+    .string "rand"
 __str_16:
-    .string "clear"
+    .string "Hardware TRNG Word: %d (ternary: %t)\n"
 __str_17:
-    .string "\033[2J\033[H"
+    .string "cat"
 __str_18:
-    .string "poweroff"
+    .string "Disk DMA Sector 0: [%d, %d, %d, %d...]\n"
 __str_19:
-    .string "\033[1;31mSystem powering off...\033[0m\n"
+    .string "clear"
 __str_20:
-    .string "exit"
+    .string "\033[2J\033[H"
 __str_21:
-    .string "kbox: command not found: %s. Type 'help'.\n"
+    .string "poweroff"
 __str_22:
-    .string "kbox shell terminated.\n"
+    .string "exit"
+__str_23:
+    .string "kbox: %s: command not found\n"
+__str_24:
+    .string "\033[1;32m[kinit]\033[0m Boot timestamp: %d ms, Entropy: %t\n"
 
