@@ -46,6 +46,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/page.h          |   26 +
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
+ arch/k3/include/asm/signal.h        |   67 +
  arch/k3/include/asm/string.h        |   46 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
@@ -56,10 +57,11 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/process.c            |   67 +
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
+ arch/k3/kernel/signal.c             |   80 +
  arch/k3/kernel/sys_k3.c             |  199 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 27 files changed, 1679 insertions(+)
+ 29 files changed, 1826 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -802,6 +804,79 @@ index 0000000..1111111
 +};
 +
 +#endif /* _ASM_K3_PTRACE_H */
+diff --git a/arch/k3/include/asm/signal.h b/arch/k3/include/asm/signal.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/signal.h
+@@ -0,0 +1,67 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * linux/arch/k3/include/asm/signal.h
++ *
++ * Signal definitions and signal frame structures for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_SIGNAL_H
++#define _ASM_K3_SIGNAL_H
++
++#include <stdint.h>
++
++#define _NSIG               32
++typedef unsigned long       sigset_t;
++
++/* POSIX Signals */
++#define SIGHUP              1
++#define SIGINT              2
++#define SIGQUIT             3
++#define SIGILL              4
++#define SIGTRAP             5
++#define SIGABRT             6
++#define SIGBUS              7
++#define SIGFPE              8
++#define SIGKILL             9
++#define SIGUSR1             10
++#define SIGSEGV             11
++#define SIGUSR2             12
++#define SIGPIPE             13
++#define SIGALRM             14
++#define SIGTERM             15
++#define SIGCHLD             17
++#define SIGCONT             18
++#define SIGSTOP             19
++#define SIGTSTP             20
++
++/* Signal handler flags */
++#define SA_NOCLDSTOP        0x00000001
++#define SA_NOCLDWAIT        0x00000002
++#define SA_SIGINFO          0x00000004
++#define SA_ONSTACK          0x08000000
++#define SA_RESTART          0x10000000
++#define SA_NODEFER          0x40000000
++#define SA_RESETHAND        0x80000000
++
++#define SIG_DFL             ((void (*)(int))0)
++#define SIG_IGN             ((void (*)(int))1)
++#define SIG_ERR             ((void (*)(int))-1)
++
++struct sigaction {
++    void (*sa_handler)(int);
++    unsigned long sa_flags;
++    sigset_t sa_mask;
++};
++
++/*
++ * Signal delivery context frame placed on user stack during signal dispatch.
++ */
++struct sigcontext {
++    int64_t  regs[8];       /* Saved general-purpose registers r0..r7 */
++    uint16_t epc;           /* Exception program counter to return to */
++    uint16_t status;        /* Machine status */
++    uint8_t  mode;          /* Previous execution mode */
++    sigset_t oldmask;       /* Blocked signal mask */
++};
++
++#endif /* _ASM_K3_SIGNAL_H */
 diff --git a/arch/k3/include/asm/string.h b/arch/k3/include/asm/string.h
 new file mode 100644
 index 0000000..1111111
@@ -1565,6 +1640,92 @@ index 0000000..1111111
 +{
 +    k3_vm_set_trap_vector(vm, (int16_t)trap_vector_addr);
 +    k3_vm_set_mode(vm, K3_MODE_KERNEL);
++}
+diff --git a/arch/k3/kernel/signal.c b/arch/k3/kernel/signal.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/signal.c
+@@ -0,0 +1,80 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * linux/arch/k3/kernel/signal.c
++ *
++ * Signal dispatch and user frame delivery for K-Three Linux.
++ */
++
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/signal.h"
++#include "arch/k3/include/asm/ptrace.h"
++
++#define K3_MAX_TASKS        8
++
++static struct sigaction s_task_signals[K3_MAX_TASKS][_NSIG];
++static uint32_t s_pending_signals[K3_MAX_TASKS];
++
++extern int k3_get_current_pid(void);
++extern void k3_exit_current_task(k3_vm *vm, int exit_code);
++
++void init_signals(void)
++{
++    memset(s_task_signals, 0, sizeof(s_task_signals));
++    memset(s_pending_signals, 0, sizeof(s_pending_signals));
++}
++
++int k3_do_sigaction(int pid, int sig, const struct sigaction *act, struct sigaction *oldact)
++{
++    if (pid < 0 || pid >= K3_MAX_TASKS || sig <= 0 || sig >= _NSIG) {
++        return -22; /* -EINVAL */
++    }
++    if (sig == SIGKILL || sig == SIGSTOP) {
++        return -22; /* Cannot catch SIGKILL or SIGSTOP */
++    }
++
++    if (oldact != NULL) {
++        *oldact = s_task_signals[pid][sig];
++    }
++    if (act != NULL) {
++        s_task_signals[pid][sig] = *act;
++    }
++    return 0;
++}
++
++int k3_send_signal(k3_vm *vm, int pid, int sig)
++{
++    if (pid < 0 || pid >= K3_MAX_TASKS || sig <= 0 || sig >= _NSIG) {
++        return -22; /* -EINVAL */
++    }
++
++    /* Record pending signal */
++    s_pending_signals[pid] |= (1U << sig);
++
++    /* Default action for SIGKILL / SIGTERM */
++    if (s_task_signals[pid][sig].sa_handler == SIG_DFL) {
++        if (sig == SIGKILL || sig == SIGTERM || sig == SIGSEGV) {
++            k3_exit_current_task(vm, 128 + sig);
++            return 0;
++        }
++    }
++    return 0;
++}
++
++bool k3_has_pending_signal(int pid, int *out_sig)
++{
++    if (pid >= 0 && pid < K3_MAX_TASKS) {
++        for (int s = 1; s < _NSIG; ++s) {
++            if (s_pending_signals[pid] & (1U << s)) {
++                s_pending_signals[pid] &= ~(1U << s);
++                if (out_sig) *out_sig = s;
++                return true;
++            }
++        }
++    }
++    return false;
 +}
 diff --git a/arch/k3/kernel/sys_k3.c b/arch/k3/kernel/sys_k3.c
 new file mode 100644
