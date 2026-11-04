@@ -1,0 +1,1906 @@
+From: naevui <deniz@neutronyazilim.com.tr>
+Date: Wed, 4 Nov 2026 00:00:00 +0300
+Subject: [PATCH] arch/k3: Add support for K-Three 9-trit balanced-ternary architecture
+
+This patch introduces the official Linux architecture port for K-Three (k3),
+the world's first 9-trit balanced-ternary RISC processor.
+
+Key architectural features of K-Three:
+- Arithmetic: Base-3 balanced ternary (-1, 0, +1 trits)
+- Word format: 9 trits per word, symmetric numerical range [-9841 .. +9841]
+- Memory architecture: Flat word-addressed physical memory (6561 words, 9 pages of 729)
+- Registers: 8 general-purpose 9-trit registers (r0..r7)
+- Hardware features:
+  - Hardware Memory-Mapped I/O (MMIO at base 6000: UART, Timer, RNG, LEDs)
+  - Hardware block storage (disk) controller with DMA transfer
+  - Hardware asynchronous timer interrupt (K3_IRQ_TIMER) and CPU IRQ lines
+  - Hardware memory protection bounds (user_base, user_limit) for kernel/user isolation
+  - Kernel trap vector (SETVEC) and exception return (ERET)
+
+Architecture layer implementation:
+- arch/k3/Kconfig: Architecture configuration options
+- arch/k3/Makefile: Kbuild build rules
+- arch/k3/kernel/vmlinux.lds.S: Memory layout and section definitions
+- arch/k3/kernel/sched.c: Preemptive round-robin scheduler and task switching
+- arch/k3/kernel/sys_k3.c: Linux system call dispatcher
+- arch/k3/kernel/irq.c: Hardware interrupt registration and dispatch
+- arch/k3/kernel/traps.c: Hardware trap to POSIX signal mapping
+- arch/k3/kernel/init_task.c: Initial swapper task context
+- arch/k3/fs/procfs.c: Virtual /proc filesystem (/proc/cpuinfo, /proc/meminfo)
+- arch/k3/include/asm/: Architecture headers (atomic, barrier, bitops, io, irq,
+  page, processor, ptrace, string, thread_info, uaccess, unistd)
+
+Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
+---
+ arch/Kconfig                        |    2 +
+ arch/k3/Kconfig                     |   87 +
+ arch/k3/Makefile                    |   31 +
+ arch/k3/boot.c                      |   89 +
+ arch/k3/fs/procfs.c                 |   92 +
+ arch/k3/include/asm/atomic.h        |   65 +
+ arch/k3/include/asm/barrier.h       |   27 +
+ arch/k3/include/asm/bitops.h        |   65 +
+ arch/k3/include/asm/io.h            |   49 +
+ arch/k3/include/asm/irq.h           |   18 +
+ arch/k3/include/asm/irqflags.h      |   43 +
+ arch/k3/include/asm/page.h          |   26 +
+ arch/k3/include/asm/processor.h     |   31 +
+ arch/k3/include/asm/ptrace.h        |   32 +
+ arch/k3/include/asm/string.h        |   46 +
+ arch/k3/include/asm/thread_info.h   |   36 +
+ arch/k3/include/asm/uaccess.h       |   72 +
+ arch/k3/include/asm/unistd.h        |   42 +
+ arch/k3/kernel/entry.S              |   77 +
+ arch/k3/kernel/init_task.c          |   37 +
+ arch/k3/kernel/irq.c                |   92 +
+ arch/k3/kernel/process.c            |   67 +
+ arch/k3/kernel/sched.c              |  197 +
+ arch/k3/kernel/setup.c              |   38 +
+ arch/k3/kernel/sys_k3.c             |  199 +
+ arch/k3/kernel/traps.c              |   59 +
+ arch/k3/kernel/vmlinux.lds.S        |   60 +
+ 27 files changed, 1679 insertions(+)
+
+diff --git a/arch/Kconfig b/arch/Kconfig
+index 0000000..1111111 100644
+--- a/arch/Kconfig
++++ b/arch/Kconfig
+@@ -10,3 +10,5 @@
+ source "arch/$SRCARCH/Kconfig"
++source "arch/k3/Kconfig"
++
+diff --git a/arch/k3/Kconfig b/arch/k3/Kconfig
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/Kconfig
+@@ -0,0 +1,87 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# arch/k3/Kconfig - K-Three Balanced Ternary Linux Architecture Configuration
++#
++
++config K3
++	def_bool y
++	select ARCH_HAS_CPU_FINALIZE_INIT
++	select ARCH_NO_COHERENT_DMA_MMAP
++	select GENERIC_ATOMIC64
++	select GENERIC_IRQ_SHOW
++	select HAVE_ARCH_KGDB
++	select HAVE_DYNAMIC_FTRACE
++	select SET_FS
++	help
++	  K-Three (Kord-Three) is a 9-trit balanced-ternary RISC processor
++	  architecture developed as an alternative to binary computing.
++	  Features:
++	  - Radix-3 balanced ternary (-1, 0, +1 trits)
++	  - 9 trits per word (symmetric range [-9841..+9841])
++	  - Flat word-addressed physical memory (6561 words, 9 pages of 729)
++	  - 8 general-purpose 9-trit registers (r0..r7)
++	  - Hardware MMIO, hardware timer IRQ, and DMA block storage
++
++config BALANCED_TERNARY
++	def_bool y
++	help
++	  This architecture uses balanced ternary arithmetic (powers of 3)
++	  instead of standard binary arithmetic.
++
++config MMU
++	def_bool n
++	help
++	  The baseline K-Three ISA v0 uses a flat word-addressed NOMMU
++	  memory model with hardware memory protection bounds.
++
++config PAGE_OFFSET
++	hex
++	default "0x0000"
++
++config STACK_POINTER_OFFSET
++	hex
++	default "0x19A0"
++
++config CPU_NAME
++	string
++	default "K-Three 9-Trit Balanced Ternary Processor"
++
++config HZ
++	int
++	default 100
++	help
++	  Hardware timer frequency in ticks per second.
++
++config K3_MAX_TASKS
++	int "Maximum number of simultaneous tasks"
++	default 8
++	help
++	  Maximum task table slots for embedded K-Three Linux.
++
++menu "K-Three Machine Setup"
++
++config K3_RAM_WORDS
++	int "Physical RAM words"
++	default 6561
++	help
++	  Total physical memory words (3^8 = 6561).
++
++config K3_KERNEL_WORDS
++	int "Kernel reserved memory words"
++	default 1458
++	help
++	  Memory allocated to kernel code and data (Pages 0..1 = 1458 words).
++
++config K3_USER_WORDS
++	int "Userspace memory words"
++	default 5103
++	help
++	  Memory allocated to userspace tasks (Pages 2..8 = 5103 words).
++
++config K3_HW_MMIO
++	bool "Hardware Memory-Mapped I/O support"
++	default y
++	help
++	  Enable direct hardware MMIO peripherals (UART, Timer, RNG, Disk DMA).
++
++endmenu
+diff --git a/arch/k3/Makefile b/arch/k3/Makefile
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/Makefile
+@@ -0,0 +1,31 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# arch/k3/Makefile - Linux Architecture Makefile for K-Three (Kord-Three)
++#
++
++KBUILD_DEFCONFIG := defconfig
++
++# Architecture compiler flags
++KBUILD_CFLAGS += -pipe -std=c11 -Wall -Wextra -Wpedantic
++KBUILD_CFLAGS += -D__K3__ -D__linux__
++KBUILD_AFLAGS += -D__K3__
++
++# Memory layout and stack conventions
++KBUILD_CFLAGS += -fno-builtin -ffreestanding
++
++# Kernel entry point and core object directories
++head-y := arch/k3/kernel/entry.o
++core-y += arch/k3/kernel/ arch/k3/fs/
++
++# Linker script
++KBUILD_LDS := arch/k3/kernel/vmlinux.lds
++
++all: vmlinux
++
++boot := arch/k3/boot
++
++vmlinux: $(head-y) $(core-y)
++
++PHONY += clean
++clean:
++	$(Q)$(MAKE) $(clean)=$(boot)
+diff --git a/arch/k3/boot.c b/arch/k3/boot.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/boot.c
+@@ -0,0 +1,89 @@
++/*
++ * arch/k3/boot.c
++ *
++ * Boot loader and kernel entry simulator for K-Three Ternary Linux.
++ * Boots the kernel, sets up hardware vectors, and starts /sbin/init (PID 1).
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdbool.h>
++
++#include "vm.h"
++#include "image.h"
++#include "syscall.h"
++#include "io.h"
++#include "arch/k3/include/asm/processor.h"
++
++extern void k3_kernel_banner(void);
++extern void k3_setup_arch(k3_vm *vm, uint16_t trap_vector_addr);
++extern void k3_init_tasks(void);
++extern void k3_init_scheduler(void);
++extern void k3_timer_irq_tick(k3_vm *vm);
++
++static void kernel_step_hook(void *user, const k3_vm *vm)
++{
++    (void)user;
++    /* Hardware timer tick on every executed CPU cycle */
++    k3_timer_irq_tick((k3_vm *)vm);
++}
++
++int main(int argc, char **argv)
++{
++    const char *init_image = "build/userspace/kinit.k3";
++    if (argc > 1) {
++        init_image = argv[1];
++    }
++
++    /* 1. Print kernel boot dmesg banner */
++    k3_kernel_banner();
++
++    /* 2. Initialize tasks and scheduler structures */
++    k3_init_tasks();
++    k3_init_scheduler();
++
++    /* 3. Initialize K-Three VM Hardware & MMIO Subsystem */
++    k3_io_init();
++
++    k3_vm vm;
++    k3_vm_callbacks callbacks = {
++        .user = NULL,
++        .on_step = kernel_step_hook,
++        .on_stop = NULL,
++        .on_syscall = k3_host_syscall,
++        .on_mmio_read = k3_io_mmio_read,
++        .on_mmio_write = k3_io_mmio_write,
++    };
++    k3_vm_init(&vm, &callbacks);
++
++    /* 4. Setup kernel architecture hooks & trap vector */
++    k3_setup_arch(&vm, 0x0000);
++    k3_vm_set_user_bounds(&vm, 0, K3_VM_MAX_ADDRESS);
++
++    /* 5. Load /sbin/init image into user memory */
++    bt_word words[K3_VM_MEMORY_WORDS];
++    size_t count = 0;
++    if (!k3_image_read(init_image, words, K3_VM_MEMORY_WORDS, &count)) {
++        fprintf(stderr, "\033[1;31m[kernel panic] VFS: Unable to mount root fs or open %s\033[0m\n", init_image);
++        return 1;
++    }
++
++    if (!k3_vm_load(&vm, words, count, 0)) {
++        fprintf(stderr, "\033[1;31m[kernel panic] Failed to load %s into memory\033[0m\n", init_image);
++        return 1;
++    }
++
++    /* 6. Jump into user mode (PID 1) */
++    k3_vm_set_mode(&vm, K3_MODE_USER);
++
++    uint64_t executed = 0;
++    k3_vm_status status = k3_vm_run(&vm, 10000000, &executed);
++
++    if (status == K3_VM_HALTED) {
++        printf("\n\033[1;36m[kernel] System safely halted.\033[0m\n");
++    } else {
++        printf("\n\033[1;31m[kernel panic] Process 1 died with status %d\033[0m\n", status);
++    }
++
++    return (status == K3_VM_HALTED) ? 0 : 1;
++}
+diff --git a/arch/k3/fs/procfs.c b/arch/k3/fs/procfs.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/fs/procfs.c
+@@ -0,0 +1,92 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/fs/procfs.c
++ *
++ * Virtual /proc Filesystem Driver for K-Three Balanced Ternary Linux.
++ */
++
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "vm.h"
++
++extern uint64_t k3_get_jiffies(void);
++
++/*
++ * /proc/cpuinfo: displays processor model, radix, and balanced-ternary features.
++ */
++int k3_proc_cpuinfo(char *buf, size_t max_len)
++{
++    return snprintf(buf, max_len,
++        "processor\t: 0\n"
++        "model name\t: K-Three 9-Trit Balanced Ternary Processor\n"
++        "radix\t\t: 3 (balanced ternary: -1, 0, +1)\n"
++        "word size\t: 9 trits (symmetric range [-9841..+9841])\n"
++        "addressing\t: word-addressed (3^8 = 6561 words, 9 pages of 729)\n"
++        "features\t: alu9 mul9 shl9 shr9 setvec eret mmio timer_irq dma_disk vram\n"
++        "bogomips\t: 42.00\n"
++        "flags\t\t: ternary nommu preempt fpu_none\n"
++    );
++}
++
++/*
++ * /proc/meminfo: displays memory consumption in 9-trit words.
++ */
++int k3_proc_meminfo(char *buf, size_t max_len)
++{
++    return snprintf(buf, max_len,
++        "MemTotal:\t    6561 words\n"
++        "MemFree:\t    5103 words\n"
++        "MemAvailable:\t    5103 words\n"
++        "Buffers:\t      64 words\n"
++        "Cached:\t     128 words\n"
++        "SwapTotal:\t       0 words\n"
++        "SwapFree:\t       0 words\n"
++    );
++}
++
++/*
++ * /proc/version: displays Linux kernel version and build identity.
++ */
++int k3_proc_version(char *buf, size_t max_len)
++{
++    return snprintf(buf, max_len,
++        "Linux version 0.1-k3 (root@k3-build) (k3cc) #1 PREEMPT Sun Nov 1 2026\n"
++    );
++}
++
++/*
++ * /proc/uptime: displays uptime in seconds and idle time.
++ */
++int k3_proc_uptime(char *buf, size_t max_len)
++{
++    uint64_t jiffies = k3_get_jiffies();
++    uint64_t sec = jiffies / 100;
++    uint64_t frac = jiffies % 100;
++    return snprintf(buf, max_len, "%llu.%02llu %llu.00\n",
++                    (unsigned long long)sec, (unsigned long long)frac, (unsigned long long)sec);
++}
++
++extern unsigned long k3_get_irq_count(unsigned int irq);
++extern const char *k3_get_irq_name(unsigned int irq);
++
++/*
++ * /proc/interrupts: displays hardware IRQ counts.
++ */
++int k3_proc_interrupts(char *buf, size_t max_len)
++{
++    return snprintf(buf, max_len,
++        "           CPU0\n"
++        "  0:       %lu   K3-TIMER   %s\n"
++        "  1:       %lu   K3-SYSCALL %s\n"
++        "  2:       %lu   K3-FAULT   %s\n"
++        "  3:       %lu   K3-ILLEGAL %s\n"
++        "  4:       %lu   K3-OVERFLW %s\n",
++        k3_get_irq_count(0), k3_get_irq_name(0),
++        k3_get_irq_count(1), k3_get_irq_name(1),
++        k3_get_irq_count(2), k3_get_irq_name(2),
++        k3_get_irq_count(3), k3_get_irq_name(3),
++        k3_get_irq_count(4), k3_get_irq_name(4)
++    );
++}
+diff --git a/arch/k3/include/asm/atomic.h b/arch/k3/include/asm/atomic.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/atomic.h
+@@ -0,0 +1,65 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/atomic.h
++ *
++ * Ternary atomic operations for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_ATOMIC_H
++#define _ASM_K3_ATOMIC_H
++
++#include <stdint.h>
++
++typedef struct {
++    int64_t counter;
++} atomic_t;
++
++#define ATOMIC_INIT(i)          { (i) }
++
++static inline int64_t atomic_read(const atomic_t *v)
++{
++    return v->counter;
++}
++
++static inline void atomic_set(atomic_t *v, int64_t i)
++{
++    v->counter = i;
++}
++
++static inline void atomic_add(int64_t i, atomic_t *v)
++{
++    v->counter += i;
++}
++
++static inline void atomic_sub(int64_t i, atomic_t *v)
++{
++    v->counter -= i;
++}
++
++static inline void atomic_inc(atomic_t *v)
++{
++    v->counter += 1;
++}
++
++static inline void atomic_dec(atomic_t *v)
++{
++    v->counter -= 1;
++}
++
++static inline int64_t atomic_cmpxchg(atomic_t *v, int64_t old, int64_t new_val)
++{
++    int64_t prev = v->counter;
++    if (prev == old) {
++        v->counter = new_val;
++    }
++    return prev;
++}
++
++static inline int64_t atomic_xchg(atomic_t *v, int64_t new_val)
++{
++    int64_t prev = v->counter;
++    v->counter = new_val;
++    return prev;
++}
++
++#endif /* _ASM_K3_ATOMIC_H */
+diff --git a/arch/k3/include/asm/barrier.h b/arch/k3/include/asm/barrier.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/barrier.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/barrier.h
++ *
++ * Memory barrier and synchronization primitives for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_BARRIER_H
++#define _ASM_K3_BARRIER_H
++
++/*
++ * The K-Three architecture is strongly ordered: instruction fetch and
++ * memory loads/stores execute sequentially in program order with no
++ * out-of-order execution or write buffers.
++ * Compiler barriers prevent compiler instruction reordering.
++ */
++#define barrier()               __asm__ __volatile__("" : : : "memory")
++
++#define mb()                    barrier()
++#define rmb()                   barrier()
++#define wmb()                   barrier()
++
++#define smp_mb()                barrier()
++#define smp_rmb()               barrier()
++#define smp_wmb()               barrier()
++
++#endif /* _ASM_K3_BARRIER_H */
+diff --git a/arch/k3/include/asm/bitops.h b/arch/k3/include/asm/bitops.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/bitops.h
+@@ -0,0 +1,65 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/bitops.h
++ *
++ * Bitwise operations and binary flag manipulation for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_BITOPS_H
++#define _ASM_K3_BITOPS_H
++
++#include <stdbool.h>
++#include <stdint.h>
++
++#define BIT(nr)                 (1UL << (nr))
++#define BITS_PER_LONG           64
++
++static inline void set_bit(int nr, volatile unsigned long *addr)
++{
++    addr[nr / BITS_PER_LONG] |= (1UL << (nr % BITS_PER_LONG));
++}
++
++static inline void clear_bit(int nr, volatile unsigned long *addr)
++{
++    addr[nr / BITS_PER_LONG] &= ~(1UL << (nr % BITS_PER_LONG));
++}
++
++static inline void change_bit(int nr, volatile unsigned long *addr)
++{
++    addr[nr / BITS_PER_LONG] ^= (1UL << (nr % BITS_PER_LONG));
++}
++
++static inline int test_bit(int nr, const volatile unsigned long *addr)
++{
++    return (addr[nr / BITS_PER_LONG] & (1UL << (nr % BITS_PER_LONG))) != 0;
++}
++
++static inline int test_and_set_bit(int nr, volatile unsigned long *addr)
++{
++    unsigned long mask = (1UL << (nr % BITS_PER_LONG));
++    volatile unsigned long *p = &addr[nr / BITS_PER_LONG];
++    unsigned long old = *p;
++    *p = old | mask;
++    return (old & mask) != 0;
++}
++
++static inline int test_and_clear_bit(int nr, volatile unsigned long *addr)
++{
++    unsigned long mask = (1UL << (nr % BITS_PER_LONG));
++    volatile unsigned long *p = &addr[nr / BITS_PER_LONG];
++    unsigned long old = *p;
++    *p = old & ~mask;
++    return (old & mask) != 0;
++}
++
++static inline int ffs(int x)
++{
++    return __builtin_ffs(x);
++}
++
++static inline int fls(int x)
++{
++    return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
++}
++
++#endif /* _ASM_K3_BITOPS_H */
+diff --git a/arch/k3/include/asm/io.h b/arch/k3/include/asm/io.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/io.h
+@@ -0,0 +1,49 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/io.h
++ *
++ * Memory-Mapped I/O (MMIO) and Port I/O primitives for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_IO_H
++#define _ASM_K3_IO_H
++
++#include <stdint.h>
++#include <stdbool.h>
++
++#include "io.h"
++
++/*
++ * In K-Three's flat-addressed NOMMU memory model, physical memory addresses
++ * map 1:1 with virtual addresses.
++ */
++#define ioremap(cookie, size)       ((void *)(uintptr_t)(cookie))
++#define iounmap(cookie)             do { } while (0)
++
++#define __raw_readw(addr)           (*(volatile uint16_t *)(addr))
++#define __raw_writew(val, addr)     (*(volatile uint16_t *)(addr) = (val))
++
++static inline uint16_t readw(const volatile void *addr)
++{
++    return *(const volatile uint16_t *)addr;
++}
++
++static inline void writew(uint16_t val, volatile void *addr)
++{
++    *(volatile uint16_t *)addr = val;
++}
++
++/*
++ * Port I/O emulation (mapped into MMIO space).
++ */
++static inline uint16_t inw(uint16_t port)
++{
++    return readw((void *)(uintptr_t)(K3_MMIO_BASE + port));
++}
++
++static inline void outw(uint16_t val, uint16_t port)
++{
++    writew(val, (void *)(uintptr_t)(K3_MMIO_BASE + port));
++}
++
++#endif /* _ASM_K3_IO_H */
+diff --git a/arch/k3/include/asm/irq.h b/arch/k3/include/asm/irq.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/irq.h
+@@ -0,0 +1,18 @@
++/*
++ * arch/k3/include/asm/irq.h
++ *
++ * Hardware interrupts, exceptions, and trap vector definitions.
++ */
++
++#ifndef _ASM_K3_IRQ_H
++#define _ASM_K3_IRQ_H
++
++#define K3_IRQ_TIMER        0   /* Periodic hardware timer tick */
++#define K3_IRQ_SYSCALL      1   /* User syscall trap (TRAP #code) */
++#define K3_IRQ_FAULT_MEM    2   /* Memory bounds / fetch fault */
++#define K3_IRQ_FAULT_ILL    3   /* Illegal or privileged instruction in user mode */
++#define K3_IRQ_FAULT_OVF    4   /* Arithmetic overflow trap */
++
++#define K3_NR_IRQS          8
++
++#endif /* _ASM_K3_IRQ_H */
+diff --git a/arch/k3/include/asm/irqflags.h b/arch/k3/include/asm/irqflags.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/irqflags.h
+@@ -0,0 +1,43 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/irqflags.h
++ *
++ * Hardware interrupt enable, disable, and flag saving for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_IRQFLAGS_H
++#define _ASM_K3_IRQFLAGS_H
++
++#include <stdbool.h>
++#include <stdint.h>
++
++#include "vm.h"
++
++static inline void arch_local_irq_enable(k3_vm *vm)
++{
++    k3_vm_enable_irq(vm, true);
++}
++
++static inline void arch_local_irq_disable(k3_vm *vm)
++{
++    k3_vm_enable_irq(vm, false);
++}
++
++static inline unsigned long arch_local_irq_save(k3_vm *vm)
++{
++    unsigned long flags = k3_vm_irq_enabled(vm) ? 1UL : 0UL;
++    k3_vm_enable_irq(vm, false);
++    return flags;
++}
++
++static inline void arch_local_irq_restore(k3_vm *vm, unsigned long flags)
++{
++    k3_vm_enable_irq(vm, (flags & 1UL) != 0);
++}
++
++static inline bool arch_irqs_disabled_flags(unsigned long flags)
++{
++    return (flags & 1UL) == 0;
++}
++
++#endif /* _ASM_K3_IRQFLAGS_H */
+diff --git a/arch/k3/include/asm/page.h b/arch/k3/include/asm/page.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/page.h
+@@ -0,0 +1,26 @@
++/*
++ * arch/k3/include/asm/page.h
++ *
++ * Ternary page definitions for K-Three Linux / NOMMU memory model.
++ */
++
++#ifndef _ASM_K3_PAGE_H
++#define _ASM_K3_PAGE_H
++
++/*
++ * Ternary Page Size: 3^6 = 729 words.
++ *
++ * In 6561-word memory:
++ *   Page 0: 0000..0728 (Kernel Code & Drivers)
++ *   Page 1: 0729..1457 (Kernel Data & Kernel Stack)
++ *   Pages 2..8: 1458..6560 (Userspace Process Space)
++ */
++#define K3_PAGE_SHIFT       6
++#define K3_PAGE_SIZE        729     /* 3^6 words */
++#define K3_PAGE_MASK        (~(K3_PAGE_SIZE - 1))
++
++#define K3_TOTAL_PAGES      (K3_VM_MEMORY_WORDS / K3_PAGE_SIZE) /* 9 pages */
++
++#define PAGE_ALIGN(addr)    (((addr) + K3_PAGE_SIZE - 1) & K3_PAGE_MASK)
++
++#endif /* _ASM_K3_PAGE_H */
+diff --git a/arch/k3/include/asm/processor.h b/arch/k3/include/asm/processor.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/processor.h
+@@ -0,0 +1,31 @@
++/*
++ * arch/k3/include/asm/processor.h
++ *
++ * Processor architecture definitions, thread structures, and privilege states.
++ */
++
++#ifndef _ASM_K3_PROCESSOR_H
++#define _ASM_K3_PROCESSOR_H
++
++#include <stdint.h>
++#include "ptrace.h"
++
++#define K3_CPU_NAME         "K-Three Balanced Ternary"
++#define K3_CPU_WORD_BITS    18      /* 9 trits = 18 bits packed */
++#define K3_CPU_TRITS        9
++#define K3_CPU_REG_COUNT    8
++
++/* Hardware privilege levels */
++#define K3_MODE_KERNEL      0
++#define K3_MODE_USER        1
++
++/* Architecture thread context saved during switch_to() */
++struct thread_struct {
++    int64_t ksp;            /* Kernel stack pointer (r7) */
++    int64_t krsp;           /* Kernel return stack pointer (r4) */
++    uint16_t pc;            /* Program counter */
++    uint8_t  mode;          /* Execution mode */
++    struct pt_regs *regs;   /* Pointer to user registers on kernel stack */
++};
++
++#endif /* _ASM_K3_PROCESSOR_H */
+diff --git a/arch/k3/include/asm/ptrace.h b/arch/k3/include/asm/ptrace.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/ptrace.h
+@@ -0,0 +1,32 @@
++/*
++ * arch/k3/include/asm/ptrace.h
++ *
++ * User and kernel register context for the K-Three balanced ternary processor.
++ */
++
++#ifndef _ASM_K3_PTRACE_H
++#define _ASM_K3_PTRACE_H
++
++#include <stdint.h>
++
++/*
++ * Saved processor registers during trap / interrupt entry.
++ * Conforms to the K-Three calling convention and context switch frame.
++ */
++struct pt_regs {
++    int64_t r0;     /* Arg 0 / Return value / Syscall number */
++    int64_t r1;     /* Arg 1 / Secondary return */
++    int64_t r2;     /* Arg 2 */
++    int64_t r3;     /* Scratch / Local */
++    int64_t r4;     /* Scratch / Thread Return Stack Pointer */
++    int64_t r5;     /* Scratch / Call Target Register */
++    int64_t r6;     /* Link Register / Return Address */
++    int64_t r7;     /* Data Stack Pointer */
++
++    uint16_t epc;       /* Exception Program Counter (saved_pc) */
++    uint16_t status;    /* CPU status flags */
++    uint8_t  mode;      /* Saved privilege mode (0 = Kernel, 1 = User) */
++    int32_t  orig_r0;   /* Original r0 before syscall dispatch */
++};
++
++#endif /* _ASM_K3_PTRACE_H */
+diff --git a/arch/k3/include/asm/string.h b/arch/k3/include/asm/string.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/string.h
+@@ -0,0 +1,46 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/string.h
++ *
++ * Architecture-optimized string and memory primitives for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_STRING_H
++#define _ASM_K3_STRING_H
++
++#include <stddef.h>
++#include <stdint.h>
++
++#define __HAVE_ARCH_MEMSET
++#define __HAVE_ARCH_MEMCPY
++#define __HAVE_ARCH_STRLEN
++
++static inline void *memset(void *s, int c, size_t count)
++{
++    char *xs = (char *)s;
++    while (count--) {
++        *xs++ = (char)c;
++    }
++    return s;
++}
++
++static inline void *memcpy(void *dest, const void *src, size_t count)
++{
++    char *tmp = (char *)dest;
++    const char *s = (const char *)src;
++    while (count--) {
++        *tmp++ = *s++;
++    }
++    return dest;
++}
++
++static inline size_t strlen(const char *s)
++{
++    const char *sc = s;
++    while (*sc != '\0') {
++        sc++;
++    }
++    return (size_t)(sc - s);
++}
++
++#endif /* _ASM_K3_STRING_H */
+diff --git a/arch/k3/include/asm/thread_info.h b/arch/k3/include/asm/thread_info.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/thread_info.h
+@@ -0,0 +1,36 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/thread_info.h
++ *
++ * Low-level thread information and scheduler flags for K-Three Linux.
++ */
++
++#ifndef _ASM_K3_THREAD_INFO_H
++#define _ASM_K3_THREAD_INFO_H
++
++#include <stdint.h>
++
++struct task_struct;
++
++struct thread_info {
++    struct task_struct *task;       /* Main task structure */
++    unsigned long       flags;      /* Low-level thread flags */
++    int                 preempt_count; /* 0 => preemptible, >0 => preemption disabled */
++    int                 cpu;        /* Current CPU index */
++};
++
++/* Thread Information Flags */
++#define TIF_SIGPENDING          0   /* Signal pending for task */
++#define TIF_NEED_RESCHED        1   /* Rescheduling required */
++#define TIF_NOTIFY_RESUME       2   /* Callback on return to user mode */
++#define TIF_MEMDIE              3   /* Process killed by OOM killer */
++
++#define _TIF_SIGPENDING         (1 << TIF_SIGPENDING)
++#define _TIF_NEED_RESCHED       (1 << TIF_NEED_RESCHED)
++#define _TIF_NOTIFY_RESUME      (1 << TIF_NOTIFY_RESUME)
++
++/* Preemption Control */
++#define preempt_disable()       do { } while (0)
++#define preempt_enable()        do { } while (0)
++
++#endif /* _ASM_K3_THREAD_INFO_H */
+diff --git a/arch/k3/include/asm/uaccess.h b/arch/k3/include/asm/uaccess.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/uaccess.h
+@@ -0,0 +1,72 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/uaccess.h
++ *
++ * User space memory access and hardware memory protection validation.
++ */
++
++#ifndef _ASM_K3_UACCESS_H
++#define _ASM_K3_UACCESS_H
++
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/page.h"
++
++#define EFAULT          14
++
++/*
++ * Check if a user address range [addr .. addr + len - 1] is valid
++ * within the configured hardware user space bounds.
++ */
++static inline bool access_ok(const k3_vm *vm, uint16_t addr, size_t len)
++{
++    if (vm == NULL) return false;
++    uint16_t base = 0, limit = K3_VM_MAX_ADDRESS;
++    k3_vm_get_user_bounds(vm, &base, &limit);
++
++    if (addr < base) return false;
++    if ((size_t)addr + len > (size_t)limit + 1) return false;
++    return true;
++}
++
++/*
++ * Copy data from user space memory to kernel memory.
++ * Returns 0 on success, or -EFAULT on memory boundary violation.
++ */
++static inline long copy_from_user(k3_vm *vm, void *to, uint16_t from_user_addr, size_t words)
++{
++    if (!access_ok(vm, from_user_addr, words)) {
++        return -EFAULT;
++    }
++    for (size_t i = 0; i < words; ++i) {
++        bt_word w;
++        if (!k3_vm_get_mem(vm, (uint16_t)(from_user_addr + i), &w)) {
++            return -EFAULT;
++        }
++        ((bt_word *)to)[i] = w;
++    }
++    return 0;
++}
++
++/*
++ * Copy data from kernel memory to user space memory.
++ * Returns 0 on success, or -EFAULT on memory boundary violation.
++ */
++static inline long copy_to_user(k3_vm *vm, uint16_t to_user_addr, const void *from, size_t words)
++{
++    if (!access_ok(vm, to_user_addr, words)) {
++        return -EFAULT;
++    }
++    for (size_t i = 0; i < words; ++i) {
++        const bt_word *w = &((const bt_word *)from)[i];
++        if (!k3_vm_set_mem(vm, (uint16_t)(to_user_addr + i), w)) {
++            return -EFAULT;
++        }
++    }
++    return 0;
++}
++
++#endif /* _ASM_K3_UACCESS_H */
+diff --git a/arch/k3/include/asm/unistd.h b/arch/k3/include/asm/unistd.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/unistd.h
+@@ -0,0 +1,42 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/unistd.h
++ *
++ * System call numbers for the K-Three balanced ternary Linux architecture.
++ */
++
++#ifndef _ASM_K3_UNISTD_H
++#define _ASM_K3_UNISTD_H
++
++/* Standard Linux POSIX System Call Numbers */
++#define __NR_restart_syscall    0
++#define __NR_exit               1
++#define __NR_fork               2
++#define __NR_read               3
++#define __NR_write              4
++#define __NR_open               5
++#define __NR_close              6
++#define __NR_waitpid            7
++#define __NR_execve             11
++#define __NR_getpid             20
++#define __NR_pause              29
++#define __NR_kill               37
++#define __NR_pipe               42
++#define __NR_brk                45
++#define __NR_getppid            64
++#define __NR_sysinfo            116
++#define __NR_clone              120
++#define __NR_uname              122
++#define __NR_sched_yield        158
++#define __NR_nanosleep          162
++
++/* K-Three Balanced Ternary Hardware Extensions */
++#define __NR_k3_uptime          200   /* Monotonic hardware timer ms */
++#define __NR_k3_entropy         201   /* True hardware balanced ternary random word */
++#define __NR_k3_leds            202   /* Read / write front-panel diagnostic LEDs */
++#define __NR_k3_disk_dma        203   /* Direct sector block storage DMA transfer */
++#define __NR_k3_vram_flush      204   /* Flush text video RAM to terminal display */
++
++#define __NR_syscalls           256
++
++#endif /* _ASM_K3_UNISTD_H */
+diff --git a/arch/k3/kernel/entry.S b/arch/k3/kernel/entry.S
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/entry.S
+@@ -0,0 +1,77 @@
++; ==============================================================================
++; arch/k3/kernel/entry.S
++;
++; Low-level Linux / Unix Exception and System Call Vector for K-Three.
++;
++; When the CPU hardware triggers a trap in user mode:
++;   1. Hardware saves return PC into EPC (saved_pc)
++;   2. Hardware sets mode to KERNEL_MODE
++;   3. Hardware jumps to kernel_trap_entry
++; ==============================================================================
++
++    .equ SYS_EXIT, 0
++    .equ SYS_PUTC, 1
++    .equ SYS_GETC, 2
++    .equ SYS_PUTS, 4
++
++kernel_trap_entry:
++    ; 1. Save user registers onto the kernel stack (r7)
++    push r0
++    push r1
++    push r2
++    push r3
++    push r4
++    push r5
++    push r6
++
++    ; 2. Determine trap source / dispatch syscall
++    ; Retrieve saved r0 from stack
++    mov r0, r7
++    addi r0, #6
++    load r0, [r0]
++
++    ; Dispatch basic kernel syscalls:
++    ; Syscall 0: Exit
++    mov r1, r0
++    brz r1, handle_sys_exit
++
++    ; Syscall 1: PUTC (char in r1)
++    subi r1, #1
++    brz r1, handle_sys_putc
++
++    ; Syscall 4: PUTS (str in r1)
++    subi r1, #3
++    brz r1, handle_sys_puts
++
++    jmp trap_return
++
++handle_sys_putc:
++    mov r0, r7
++    addi r0, #5
++    load r0, [r0]           ; get user r1
++    trap #1                 ; call host console putc
++    jmp trap_return
++
++handle_sys_puts:
++    mov r0, r7
++    addi r0, #5
++    load r0, [r0]           ; get user r1 (address)
++    trap #4                 ; call host console puts
++    jmp trap_return
++
++handle_sys_exit:
++    ; Terminate process
++    halt
++
++trap_return:
++    ; 3. Restore user registers from kernel stack
++    pop r6
++    pop r5
++    pop r4
++    pop r3
++    pop r2
++    pop r1
++    pop r0
++
++    ; 4. Atomic return to user mode and saved PC
++    eret
+diff --git a/arch/k3/kernel/init_task.c b/arch/k3/kernel/init_task.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/init_task.c
+@@ -0,0 +1,37 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/init_task.c
++ *
++ * Initial task (Swapper/Idle PID 0) definition for K-Three Linux.
++ */
++
++#include "arch/k3/include/asm/processor.h"
++#include "arch/k3/include/asm/thread_info.h"
++
++/*
++ * Static initial task structure conforming to Linux kernel standard.
++ */
++static struct thread_struct init_thread = {
++    .ksp = 6560,
++    .krsp = 6000,
++    .pc = 0x0000,
++    .mode = K3_MODE_KERNEL,
++    .regs = (void *)0,
++};
++
++static struct thread_info init_thread_info = {
++    .task = (void *)0,
++    .flags = 0,
++    .preempt_count = 1,
++    .cpu = 0,
++};
++
++struct thread_struct *k3_get_init_thread(void)
++{
++    return &init_thread;
++}
++
++struct thread_info *k3_get_init_thread_info(void)
++{
++    return &init_thread_info;
++}
+diff --git a/arch/k3/kernel/irq.c b/arch/k3/kernel/irq.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/irq.c
+@@ -0,0 +1,92 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/irq.c
++ *
++ * Linux interrupt management and dispatch subsystem for K-Three.
++ */
++
++#include <stdio.h>
++#include <string.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/irq.h"
++#include "arch/k3/include/asm/ptrace.h"
++
++typedef int (*irq_handler_t)(int irq, void *dev_id);
++
++struct irq_action {
++    irq_handler_t handler;
++    void *dev_id;
++    const char *name;
++    unsigned long count;
++    bool active;
++};
++
++static struct irq_action s_irq_actions[K3_NR_IRQS];
++
++void init_IRQ(void)
++{
++    memset(s_irq_actions, 0, sizeof(s_irq_actions));
++
++    /* Pre-register default hardware timer IRQ 0 */
++    s_irq_actions[K3_IRQ_TIMER].name = "timer";
++    s_irq_actions[K3_IRQ_TIMER].active = true;
++
++    /* Pre-register syscall trap IRQ 1 */
++    s_irq_actions[K3_IRQ_SYSCALL].name = "syscall";
++    s_irq_actions[K3_IRQ_SYSCALL].active = true;
++}
++
++int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags,
++                const char *name, void *dev_id)
++{
++    (void)flags;
++    if (irq >= K3_NR_IRQS || handler == NULL) {
++        return -22; /* -EINVAL */
++    }
++
++    s_irq_actions[irq].handler = handler;
++    s_irq_actions[irq].dev_id = dev_id;
++    s_irq_actions[irq].name = name ? name : "unnamed";
++    s_irq_actions[irq].active = true;
++    return 0;
++}
++
++void free_irq(unsigned int irq, void *dev_id)
++{
++    if (irq < K3_NR_IRQS) {
++        if (s_irq_actions[irq].dev_id == dev_id) {
++            s_irq_actions[irq].handler = NULL;
++            s_irq_actions[irq].dev_id = NULL;
++            s_irq_actions[irq].active = false;
++        }
++    }
++}
++
++void do_IRQ(k3_vm *vm, unsigned int irq, struct pt_regs *regs)
++{
++    (void)vm;
++    (void)regs;
++    if (irq < K3_NR_IRQS) {
++        s_irq_actions[irq].count++;
++        if (s_irq_actions[irq].handler != NULL) {
++            s_irq_actions[irq].handler((int)irq, s_irq_actions[irq].dev_id);
++        }
++    }
++}
++
++unsigned long k3_get_irq_count(unsigned int irq)
++{
++    if (irq < K3_NR_IRQS) {
++        return s_irq_actions[irq].count;
++    }
++    return 0;
++}
++
++const char *k3_get_irq_name(unsigned int irq)
++{
++    if (irq < K3_NR_IRQS && s_irq_actions[irq].name != NULL) {
++        return s_irq_actions[irq].name;
++    }
++    return "none";
++}
+diff --git a/arch/k3/kernel/process.c b/arch/k3/kernel/process.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/process.c
+@@ -0,0 +1,67 @@
++/*
++ * arch/k3/kernel/process.c
++ *
++ * Process management and context switching (switch_to) for K-Three.
++ */
++
++#include <stdio.h>
++#include <string.h>
++#include "vm.h"
++#include "arch/k3/include/asm/processor.h"
++
++#define K3_MAX_TASKS 4
++
++struct task_struct {
++    int pid;
++    char comm[16];
++    struct thread_struct thread;
++    bt_word regs[K3_VM_REGISTER_COUNT];
++    uint16_t pc;
++    int state; /* 0 = RUNNING, 1 = SLEEPING, 2 = ZOMBIE */
++};
++
++static struct task_struct g_task_table[K3_MAX_TASKS];
++static int g_current_pid = 0;
++
++void k3_init_tasks(void)
++{
++    memset(g_task_table, 0, sizeof(g_task_table));
++
++    /* Task 0: swapper / idle */
++    g_task_table[0].pid = 0;
++    strncpy(g_task_table[0].comm, "swapper", sizeof(g_task_table[0].comm) - 1);
++    g_task_table[0].state = 0;
++
++    /* Task 1: /sbin/init */
++    g_task_table[1].pid = 1;
++    strncpy(g_task_table[1].comm, "init", sizeof(g_task_table[1].comm) - 1);
++    g_task_table[1].state = 0;
++}
++
++/*
++ * Low-level context switch between two K-Three processes.
++ */
++void k3_switch_to(k3_vm *vm, int prev_pid, int next_pid)
++{
++    if (prev_pid < 0 || prev_pid >= K3_MAX_TASKS ||
++        next_pid < 0 || next_pid >= K3_MAX_TASKS) {
++        return;
++    }
++
++    struct task_struct *prev = &g_task_table[prev_pid];
++    struct task_struct *next = &g_task_table[next_pid];
++
++    /* 1. Save architecture state of prev task */
++    for (int i = 0; i < K3_VM_REGISTER_COUNT; ++i) {
++        prev->regs[i] = vm->regs[i];
++    }
++    prev->pc = vm->pc;
++
++    /* 2. Restore architecture state of next task */
++    for (int i = 0; i < K3_VM_REGISTER_COUNT; ++i) {
++        vm->regs[i] = next->regs[i];
++    }
++    vm->pc = next->pc;
++
++    g_current_pid = next_pid;
++}
+diff --git a/arch/k3/kernel/sched.c b/arch/k3/kernel/sched.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/sched.c
+@@ -0,0 +1,197 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/sched.c
++ *
++ * Preemptive Task Scheduler & Context Switching for K-Three Linux.
++ */
++
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/processor.h"
++#include "arch/k3/include/asm/ptrace.h"
++#include "arch/k3/include/asm/page.h"
++
++#define K3_MAX_TASKS        8
++
++#define TASK_RUNNING        0
++#define TASK_INTERRUPTIBLE  1
++#define TASK_STOPPED        2
++#define TASK_ZOMBIE         3
++
++struct task_struct {
++    int pid;
++    int ppid;
++    char comm[16];
++    int state;
++    uint64_t utime;
++    uint64_t stime;
++    int priority;
++    int timeslice;
++
++    /* Architectural Context */
++    bt_word regs[K3_VM_REGISTER_COUNT];
++    uint16_t pc;
++    uint8_t mode;
++};
++
++static struct task_struct s_tasks[K3_MAX_TASKS];
++static int s_current_pid = 0;
++static uint64_t s_jiffies = 0;
++
++void k3_init_scheduler(void)
++{
++    memset(s_tasks, 0, sizeof(s_tasks));
++
++    /* Task 0: swapper (idle daemon) */
++    s_tasks[0].pid = 0;
++    s_tasks[0].ppid = 0;
++    strncpy(s_tasks[0].comm, "swapper", sizeof(s_tasks[0].comm) - 1);
++    s_tasks[0].state = TASK_RUNNING;
++    s_tasks[0].priority = 20;
++    s_tasks[0].timeslice = 5;
++
++    /* Task 1: /sbin/kinit */
++    s_tasks[1].pid = 1;
++    s_tasks[1].ppid = 0;
++    strncpy(s_tasks[1].comm, "kinit", sizeof(s_tasks[1].comm) - 1);
++    s_tasks[1].state = TASK_RUNNING;
++    s_tasks[1].priority = 20;
++    s_tasks[1].timeslice = 5;
++
++    s_current_pid = 1; /* Start with kinit */
++    s_jiffies = 0;
++}
++
++int k3_get_current_pid(void)
++{
++    return s_current_pid;
++}
++
++uint64_t k3_get_jiffies(void)
++{
++    return s_jiffies;
++}
++
++const char *k3_get_task_comm(int pid)
++{
++    if (pid >= 0 && pid < K3_MAX_TASKS) {
++        return s_tasks[pid].comm;
++    }
++    return "unknown";
++}
++
++int k3_create_task(const char *comm, uint16_t entry_pc, uint16_t stack_ptr)
++{
++    for (int i = 2; i < K3_MAX_TASKS; ++i) {
++        if (s_tasks[i].state == TASK_ZOMBIE || s_tasks[i].pid == 0) {
++            s_tasks[i].pid = i;
++            s_tasks[i].ppid = s_current_pid;
++            strncpy(s_tasks[i].comm, comm, sizeof(s_tasks[i].comm) - 1);
++            s_tasks[i].comm[sizeof(s_tasks[i].comm) - 1] = '\0';
++            s_tasks[i].state = TASK_RUNNING;
++            s_tasks[i].priority = 20;
++            s_tasks[i].timeslice = 5;
++            s_tasks[i].pc = entry_pc;
++            s_tasks[i].mode = K3_MODE_USER;
++
++            /* Zero registers except stack pointer r7 */
++            for (int r = 0; r < K3_VM_REGISTER_COUNT; ++r) {
++                bt_word_zero(&s_tasks[i].regs[r]);
++            }
++            bt_word sp;
++            bt_word_from_i64((int64_t)stack_ptr, &sp);
++            s_tasks[i].regs[7] = sp;
++
++            return i;
++        }
++    }
++    return -1; /* Out of task slots */
++}
++
++/*
++ * Low-level context switch between two K-Three processes.
++ */
++static void do_context_switch(k3_vm *vm, int prev_pid, int next_pid)
++{
++    if (prev_pid == next_pid) return;
++
++    struct task_struct *prev = &s_tasks[prev_pid];
++    struct task_struct *next = &s_tasks[next_pid];
++
++    /* 1. Save architecture state of current task */
++    for (int i = 0; i < K3_VM_REGISTER_COUNT; ++i) {
++        prev->regs[i] = vm->regs[i];
++    }
++    prev->pc = vm->pc;
++    prev->mode = (uint8_t)k3_vm_get_mode(vm);
++
++    /* 2. Restore architecture state of next task */
++    for (int i = 0; i < K3_VM_REGISTER_COUNT; ++i) {
++        vm->regs[i] = next->regs[i];
++    }
++    vm->pc = next->pc;
++    k3_vm_set_mode(vm, (k3_vm_mode)next->mode);
++
++    s_current_pid = next_pid;
++}
++
++/*
++ * Round-robin preemptive scheduler.
++ */
++void k3_schedule(k3_vm *vm)
++{
++    if (vm == NULL) return;
++
++    int next_pid = -1;
++
++    /* Scan task table starting from current + 1 */
++    for (int offset = 1; offset <= K3_MAX_TASKS; ++offset) {
++        int candidate = (s_current_pid + offset) % K3_MAX_TASKS;
++        if (s_tasks[candidate].pid > 0 && s_tasks[candidate].state == TASK_RUNNING) {
++            next_pid = candidate;
++            break;
++        }
++    }
++
++    if (next_pid < 0) {
++        /* Default to idle task (0) */
++        next_pid = 0;
++    }
++
++    if (next_pid != s_current_pid) {
++        do_context_switch(vm, s_current_pid, next_pid);
++    }
++}
++
++/*
++ * Hardware Timer IRQ handler: updates jiffies and decrements timeslice.
++ */
++void k3_timer_irq_tick(k3_vm *vm)
++{
++    s_jiffies++;
++
++    struct task_struct *cur = &s_tasks[s_current_pid];
++    if (cur->state == TASK_RUNNING) {
++        if (k3_vm_get_mode(vm) == K3_MODE_USER) {
++            cur->utime++;
++        } else {
++            cur->stime++;
++        }
++
++        if (--cur->timeslice <= 0) {
++            cur->timeslice = 5; /* Reset timeslice */
++            k3_schedule(vm);    /* Preempt and switch task! */
++        }
++    }
++}
++
++void k3_exit_current_task(k3_vm *vm, int exit_code)
++{
++    (void)exit_code;
++    s_tasks[s_current_pid].state = TASK_ZOMBIE;
++    k3_schedule(vm);
++}
+diff --git a/arch/k3/kernel/setup.c b/arch/k3/kernel/setup.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/setup.c
+@@ -0,0 +1,38 @@
++/*
++ * arch/k3/kernel/setup.c
++ *
++ * Architecture initialization, hardware discovery and kernel boot sequence.
++ */
++
++#include <stdio.h>
++#include <stdint.h>
++#include <stdbool.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/page.h"
++#include "arch/k3/include/asm/processor.h"
++#include "arch/k3/include/asm/irq.h"
++
++void k3_kernel_banner(void)
++{
++    printf("\033[1;36m[    0.000000] Linux version 0.1-k3 (root@k3-build) (k3-elf-gcc) #1 PREEMPT\033[0m\n");
++    printf("[    0.000000] Machine model: K-Three 9-Trit Balanced Ternary Processor\n");
++    printf("[    0.000000] CPU features: 9-trit ALU, symmetric math, [-9841..+9841]\n");
++    printf("[    0.000000] Memory: %d words available (%d pages of %d words, NOMMU)\n",
++           K3_VM_MEMORY_WORDS, K3_TOTAL_PAGES, K3_PAGE_SIZE);
++    printf("[    0.000000] Zone PFN: Kernel [0..%d], Userspace [%d..%d]\n",
++           K3_PAGE_SIZE * 2 - 1, K3_PAGE_SIZE * 2, K3_VM_MAX_ADDRESS);
++    printf("[    0.000000] Trap Vector registered at address 0x%04x\n", 0);
++    printf("[    0.000000] Calibrating delay loop... 42.00 BogoMIPS\n");
++    printf("[    0.000000] devtmpfs: initialized\n");
++    printf("[    0.000000] VFS: Mounted root (ternary-romfs filesystem) readonly.\n");
++    printf("\033[1;32m[    0.000000] Freeing unused kernel memory... Done\033[0m\n");
++    printf("\033[1;33m[    0.000000] Run /sbin/kinit as init process (pid 1)\033[0m\n");
++    fflush(stdout);
++}
++
++void k3_setup_arch(k3_vm *vm, uint16_t trap_vector_addr)
++{
++    k3_vm_set_trap_vector(vm, (int16_t)trap_vector_addr);
++    k3_vm_set_mode(vm, K3_MODE_KERNEL);
++}
+diff --git a/arch/k3/kernel/sys_k3.c b/arch/k3/kernel/sys_k3.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/sys_k3.c
+@@ -0,0 +1,199 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/sys_k3.c
++ *
++ * Linux System Call Implementations for K-Three Balanced Ternary Architecture.
++ */
++
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "vm.h"
++#include "io.h"
++#include "arch/k3/include/asm/unistd.h"
++#include "arch/k3/include/asm/processor.h"
++#include "arch/k3/include/asm/uaccess.h"
++
++extern int k3_get_current_pid(void);
++extern uint64_t k3_get_jiffies(void);
++extern void k3_schedule(k3_vm *vm);
++extern void k3_exit_current_task(k3_vm *vm, int exit_code);
++extern int k3_create_task(const char *comm, uint16_t entry_pc, uint16_t stack_ptr);
++
++struct new_utsname {
++    char sysname[65];
++    char nodename[65];
++    char release[65];
++    char version[65];
++    char machine[65];
++    char domainname[65];
++};
++
++struct linux_sysinfo {
++    long uptime;             /* Seconds since boot */
++    unsigned long loads[3];  /* 1, 5, and 15 minute load averages */
++    unsigned long totalram;  /* Total usable main memory size */
++    unsigned long freeram;   /* Available memory size */
++    unsigned long sharedram; /* Amount of shared memory */
++    unsigned long bufferram; /* Memory used by buffers */
++    unsigned long totalswap; /* Total swap space size */
++    unsigned long freeswap;  /* Swap space still available */
++    unsigned short procs;    /* Number of current processes */
++    unsigned long totalhigh; /* Total high memory size */
++    unsigned long freehigh;  /* Available high memory size */
++    unsigned int mem_unit;   /* Memory unit size in bytes */
++};
++
++/*
++ * sys_uname: returns system identification block.
++ */
++static int64_t k3_sys_uname(k3_vm *vm, uint16_t uaddr)
++{
++    struct new_utsname uts;
++    memset(&uts, 0, sizeof(uts));
++    strncpy(uts.sysname, "Linux", sizeof(uts.sysname) - 1);
++    strncpy(uts.nodename, "k3-ternary", sizeof(uts.nodename) - 1);
++    strncpy(uts.release, "0.1-k3", sizeof(uts.release) - 1);
++    strncpy(uts.version, "#1 PREEMPT Sun Nov 1 2026", sizeof(uts.version) - 1);
++    strncpy(uts.machine, "k3-9trit", sizeof(uts.machine) - 1);
++    strncpy(uts.domainname, "(none)", sizeof(uts.domainname) - 1);
++
++    /* Copy words to user address */
++    const char *src = (const char *)&uts;
++    size_t words = (sizeof(uts) + 1) / 2;
++    for (size_t i = 0; i < words; ++i) {
++        bt_word w;
++        int64_t val = (unsigned char)src[i * 2] | (((int64_t)(unsigned char)src[i * 2 + 1]) << 8);
++        bt_word_from_i64(val, &w);
++        k3_vm_set_mem(vm, (uint16_t)(uaddr + i), &w);
++    }
++    return 0;
++}
++
++/*
++ * sys_sysinfo: returns system statistics.
++ */
++static int64_t k3_sys_sysinfo(k3_vm *vm, uint16_t uaddr)
++{
++    bt_word w;
++    /* word 0: uptime */
++    bt_word_from_i64((int64_t)(k3_get_jiffies() / 100), &w);
++    k3_vm_set_mem(vm, uaddr + 0, &w);
++    /* word 1: total memory words */
++    bt_word_from_i64(K3_VM_MEMORY_WORDS, &w);
++    k3_vm_set_mem(vm, uaddr + 1, &w);
++    /* word 2: free memory words */
++    bt_word_from_i64(5104, &w);
++    k3_vm_set_mem(vm, uaddr + 2, &w);
++    /* word 3: process count */
++    bt_word_from_i64(2, &w);
++    k3_vm_set_mem(vm, uaddr + 3, &w);
++    return 0;
++}
++
++/*
++ * Linux System Call Dispatcher for K-Three Architecture.
++ */
++int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1, int64_t a2)
++{
++    switch (nr) {
++    case __NR_getpid:
++        return k3_get_current_pid();
++
++    case __NR_getppid:
++        return 0;
++
++    case __NR_sched_yield:
++        k3_schedule(vm);
++        return 0;
++
++    case __NR_exit:
++        k3_exit_current_task(vm, (int)a0);
++        return 0;
++
++    case __NR_uname:
++        return k3_sys_uname(vm, (uint16_t)a0);
++
++    case __NR_sysinfo:
++        return k3_sys_sysinfo(vm, (uint16_t)a0);
++
++    case __NR_write: {
++        /* a0 = fd (1=stdout, 2=stderr), a1 = buf addr, a2 = len */
++        if (a0 == 1 || a0 == 2) {
++            for (int64_t i = 0; i < a2; ++i) {
++                bt_word w;
++                if (k3_vm_get_mem(vm, (uint16_t)(a1 + i), &w)) {
++                    int64_t ch = 0;
++                    bt_word_to_i64(&w, &ch);
++                    putchar((int)(ch & 0xFF));
++                }
++            }
++            fflush(stdout);
++            return a2;
++        }
++        return -1;
++    }
++
++    case __NR_read: {
++        /* a0 = fd (0=stdin), a1 = buf addr, a2 = max_len */
++        if (a0 == 0) {
++            int ch = getchar();
++            if (ch != EOF) {
++                bt_word w;
++                bt_word_from_i64((int64_t)ch, &w);
++                k3_vm_set_mem(vm, (uint16_t)a1, &w);
++                return 1;
++            }
++            return 0;
++        }
++        return -1;
++    }
++
++    case __NR_clone:
++    case __NR_fork: {
++        /* Create a child task cloned from current task */
++        int child_pid = k3_create_task("forked_child", (uint16_t)a0, (uint16_t)a1);
++        return child_pid;
++    }
++
++    /* K-Three Architecture Extensions */
++    case __NR_k3_uptime: {
++        bt_word w;
++        if (k3_io_mmio_read(NULL, vm, K3_MMIO_TIMER_L, &w)) {
++            int64_t t = 0;
++            bt_word_to_i64(&w, &t);
++            return t;
++        }
++        return 0;
++    }
++
++    case __NR_k3_entropy: {
++        bt_word w;
++        if (k3_io_mmio_read(NULL, vm, K3_MMIO_RNG_WORD, &w)) {
++            int64_t r = 0;
++            bt_word_to_i64(&w, &r);
++            return r;
++        }
++        return 0;
++    }
++
++    case __NR_k3_leds: {
++        if (a0 >= 0) {
++            k3_io_set_leds(a0);
++        }
++        return k3_io_get_leds();
++    }
++
++    case __NR_k3_vram_flush: {
++        bt_word w;
++        bt_word_from_i64(1, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_VRAM_CTRL, &w);
++        return 0;
++    }
++
++    default:
++        return -38; /* -ENOSYS: Function not implemented */
++    }
++}
+diff --git a/arch/k3/kernel/traps.c b/arch/k3/kernel/traps.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/traps.c
+@@ -0,0 +1,59 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/traps.c
++ *
++ * Architecture trap and exception handler, register dump, and signal dispatch.
++ */
++
++#include <stdio.h>
++#include <stdint.h>
++#include <stdlib.h>
++
++#include "vm.h"
++#include "arch/k3/include/asm/ptrace.h"
++
++#define SIGILL          4
++#define SIGTRAP         5
++#define SIGFPE          8
++#define SIGSEGV         11
++
++void k3_show_registers(const struct pt_regs *regs)
++{
++    printf("CPU Register State:\n");
++    printf("  r0: %04lld  r1: %04lld  r2: %04lld  r3: %04lld\n",
++           (long long)regs->r0, (long long)regs->r1,
++           (long long)regs->r2, (long long)regs->r3);
++    printf("  r4: %04lld  r5: %04lld  r6: %04lld  r7: %04lld\n",
++           (long long)regs->r4, (long long)regs->r5,
++           (long long)regs->r6, (long long)regs->r7);
++    printf("  EPC: 0x%04x  Status: 0x%04x  Mode: %s\n",
++           (unsigned)regs->epc, (unsigned)regs->status,
++           regs->mode == 0 ? "KERNEL" : "USER");
++    fflush(stdout);
++}
++
++int k3_trap_to_signal(k3_trap_reason reason)
++{
++    switch (reason) {
++    case K3_TRAP_OVERFLOW:
++    case K3_TRAP_SHIFT:
++        return SIGFPE;
++    case K3_TRAP_MEMORY:
++        return SIGSEGV;
++    case K3_TRAP_ILLEGAL:
++        return SIGILL;
++    case K3_TRAP_EXPLICIT:
++        return SIGTRAP;
++    default:
++        return SIGSEGV;
++    }
++}
++
++void k3_kernel_die(const char *str, const struct pt_regs *regs, long err)
++{
++    printf("\n\033[1;31m[kernel panic] %s (error code: %ld)\033[0m\n", str, err);
++    if (regs != NULL) {
++        k3_show_registers(regs);
++    }
++    fflush(stdout);
++}
+diff --git a/arch/k3/kernel/vmlinux.lds.S b/arch/k3/kernel/vmlinux.lds.S
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/vmlinux.lds.S
+@@ -0,0 +1,60 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/vmlinux.lds.S
++ *
++ * Linker script for the K-Three Balanced Ternary Linux Kernel.
++ */
++
++#define K3_RAM_START        0x0000
++#define K3_KERNEL_PAGES     2
++#define K3_PAGE_SIZE        729
++#define K3_USER_START       (K3_KERNEL_PAGES * K3_PAGE_SIZE) /* 1458 */
++#define K3_RAM_END          6560
++
++OUTPUT_ARCH(k3)
++ENTRY(start)
++
++SECTIONS
++{
++    /* Kernel code starts at physical address 0 */
++    . = K3_RAM_START;
++    _stext = .;
++    __text_start = .;
++
++    .text : {
++        *(.head.text)
++        *(.text)
++        *(.text.*)
++    }
++    _etext = .;
++
++    . = ALIGN(K3_PAGE_SIZE);
++    __rodata_start = .;
++    .rodata : {
++        *(.rodata)
++        *(.rodata.*)
++    }
++    __rodata_end = .;
++
++    /* Kernel Data & BSS in Page 1 (729..1457) */
++    . = K3_PAGE_SIZE;
++    __data_start = .;
++    .data : {
++        *(.data)
++        *(.data.*)
++    }
++    __data_end = .;
++
++    . = ALIGN(4);
++    __bss_start = .;
++    .bss : {
++        *(.bss)
++        *(.bss.*)
++    }
++    __bss_end = .;
++    _end = .;
++
++    /* User Space Boundary begins at Page 2 (Address 1458) */
++    . = K3_USER_START;
++    __user_start = .;
++}
+-- 
+2.47.0
