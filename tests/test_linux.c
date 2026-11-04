@@ -224,9 +224,11 @@ static void test_linux_syscalls(void)
     k3_vm_init(&vm, NULL);
     k3_init_scheduler();
 
-    /* 1. sys_getpid() */
+    /* 1. sys_getpid() & sys_getuid() */
     int64_t pid = k3_dispatch_linux_syscall(&vm, __NR_getpid, 0, 0, 0);
     CHECK_EQ_I64(pid, 1);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getuid, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getgid, 0, 0, 0), 0);
 
     /* 2. sys_uname() */
     int64_t ret = k3_dispatch_linux_syscall(&vm, __NR_uname, 3000, 0, 0);
