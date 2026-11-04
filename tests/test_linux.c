@@ -252,6 +252,10 @@ static void test_linux_syscalls(void)
     /* 6. sys_k3_disk_dma() */
     int64_t stat = k3_dispatch_linux_syscall(&vm, __NR_k3_disk_dma, 0, 2500, 1);
     CHECK_EQ_I64(stat, 0);
+
+    /* 7. sys_nanosleep() & sys_reboot() */
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_nanosleep, 1, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_reboot, 0, 0, 0), 0);
 }
 
 static void test_linux_procfs(void)
