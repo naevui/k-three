@@ -89,6 +89,52 @@ int k3_memcmp(int *s1, int *s2, int n) {
     return 0;
 }
 
+int k3_strlen(int *str) {
+    int len = 0;
+    while (*(str + len) != 0) {
+        len++;
+    }
+    return len;
+}
+
+int k3_strcmp(int *s1, int *s2) {
+    int i = 0;
+    while (*(s1 + i) != 0 && *(s2 + i) != 0) {
+        if (*(s1 + i) != *(s2 + i)) {
+            return *(s1 + i) - *(s2 + i);
+        }
+        i++;
+    }
+    return *(s1 + i) - *(s2 + i);
+}
+
+int k3_strcpy(int *dst, int *src) {
+    int i = 0;
+    while (*(src + i) != 0) {
+        *(dst + i) = *(src + i);
+        i++;
+    }
+    *(dst + i) = 0;
+    return i;
+}
+
+int k3_atoi(int *str) {
+    int res = 0;
+    int sign = 1;
+    int i = 0;
+    if (*str == '-') {
+        sign = -1;
+        i = 1;
+    } else if (*str == '+') {
+        i = 1;
+    }
+    while (*(str + i) >= '0' && *(str + i) <= '9') {
+        res = res * 10 + (*(str + i) - '0');
+        i++;
+    }
+    return res * sign;
+}
+
 /* Hardware MMIO Driver Functions */
 int k3_uart_putc(int ch) {
     int *reg = HW_UART_DATA;
