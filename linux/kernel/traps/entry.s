@@ -55,8 +55,10 @@ k3_trap_entry:
 .try_getpid:
     mov r0, r2
     cmpi r0, #20            ; SYS_GETPID
-    brz r0, .trap_sys_getpid
+    brz r0, .do_getpid
     jmp .trap_done
+.do_getpid:
+    jmp .trap_sys_getpid
 
 .trap_sys_putc:
     ; Fetch user r1 from [r7 + 5]
@@ -83,21 +85,7 @@ k3_trap_entry:
 .trap_sys_write:
     mov r4, r7
     addi r4, #5
-    load r0, [r4]           ; fd (or string pointer if legacy puts)
-    addi r4, #-1
-    load r1, [r4]           ; buffer / count
-    cmpi r0, #10
-    brp r0, .trap_sys_puts_legacy
-    mov r4, r7
-    addi r4, #3
-    load r2, [r4]           ; count
-    call k3_vfs_write
-    mov r4, r7
-    addi r4, #6
-    store r0, [r4]          ; return bytes written
-    jmp .trap_done
-
-.trap_sys_puts_legacy:
+    load r0, [r4]           ; get user r1
     call k3_kputs
     jmp .trap_done
 
