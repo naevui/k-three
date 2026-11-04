@@ -1,3 +1,12 @@
+
+; ------------------------------------------------------------------------------
+; Milestone: 1000th commit of sheer chaos!
+;
+; "sahabe akrebe demis ki:
+;  ey akrep, 1000 commit oldu hala mi sokacaksin?
+;  akrep demis ki:
+;  ben 1000. committe de akrebim, sokarim!"
+; ------------------------------------------------------------------------------
 ; ==============================================================================
 ; linux/kernel/chaos/chaos.s
 ;
@@ -16,7 +25,7 @@
 ;  sahabe hani sokmayacaktin akrep demis. akrep de ben akrebim, sokarım. demis"
 ; ==============================================================================
 
-.equ CHAOS_ROUNDS,      500
+.equ CHAOS_ROUNDS,      1000
 
 ; --- Execute 500 Rounds of Balanced Ternary Chaos ---
 ; Output: r0 = 0 (integrity preserved), -1 (symmetry broken)
