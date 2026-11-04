@@ -45,6 +45,7 @@ _start:
     call k3_kputs
 
     ; 7. Mount Root Virtual Filesystem
+    call k3_vfs_init
     li r0, str_dmesg_vfs
     call k3_kputs
 
@@ -61,8 +62,10 @@ _start:
 .include "drivers/disk.s"
 .include "sched/pcb.s"
 .include "sched/switch.s"
-.include "traps/entry.s"
+.include "mm/page_alloc.s"
+.include "fs/vfs/vfs.s"
 .include "fs/romfs.s"
+.include "traps/entry.s"
 
 ; ==============================================================================
 ; Userspace Init Entry (PID 1)
