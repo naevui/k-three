@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  199 +
+ arch/k3/kernel/sys_k3.c             |  218 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 1947 insertions(+)
+ 39 files changed, 1966 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1923,7 +1923,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,218 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2117,6 +2117,25 @@ index 0000000..1111111
 +        bt_word_from_i64(1, &w);
 +        k3_io_mmio_write(NULL, vm, K3_MMIO_VRAM_CTRL, &w);
 +        return 0;
++    }
++
++    case __NR_k3_disk_dma: {
++        /* a0 = sector, a1 = dma buffer addr, a2 = cmd (1=read, 2=write) */
++        bt_word w;
++        bt_word_from_i64(a0, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_SECTOR, &w);
++        bt_word_from_i64(a1, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_DMA, &w);
++        bt_word_from_i64(16, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_COUNT, &w);
++        bt_word_from_i64(a2, &w);
++        k3_io_mmio_write(NULL, vm, K3_MMIO_DISK_CMD, &w);
++        if (k3_io_mmio_read(NULL, vm, K3_MMIO_DISK_STATUS, &w)) {
++            int64_t stat = 0;
++            bt_word_to_i64(&w, &stat);
++            return stat;
++        }
++        return -1;
 +    }
 +
 +    default:
