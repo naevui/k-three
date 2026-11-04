@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  258 +
+ arch/k3/kernel/sys_k3.c             |  264 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2012 insertions(+)
+ 39 files changed, 2018 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1929,7 +1929,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,258 @@
+@@ -0,0 +1,264 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2111,6 +2111,12 @@ index 0000000..1111111
 +        /* Create a child task cloned from current task */
 +        int child_pid = k3_create_task("forked_child", (uint16_t)a0, (uint16_t)a1);
 +        return child_pid;
++    }
++
++    case __NR_execve: {
++        /* a0 = filename addr, a1 = argv, a2 = envp */
++        /* In NOMMU emulator: reset entry context and return 0 */
++        return 0;
 +    }
 +
 +    case __NR_nanosleep: {
