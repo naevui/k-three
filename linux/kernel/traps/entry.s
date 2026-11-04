@@ -50,8 +50,13 @@ k3_trap_entry:
 .try_write:
     mov r0, r2
     cmpi r0, #4             ; SYS_WRITE / SYS_PUTS
-    brnz r0, .try_time
+    brnz r0, .try_execve
     jmp .trap_sys_write
+.try_execve:
+    mov r0, r2
+    cmpi r0, #11            ; SYS_EXECVE
+    brnz r0, .try_time
+    jmp .trap_sys_execve
 .try_time:
     mov r0, r2
     cmpi r0, #13            ; SYS_TIME
@@ -114,6 +119,35 @@ k3_trap_entry:
     addi r4, #5
     load r0, [r4]           ; get user r1
     call k3_kputs
+    jmp .trap_done
+
+.trap_sys_execve:
+    ; User r1 = filename pointer
+    mov r4, r7
+    addi r4, #5
+    load r0, [r4]           ; r0 = filename
+    call k3_romfs_lookup    ; returns r0 = start sector, r1 = size
+    cmpi r0, #-1
+    brz r0, .exec_fail
+    ; Load file into user space at 1458
+    mov r2, r1              ; r2 = size
+    li r1, #1458            ; r1 = user base
+    call k3_romfs_read_file
+    ; Reset user stack and set EPC to entry point (1458)
+    li r0, #5999
+    mov r7, r0
+    ; Set return code 0
+    ldi r0, #0
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]
+    jmp .trap_done
+
+.exec_fail:
+    li r0, #-2              ; -ENOENT
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]
     jmp .trap_done
 
 .trap_sys_time:
