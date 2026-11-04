@@ -72,7 +72,9 @@ typedef enum {
     TOK_ENUM,       /* enum */
     TOK_STRUCT,     /* struct */
     TOK_DOT,        /* . */
-    TOK_AMP,      /* & */
+    TOK_AMP,        /* & */
+    TOK_SHL,        /* << */
+    TOK_SHR,        /* >> */
     TOK_LPAREN,     /* ( */
     TOK_RPAREN,     /* ) */
     TOK_LBRACE,     /* { */
@@ -517,6 +519,8 @@ static void lex_internal(const char *src, const char *basedir, int depth)
 
         if (*p == '=' && *(p + 1) == '=') { tok->type = TOK_EQ; p += 2; continue; }
         if (*p == '!' && *(p + 1) == '=') { tok->type = TOK_NEQ; p += 2; continue; }
+        if (*p == '<' && *(p + 1) == '<') { tok->type = TOK_SHL; p += 2; continue; }
+        if (*p == '>' && *(p + 1) == '>') { tok->type = TOK_SHR; p += 2; continue; }
         if (*p == '&' && *(p + 1) == '&') { tok->type = TOK_ANDAND; p += 2; continue; }
         if (*p == '|' && *(p + 1) == '|') { tok->type = TOK_OROR; p += 2; continue; }
         if (*p == '+' && *(p + 1) == '=') { tok->type = TOK_PLUSEQ; p += 2; continue; }
@@ -862,11 +866,23 @@ static void parse_primary(FILE *out)
                     fprintf(out, "    load r0, [r1]\n");
                 }
             } else if (loc >= 0) {
-                gen_local_addr(out, loc);
-                fprintf(out, "    load r0, [r1]\n");
+                if (g_locals[loc].size > 1) {
+                    /* Array decays to pointer: compute base address of array */
+                    gen_array_addr(out, name, loc);
+                    fprintf(out, "    mov r0, r1\n");
+                } else {
+                    gen_local_addr(out, loc);
+                    fprintf(out, "    load r0, [r1]\n");
+                }
             } else if (is_global(name)) {
-                fprintf(out, "    li r1, g_%s\n", name);
-                fprintf(out, "    load r0, [r1]\n");
+                int gl = find_global(name);
+                if (gl >= 0 && g_global_sizes[gl] > 1) {
+                    /* Global array decays to pointer */
+                    fprintf(out, "    li r0, g_%s\n", name);
+                } else {
+                    fprintf(out, "    li r1, g_%s\n", name);
+                    fprintf(out, "    load r0, [r1]\n");
+                }
             } else {
                 fprintf(stderr, "k3cc:%d: error: undeclared variable '%s'\n", tok->line, name);
                 exit(1);
@@ -993,16 +1009,35 @@ static void parse_additive(FILE *out)
     }
 }
 
+/* Shift: <<, >> */
+static void parse_shift(FILE *out)
+{
+    parse_additive(out);
+    while (cur_tok()->type == TOK_SHL || cur_tok()->type == TOK_SHR) {
+        token_type op = cur_tok()->type;
+        advance_tok();
+        fprintf(out, "    push r0\n");
+        parse_additive(out);
+        fprintf(out, "    mov r1, r0\n");
+        fprintf(out, "    pop r0\n");
+        if (op == TOK_SHL) {
+            fprintf(out, "    shl r0, r0, r1\n");
+        } else {
+            fprintf(out, "    shr r0, r0, r1\n");
+        }
+    }
+}
+
 /* Relational: ==, !=, <, >, <=, >= */
 static void parse_relational(FILE *out)
 {
-    parse_additive(out);
+    parse_shift(out);
     token_type op = cur_tok()->type;
     if (op == TOK_EQ || op == TOK_NEQ || op == TOK_LT || op == TOK_GT ||
         op == TOK_LE || op == TOK_GE) {
         advance_tok();
         fprintf(out, "    push r0\n");
-        parse_additive(out);
+        parse_shift(out);
         fprintf(out, "    mov r1, r0\n"); /* r1 = rhs */
         fprintf(out, "    pop r0\n");      /* r0 = lhs */
         fprintf(out, "    cmp r2, r0, r1\n"); /* r2 = -1 (lt), 0 (eq), 1 (gt) */
