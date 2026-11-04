@@ -363,10 +363,16 @@ examples: $(TOOLS)
 		echo "AS userspace/cat.s"; \
 		$(BUILD)/k3asm userspace/cat.s -o $(BUILD)/userspace/cat.k3; \
 	fi
+	@if [ -f userspace/kbox.s ]; then \
+		echo "AS userspace/kbox.s"; \
+		$(BUILD)/k3asm userspace/kbox.s -o $(BUILD)/userspace/kbox.k3; \
+	fi
 	@if [ -f linux/kernel/vmlinux.s ]; then \
 		echo "AS linux/kernel/vmlinux.s"; \
 		$(BUILD)/k3asm linux/kernel/vmlinux.s -o $(BUILD)/vmlinux.k3 -l $(BUILD)/vmlinux.lst; \
 	fi
+	@echo "MKROMFS $(BUILD)/disk.img"; \
+	python3 tools/scripts/k3_mkromfs.py
 
 test: $(TEST_TERNARY) $(TEST_VM) $(TEST_ISA) $(TEST_PACKED) $(TEST_SYSCALL) $(TEST_IMAGE) $(TEST_IO) $(TEST_LINUX) examples
 	./$(TEST_TERNARY)
