@@ -39,9 +39,14 @@ k3_trap_entry:
     jmp .trap_sys_putc
 .try_puts:
     mov r0, r2
-    cmpi r0, #4             ; SYS_PUTS
+    cmpi r0, #3             ; SYS_READ
+    brnz r0, .try_write
+    jmp .trap_sys_read
+.try_write:
+    mov r0, r2
+    cmpi r0, #4             ; SYS_WRITE / SYS_PUTS
     brnz r0, .try_time
-    jmp .trap_sys_puts
+    jmp .trap_sys_write
 .try_time:
     mov r0, r2
     cmpi r0, #13            ; SYS_TIME
@@ -61,10 +66,38 @@ k3_trap_entry:
     call k3_kputc
     jmp .trap_done
 
-.trap_sys_puts:
+.trap_sys_read:
     mov r4, r7
     addi r4, #5
-    load r0, [r4]
+    load r0, [r4]           ; fd
+    addi r4, #-1
+    load r1, [r4]           ; buf
+    addi r4, #-1
+    load r2, [r4]           ; count
+    call k3_vfs_read
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]          ; return bytes read in user r0
+    jmp .trap_done
+
+.trap_sys_write:
+    mov r4, r7
+    addi r4, #5
+    load r0, [r4]           ; fd (or string pointer if legacy puts)
+    addi r4, #-1
+    load r1, [r4]           ; buffer / count
+    cmpi r0, #10
+    brp r0, .trap_sys_puts_legacy
+    mov r4, r7
+    addi r4, #3
+    load r2, [r4]           ; count
+    call k3_vfs_write
+    mov r4, r7
+    addi r4, #6
+    store r0, [r4]          ; return bytes written
+    jmp .trap_done
+
+.trap_sys_puts_legacy:
     call k3_kputs
     jmp .trap_done
 
