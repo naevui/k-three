@@ -13,7 +13,7 @@
 ; Clobbers: r0, r1, r2
 k3_vram_clear:
     li r1, #6030            ; VRAM_BASE_ADDR
-    ldi r2, #100            ; VRAM_BUFFER_SIZE
+    li r2, #100             ; VRAM_BUFFER_SIZE
     ldi r0, #32             ; ASCII Space ' '
 .vram_clear_loop:
     store r0, [r1]
