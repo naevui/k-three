@@ -356,6 +356,9 @@ static k3_vm_status execute_instruction(k3_vm *vm, const bt_word *ins,
         return K3_VM_RUNNING;
 
     case K3_OP_TRAP:
+        if (vm->trap_vector >= 0) {
+            return set_trap(vm, K3_TRAP_EXPLICIT, in.imm, pc);
+        }
         if (vm->callbacks.on_syscall != NULL &&
             vm->callbacks.on_syscall(vm->callbacks.user, vm, in.imm)) {
             return K3_VM_RUNNING;
