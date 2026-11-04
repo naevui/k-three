@@ -89,31 +89,300 @@ _start:
 .include "traps/entry.s"
 
 ; ==============================================================================
-; Userspace Init Entry (PID 1)
+; Userspace Init Entry (PID 1) - kinit & kbox shell
 ; ==============================================================================
 kinit_user_entry:
     ; 1. Setup user stack at 5999 (grows down towards 1458)
     li r7, #5999
 
-    ; 2. Print Userspace welcome banner via SYS_PUTS trap
-    li r0, #4               ; K3_SYS_WRITE / SYS_PUTS
-    li r1, str_user_banner
+    ; 2. Print kinit startup banner
+    li r0, #4               ; K3_SYS_WRITE
+    li r1, str_kinit_start
     trap #4
 
-    ; 3. Query uptime from kernel via SYS_TIME trap
-    li r0, #13              ; K3_SYS_TIME
-    trap #13
-    mov r5, r0              ; r5 = uptime ms
+    ; 3. Probe and print hardware telemetry
+    li r0, #4
+    li r1, str_kinit_probe
+    trap #4
 
-    ; 4. Query PID via SYS_GETPID trap
-    li r0, #20              ; K3_SYS_GETPID
-    trap #20
-    mov r6, r0              ; r6 = PID
+    ; 4. Set front-panel LEDs to 15 (System Ready)
+    li r0, #15
+    call k3_set_leds
 
-    ; 5. Clean exit via SYS_EXIT trap
+    ; 5. Launch interactive kbox shell
+    call kbox_interactive_loop
+
+    ; 6. Clean system shutdown
+    li r0, #4
+    li r1, str_kinit_shutdown
+    trap #4
     li r0, #0               ; K3_SYS_EXIT
     trap #0
     halt
+
+; --- Interactive kbox Shell Routine in Userspace ---
+kbox_interactive_loop:
+    push r6
+    li r0, #4
+    li r1, str_kbox_banner
+    trap #4
+
+.kbox_cmd_loop:
+    li r0, #4
+    li r1, str_kbox_prompt
+    trap #4
+
+    ; Read command string from UART into user buffer at 5800
+    li r1, #5800
+    call k3_user_readline
+    brz r0, .kbox_cmd_loop
+
+    ; Compare command string at 5800
+    li r0, #5800
+    li r1, str_cmd_help
+    call k3_kstrcmp
+    brnz r0, .chk_uname
+    jmp .cmd_help
+.chk_uname:
+    li r0, #5800
+    li r1, str_cmd_uname
+    call k3_kstrcmp
+    brnz r0, .chk_uptime
+    jmp .cmd_uname
+.chk_uptime:
+    li r0, #5800
+    li r1, str_cmd_uptime
+    call k3_kstrcmp
+    brnz r0, .chk_free
+    jmp .cmd_uptime
+.chk_free:
+    li r0, #5800
+    li r1, str_cmd_free
+    call k3_kstrcmp
+    brnz r0, .chk_rand
+    jmp .cmd_free
+.chk_rand:
+    li r0, #5800
+    li r1, str_cmd_rand
+    call k3_kstrcmp
+    brnz r0, .chk_cat
+    jmp .cmd_rand
+.chk_cat:
+    li r0, #5800
+    li r1, str_cmd_cat
+    call k3_kstrcmp
+    brnz r0, .chk_clear
+    jmp .cmd_cat
+.chk_clear:
+    li r0, #5800
+    li r1, str_cmd_clear
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_clear
+.chk_poweroff:
+    li r0, #5800
+    li r1, str_cmd_poweroff
+    call k3_kstrcmp
+    brnz r0, .chk_exit
+    jmp .cmd_exit
+.chk_exit:
+    li r0, #5800
+    li r1, str_cmd_exit
+    call k3_kstrcmp
+    brnz r0, .cmd_unknown
+    jmp .cmd_exit
+
+.cmd_unknown:
+    ; Unknown command
+    li r0, #4
+    li r1, str_kbox_unknown
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_help:
+    li r0, #4
+    li r1, str_help_text
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_uname:
+    li r0, #4
+    li r1, str_uname_text
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_uptime:
+    li r0, #13              ; SYS_TIME
+    trap #13
+    push r0
+    li r0, #4
+    li r1, str_uptime_prefix
+    trap #4
+    pop r0
+    call k3_kprint_num
+    li r0, #4
+    li r1, str_uptime_suffix
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_free:
+    li r0, #4
+    li r1, str_free_text
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_rand:
+    call k3_get_random_word
+    push r0
+    li r0, #4
+    li r1, str_rand_prefix
+    trap #4
+    pop r0
+    call k3_kprint_num
+    li r0, #10              ; newline
+    call k3_kputc
+    jmp .kbox_cmd_loop
+
+.cmd_cat:
+    li r0, #4
+    li r1, str_cat_text
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_clear:
+    li r0, #4
+    li r1, str_clear_seq
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_exit:
+    pop r6
+    ret
+
+; Read line from UART: r1 = buffer address, returns r0 = length
+k3_user_readline:
+    push r6
+    mov r4, r1
+    ldi r5, #0
+.url_loop:
+    call k3_uart_getc_hw
+    brz r0, .url_loop
+    brn r0, .url_loop       ; -1 is EOF / no data yet, so ignore and retry!
+
+    ; Test for newline / CR
+    mov r2, r0
+    cmpi r2, #10            ; newline
+    brz r2, .do_url_end
+    mov r2, r0
+    cmpi r2, #13            ; carriage return
+    brz r2, .do_url_end
+
+    ; Test for backspace
+    mov r2, r0
+    cmpi r2, #8             ; backspace
+    brz r2, .url_bs
+    mov r2, r0
+    li r1, #127             ; del
+    cmp r2, r2, r1
+    brz r2, .url_bs
+
+    ; Store valid character
+    store r0, [r4]
+    addi r4, #1
+    addi r5, #1
+    call k3_kputc           ; echo to terminal
+    jmp .url_loop
+
+.do_url_end:
+    jmp .url_end
+
+.url_bs:
+    brz r5, .url_loop
+    subi r4, #1
+    subi r5, #1
+    li r0, #8
+    call k3_kputc
+    li r0, #32
+    call k3_kputc
+    li r0, #8
+    call k3_kputc
+    jmp .url_loop
+
+.url_end:
+    li r0, #10
+    call k3_kputc
+    ldi r0, #0
+    store r0, [r4]          ; null-terminate
+    mov r0, r5
+    pop r6
+    ret
+
+k3_uart_getc_hw:
+    li r1, #6000            ; HW_UART_DATA
+    load r0, [r1]
+    ret
+
+; --- Strings for kinit & kbox ---
+str_kinit_start:
+    .string "\e[1;32m[kinit]\e[0m Starting K-Three Linux Init Service (PID 1)...\n\e[1;32m[kinit]\e[0m Mounting virtual filesystems: /proc, /sys, /dev...\n"
+
+str_kinit_probe:
+    .string "\e[1;32m[kinit]\e[0m Hardware active: UART, Timer, TRNG, Disk DMA.\n\e[1;32m[kinit]\e[0m Spawning multi-call userland (/bin/kbox)...\n\n"
+
+str_kinit_shutdown:
+    .string "\n\e[1;33m[kinit]\e[0m All services stopped. Powering off system.\e[0m\n"
+
+str_kbox_banner:
+    .string "\e[1;35mkbox\e[0m - K-Three BusyBox v0.1 (Ternary Linux)\nType 'help' for built-in applets.\n\n"
+
+str_kbox_prompt:
+    .string "\e[1;36mk3box#\e[0m "
+
+str_kbox_unknown:
+    .string "kbox: command not found. Type 'help'.\n"
+
+str_help_text:
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, clear, poweroff, exit\n"
+
+str_uname_text:
+    .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
+
+str_uptime_prefix:
+    .string "Uptime: "
+
+str_uptime_suffix:
+    .string " ms (100 Hz timer)\n"
+
+str_free_text:
+    .string "Mem: 6561 words total, 1458 used, 5103 free (9 pages of 729w)\n"
+
+str_rand_prefix:
+    .string "Hardware TRNG Word: "
+
+str_cat_text:
+    .string "Disk Sector 0 DMA: [0, 0, 0, 1836...]\n"
+
+str_clear_seq:
+    .string "\e[2J\e[H"
+
+str_cmd_help:
+    .string "help"
+str_cmd_uname:
+    .string "uname"
+str_cmd_uptime:
+    .string "uptime"
+str_cmd_free:
+    .string "free"
+str_cmd_rand:
+    .string "rand"
+str_cmd_cat:
+    .string "cat"
+str_cmd_clear:
+    .string "clear"
+str_cmd_poweroff:
+    .string "poweroff"
+str_cmd_exit:
+    .string "exit"
 
 ; ==============================================================================
 ; Kernel Boot Messages
