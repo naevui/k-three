@@ -11,7 +11,7 @@
 ;   5. Launch Primary Userspace Daemon (PID 1 /sbin/kinit) in USER_MODE
 ; ==============================================================================
 
-.include "linux/kernel/include/k3_kernel.inc"
+.include "include/k3_kernel.inc"
 
 _start:
     ; 1. Establish initial Kernel Stack Pointer
@@ -56,13 +56,13 @@ _start:
     jmp kinit_user_entry
 
 ; --- Included Kernel Subsystems ---
-.include "linux/kernel/drivers/uart.s"
-.include "linux/kernel/drivers/timer.s"
-.include "linux/kernel/drivers/disk.s"
-.include "linux/kernel/sched/pcb.s"
-.include "linux/kernel/sched/switch.s"
-.include "linux/kernel/traps/entry.s"
-.include "linux/kernel/fs/romfs.s"
+.include "drivers/uart.s"
+.include "drivers/timer.s"
+.include "drivers/disk.s"
+.include "sched/pcb.s"
+.include "sched/switch.s"
+.include "traps/entry.s"
+.include "fs/romfs.s"
 
 ; ==============================================================================
 ; Userspace Init Entry (PID 1)
