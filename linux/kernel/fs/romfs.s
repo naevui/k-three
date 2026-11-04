@@ -8,7 +8,7 @@
 ;   - k3_romfs_read_file: Streams sectors into memory via DMA
 ; ==============================================================================
 
-.equ ROMFS_MAGIC,       19683
+.equ ROMFS_MAGIC,       7290    ; Balanced ternary signature 10 * 729
 .equ ROMFS_SECTOR_SIZE, 16
 
 k3_romfs_mounted:
@@ -33,10 +33,10 @@ k3_romfs_mount:
     ldi r2, #16             ; 16 words
     call k3_disk_read_sector
 
-    ; Verify Superblock Magic [0] == 19683
+    ; Verify Superblock Magic [0] == 7290
     li r1, k3_romfs_sector_buf
     load r0, [r1]
-    li r2, #19683
+    li r2, #7290
     cmp r2, r0, r2
     brnz r2, .romfs_mount_fail
 
@@ -79,8 +79,9 @@ k3_romfs_lookup:
     ldi r4, #1              ; r4 = current inode sector (sectors 1..N)
 
 .lookup_loop:
-    brz r5, .lookup_not_found
-
+    brnz r5, .lookup_has_inode
+    jmp .lookup_not_found
+.lookup_has_inode:
     ; Read inode sector r4 into buffer
     mov r0, r4
     li r1, k3_romfs_sector_buf
