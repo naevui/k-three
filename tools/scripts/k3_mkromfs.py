@@ -24,7 +24,7 @@ import os
 import sys
 
 SECTOR_WORDS = 16
-MAGIC = 19683
+MAGIC = 7290  # 10 * 729 fits in 9 trits [-9841..+9841]
 
 def read_k3_words(filepath):
     words = []
