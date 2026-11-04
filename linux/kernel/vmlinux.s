@@ -62,6 +62,7 @@ _start:
 
 ; --- Included Kernel Subsystems ---
 .include "lib/string.s"
+.include "sys/uname.s"
 .include "drivers/uart.s"
 .include "drivers/timer.s"
 .include "drivers/disk.s"
@@ -73,6 +74,7 @@ _start:
 .include "sync/spinlock.s"
 .include "power/reboot.s"
 .include "security/capability.s"
+.include "signal/sigaction.s"
 .include "sched/pcb.s"
 .include "sched/switch.s"
 .include "sched/fork.s"
