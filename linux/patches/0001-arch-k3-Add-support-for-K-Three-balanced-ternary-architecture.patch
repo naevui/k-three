@@ -40,14 +40,24 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/atomic.h        |   65 +
  arch/k3/include/asm/barrier.h       |   27 +
  arch/k3/include/asm/bitops.h        |   65 +
+ arch/k3/include/asm/errno.h         |   34 +
+ arch/k3/include/asm/fcntl.h         |   13 +
  arch/k3/include/asm/io.h            |   49 +
+ arch/k3/include/asm/ioctl.h         |    8 +
  arch/k3/include/asm/irq.h           |   18 +
  arch/k3/include/asm/irqflags.h      |   43 +
+ arch/k3/include/asm/mman.h          |   12 +
  arch/k3/include/asm/page.h          |   26 +
+ arch/k3/include/asm/poll.h          |   10 +
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
+ arch/k3/include/asm/resource.h      |   14 +
+ arch/k3/include/asm/siginfo.h       |    5 +
  arch/k3/include/asm/signal.h        |   67 +
+ arch/k3/include/asm/stat.h          |   12 +
+ arch/k3/include/asm/statfs.h        |    5 +
  arch/k3/include/asm/string.h        |   46 +
+ arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
  arch/k3/include/asm/unistd.h        |   42 +
@@ -61,7 +71,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  199 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 29 files changed, 1826 insertions(+)
+ 39 files changed, 1947 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -569,6 +579,65 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_BITOPS_H */
+diff --git a/arch/k3/include/asm/errno.h b/arch/k3/include/asm/errno.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/errno.h
+@@ -0,0 +1,34 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_ERRNO_H
++#define _ASM_K3_ERRNO_H
++#define EPERM 1
++#define ENOENT 2
++#define ESRCH 3
++#define EINTR 4
++#define EIO 5
++#define ENXIO 6
++#define E2BIG 7
++#define ENOEXEC 8
++#define EBADF 9
++#define ECHILD 10
++#define EAGAIN 11
++#define ENOMEM 12
++#define EACCES 13
++#define EFAULT 14
++#define EBUSY 16
++#define EEXIST 17
++#define EXDEV 18
++#define ENODEV 19
++#define ENOTDIR 20
++#define EISDIR 21
++#define EINVAL 22
++#define ENFILE 23
++#define EMFILE 24
++#define ENOTTY 25
++#define EFBIG 27
++#define ENOSPC 28
++#define ESPIPE 29
++#define EROFS 30
++#define EMLINK 31
++#define EPIPE 32
++#endif
+diff --git a/arch/k3/include/asm/fcntl.h b/arch/k3/include/asm/fcntl.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/fcntl.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_FCNTL_H
++#define _ASM_K3_FCNTL_H
++#define O_RDONLY 0
++#define O_WRONLY 1
++#define O_RDWR 2
++#define O_CREAT 64
++#define O_EXCL 128
++#define O_NOCTTY 256
++#define O_TRUNC 512
++#define O_APPEND 1024
++#define O_NONBLOCK 2048
++#endif
 diff --git a/arch/k3/include/asm/io.h b/arch/k3/include/asm/io.h
 new file mode 100644
 index 0000000..1111111
@@ -624,6 +693,20 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_IO_H */
+diff --git a/arch/k3/include/asm/ioctl.h b/arch/k3/include/asm/ioctl.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/ioctl.h
+@@ -0,0 +1,8 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_IOCTL_H
++#define _ASM_K3_IOCTL_H
++#define _IOC_NRBITS 8
++#define _IOC_TYPEBITS 8
++#define _IOC_SIZEBITS 14
++#define _IOC_DIRBITS 2
++#endif
 diff --git a/arch/k3/include/asm/irq.h b/arch/k3/include/asm/irq.h
 new file mode 100644
 index 0000000..1111111
@@ -697,6 +780,24 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_IRQFLAGS_H */
+diff --git a/arch/k3/include/asm/mman.h b/arch/k3/include/asm/mman.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/mman.h
+@@ -0,0 +1,12 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_MMAN_H
++#define _ASM_K3_MMAN_H
++#define PROT_READ 0x1
++#define PROT_WRITE 0x2
++#define PROT_EXEC 0x4
++#define PROT_NONE 0x0
++#define MAP_SHARED 0x01
++#define MAP_PRIVATE 0x02
++#define MAP_FIXED 0x10
++#define MAP_ANONYMOUS 0x20
++#endif
 diff --git a/arch/k3/include/asm/page.h b/arch/k3/include/asm/page.h
 new file mode 100644
 index 0000000..1111111
@@ -729,6 +830,22 @@ index 0000000..1111111
 +#define PAGE_ALIGN(addr)    (((addr) + K3_PAGE_SIZE - 1) & K3_PAGE_MASK)
 +
 +#endif /* _ASM_K3_PAGE_H */
+diff --git a/arch/k3/include/asm/poll.h b/arch/k3/include/asm/poll.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/poll.h
+@@ -0,0 +1,10 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_POLL_H
++#define _ASM_K3_POLL_H
++#define POLLIN 0x0001
++#define POLLPRI 0x0002
++#define POLLOUT 0x0004
++#define POLLERR 0x0008
++#define POLLHUP 0x0010
++#define POLLNVAL 0x0020
++#endif
 diff --git a/arch/k3/include/asm/processor.h b/arch/k3/include/asm/processor.h
 new file mode 100644
 index 0000000..1111111
@@ -804,6 +921,37 @@ index 0000000..1111111
 +};
 +
 +#endif /* _ASM_K3_PTRACE_H */
+diff --git a/arch/k3/include/asm/resource.h b/arch/k3/include/asm/resource.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/resource.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_RESOURCE_H
++#define _ASM_K3_RESOURCE_H
++#define RLIMIT_CPU 0
++#define RLIMIT_FSIZE 1
++#define RLIMIT_DATA 2
++#define RLIMIT_STACK 3
++#define RLIMIT_CORE 4
++#define RLIMIT_RSS 5
++#define RLIMIT_NPROC 6
++#define RLIMIT_NOFILE 7
++#define RLIMIT_MEMLOCK 8
++#define RLIMIT_AS 9
++#endif
+diff --git a/arch/k3/include/asm/siginfo.h b/arch/k3/include/asm/siginfo.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/siginfo.h
+@@ -0,0 +1,5 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_SIGINFO_H
++#define _ASM_K3_SIGINFO_H
++typedef struct siginfo_k3 { int si_signo; int si_errno; int si_code; int si_pid; } siginfo_t;
++#endif
 diff --git a/arch/k3/include/asm/signal.h b/arch/k3/include/asm/signal.h
 new file mode 100644
 index 0000000..1111111
@@ -877,6 +1025,35 @@ index 0000000..1111111
 +};
 +
 +#endif /* _ASM_K3_SIGNAL_H */
+diff --git a/arch/k3/include/asm/stat.h b/arch/k3/include/asm/stat.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/stat.h
+@@ -0,0 +1,12 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_STAT_H
++#define _ASM_K3_STAT_H
++#define S_IFMT 0170000
++#define S_IFREG 0100000
++#define S_IFDIR 0040000
++#define S_IFCHR 0020000
++#define S_IFBLK 0060000
++#define S_IFIFO 0010000
++#define S_IFLNK 0120000
++#define S_IFSOCK 0140000
++#endif
+diff --git a/arch/k3/include/asm/statfs.h b/arch/k3/include/asm/statfs.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/statfs.h
+@@ -0,0 +1,5 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_STATFS_H
++#define _ASM_K3_STATFS_H
++struct statfs_k3 { long f_type; long f_bsize; long f_blocks; long f_bfree; };
++#endif
 diff --git a/arch/k3/include/asm/string.h b/arch/k3/include/asm/string.h
 new file mode 100644
 index 0000000..1111111
@@ -929,6 +1106,20 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_STRING_H */
+diff --git a/arch/k3/include/asm/termios.h b/arch/k3/include/asm/termios.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/termios.h
+@@ -0,0 +1,8 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_K3_TERMIOS_H
++#define _ASM_K3_TERMIOS_H
++#define TCGETS 0x5401
++#define TCSETS 0x5402
++#define TCSETSW 0x5403
++#define TCSETSF 0x5404
++#endif
 diff --git a/arch/k3/include/asm/thread_info.h b/arch/k3/include/asm/thread_info.h
 new file mode 100644
 index 0000000..1111111
