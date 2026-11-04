@@ -248,6 +248,10 @@ static void test_linux_syscalls(void)
     /* 5. sys_k3_entropy() */
     int64_t r = k3_dispatch_linux_syscall(&vm, __NR_k3_entropy, 0, 0, 0);
     CHECK(r >= -K3_WORD_MAX && r <= K3_WORD_MAX);
+
+    /* 6. sys_k3_disk_dma() */
+    int64_t stat = k3_dispatch_linux_syscall(&vm, __NR_k3_disk_dma, 0, 2500, 1);
+    CHECK_EQ_I64(stat, 0);
 }
 
 static void test_linux_procfs(void)
