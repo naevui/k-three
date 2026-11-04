@@ -24,6 +24,8 @@
 #define __NR_pipe               42
 #define __NR_brk                45
 #define __NR_getppid            64
+#define __NR_getuid             102
+#define __NR_getgid             104
 #define __NR_sysinfo            116
 #define __NR_clone              120
 #define __NR_uname              122
