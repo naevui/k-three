@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   45 +
+ arch/k3/include/asm/unistd.h        |   47 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  239 +
+ arch/k3/kernel/sys_k3.c             |  241 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 1990 insertions(+)
+ 39 files changed, 1994 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,47 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1274,6 +1274,8 @@ index 0000000..1111111
 +#define __NR_getppid            64
 +#define __NR_getuid             102
 +#define __NR_getgid             104
++#define __NR_geteuid            107
++#define __NR_getegid            108
 +#define __NR_sysinfo            116
 +#define __NR_clone              120
 +#define __NR_uname              122
@@ -1926,7 +1928,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,241 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2036,6 +2038,8 @@ index 0000000..1111111
 +
 +    case __NR_getuid:
 +    case __NR_getgid:
++    case __NR_geteuid:
++    case __NR_getegid:
 +        return 0; /* root (UID 0, GID 0) in single-user NOMMU */
 +
 +    case __NR_sched_yield:
