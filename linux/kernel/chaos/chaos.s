@@ -13,7 +13,7 @@
 ;  sahabe:  ben sana nasıl guveneyim demis.
 ;  akrep de o zaman sen once ic suyunu sonra da ben iceyim demis.
 ;  sahabe tam su icmek icin elini uzatmis. akrep de elinden sokmus.
-;  sahabe hani sokmayacaktin akrep demiş. akrep de ben akrebim, sokarım. demis"
+;  sahabe hani sokmayacaktin akrep demis. akrep de ben akrebim, sokarım. demis"
 ; ==============================================================================
 
 .equ CHAOS_ROUNDS,      500
