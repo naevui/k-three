@@ -49,7 +49,11 @@ _start:
     li r0, str_dmesg_vfs
     call k3_kputs
 
-    ; 8. Spawn /sbin/kinit as PID 1
+    ; 8. Set front-panel LEDs to indicate system ready (Pattern 15)
+    li r0, #15
+    call k3_set_leds
+
+    ; 9. Spawn /sbin/kinit as PID 1
     li r0, str_dmesg_kinit
     call k3_kputs
 
@@ -60,11 +64,14 @@ _start:
 .include "drivers/uart.s"
 .include "drivers/timer.s"
 .include "drivers/disk.s"
+.include "drivers/rng.s"
+.include "drivers/leds.s"
 .include "sched/pcb.s"
 .include "sched/switch.s"
 .include "mm/page_alloc.s"
 .include "fs/vfs/vfs.s"
 .include "fs/romfs.s"
+.include "ipc/pipe.s"
 .include "traps/entry.s"
 
 ; ==============================================================================
