@@ -153,9 +153,9 @@ static void test_linux_scheduler(void)
     k3_vm_init(&vm, NULL);
     k3_init_scheduler();
 
-    /* Initial state: PID 1 (init) is running */
+    /* Initial state: PID 1 (kinit) is running */
     CHECK_EQ_I64(k3_get_current_pid(), 1);
-    CHECK(strcmp(k3_get_task_comm(1), "init") == 0);
+    CHECK(strcmp(k3_get_task_comm(1), "kinit") == 0);
 
     /* Create background task (PID 2: shell) at PC 2000, SP 6000 */
     int pid2 = k3_create_task("sh", 2000, 6000);
