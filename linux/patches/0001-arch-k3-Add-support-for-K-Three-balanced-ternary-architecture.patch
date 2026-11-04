@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   47 +
+ arch/k3/include/asm/unistd.h        |   48 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  241 +
+ arch/k3/kernel/sys_k3.c             |  258 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 1994 insertions(+)
+ 39 files changed, 2012 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1276,6 +1276,7 @@ index 0000000..1111111
 +#define __NR_getgid             104
 +#define __NR_geteuid            107
 +#define __NR_getegid            108
++#define __NR_gettimeofday       110
 +#define __NR_sysinfo            116
 +#define __NR_clone              120
 +#define __NR_uname              122
@@ -1928,7 +1929,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,241 @@
+@@ -0,0 +1,258 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2049,6 +2050,23 @@ index 0000000..1111111
 +    case __NR_exit:
 +        k3_exit_current_task(vm, (int)a0);
 +        return 0;
++
++    case __NR_gettimeofday: {
++        /* a0 = struct timeval *tv (sec at a0, usec at a0+1) */
++        bt_word w;
++        int64_t t = 0;
++        if (k3_io_mmio_read(NULL, vm, K3_MMIO_TIMER_L, &w)) {
++            bt_word_to_i64(&w, &t);
++        }
++        if (a0 > 0) {
++            bt_word w_sec, w_usec;
++            bt_word_from_i64(t / 1000, &w_sec);
++            bt_word_from_i64((t % 1000) * 1000, &w_usec);
++            k3_vm_set_mem(vm, (uint16_t)a0, &w_sec);
++            k3_vm_set_mem(vm, (uint16_t)(a0 + 1), &w_usec);
++        }
++        return 0;
++    }
 +
 +    case __NR_uname:
 +        return k3_sys_uname(vm, (uint16_t)a0);
