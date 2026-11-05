@@ -36,6 +36,7 @@
 #define __NR_sched_yield        158
 #define __NR_nanosleep          162
 #define __NR_reboot             169
+#define __NR_k3_halt            199
 
 /* K-Three Balanced Ternary Hardware Extensions */
 #define __NR_k3_uptime          200   /* Monotonic hardware timer ms */
