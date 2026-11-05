@@ -47,10 +47,12 @@
 #define __NR_uname              122
 #define __NR_setfsuid           138
 #define __NR_setfsgid           139
-#define __NR_prctl              157
-#define __NR_sched_yield        158
 #define __NR_getpriority        140
 #define __NR_setpriority        141
+#define __NR_prctl              157
+#define __NR_sched_yield        158
+#define __NR_sched_get_priority_max 159
+#define __NR_sched_get_priority_min 160
 #define __NR_nanosleep          162
 #define __NR_reboot             169
 #define __NR_k3_halt            199
