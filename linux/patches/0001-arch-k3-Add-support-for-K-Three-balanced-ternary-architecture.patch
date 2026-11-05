@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   81 +
+ arch/k3/include/asm/unistd.h        |   82 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  331 +
+ arch/k3/kernel/sys_k3.c             |  337 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2118 insertions(+)
+ 39 files changed, 2125 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,82 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1315,6 +1315,7 @@ index 0000000..1111111
 +#define __NR_get_mempolicy      182
 +#define __NR_set_mempolicy      183
 +#define __NR_mbind              184
++#define __NR_getcpu             185
 +#define __NR_k3_halt            199
 +
 +/* K-Three Balanced Ternary Hardware Extensions */
@@ -1962,7 +1963,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,331 @@
+@@ -0,0 +1,337 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2200,8 +2201,14 @@ index 0000000..1111111
 +    case __NR_readahead:
 +    case __NR_get_mempolicy:
 +    case __NR_set_mempolicy:
-+    case __NR_mbind: {
++    case __NR_mbind:
++    case __NR_getcpu: {
 +        /* NOMMU stub */
++        if (nr == __NR_getcpu && a0 > 0) {
++            bt_word zero;
++            bt_word_from_i64(0, &zero);
++            k3_vm_set_mem(vm, (uint16_t)a0, &zero);
++        }
 +        return 0;
 +    }
 +
