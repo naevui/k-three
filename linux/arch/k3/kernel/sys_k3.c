@@ -236,7 +236,9 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
     case __NR_get_mempolicy:
     case __NR_set_mempolicy:
     case __NR_mbind:
-    case __NR_getcpu: {
+    case __NR_getcpu:
+    case __NR_ioprio_set:
+    case __NR_ioprio_get: {
         /* NOMMU stub */
         if (nr == __NR_getcpu && a0 > 0) {
             bt_word zero;
