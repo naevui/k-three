@@ -141,6 +141,9 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
     case __NR_sched_get_priority_min:
         return 1;
 
+    case __NR_sched_getscheduler:
+        return 0; /* SCHED_OTHER (normal round-robin) */
+
     case __NR_exit:
         k3_exit_current_task(vm, (int)a0);
         return 0;
