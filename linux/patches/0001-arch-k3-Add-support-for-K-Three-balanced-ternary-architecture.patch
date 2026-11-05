@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   65 +
+ arch/k3/include/asm/unistd.h        |   67 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  295 +
+ arch/k3/kernel/sys_k3.c             |  297 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2066 insertions(+)
+ 39 files changed, 2070 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,67 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1297,6 +1297,8 @@ index 0000000..1111111
 +#define __NR_setfsgid           139
 +#define __NR_prctl              157
 +#define __NR_sched_yield        158
++#define __NR_getpriority        140
++#define __NR_setpriority        141
 +#define __NR_nanosleep          162
 +#define __NR_reboot             169
 +#define __NR_k3_halt            199
@@ -1946,7 +1948,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,295 @@
+@@ -0,0 +1,297 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2075,7 +2077,9 @@ index 0000000..1111111
 +        return 0; /* root (UID 0, GID 0) in single-user NOMMU */
 +
 +    case __NR_prctl:
-+        /* prctl operations stub for NOMMU environment */
++    case __NR_getpriority:
++    case __NR_setpriority:
++        /* prctl / priority operations stub for NOMMU environment */
 +        return 0;
 +
 +    case __NR_sched_yield:
