@@ -31,6 +31,8 @@
 #define __NR_setpgid            68
 #define __NR_setreuid           70
 #define __NR_setregid           71
+#define __NR_getgroups          79
+#define __NR_setgroups          80
 #define __NR_getuid             102
 #define __NR_getgid             104
 #define __NR_geteuid            107
