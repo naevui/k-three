@@ -303,6 +303,8 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_getparam, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_setparam, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_rr_get_interval, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_ioprio_set, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_ioprio_get, 0, 0, 0), 0);
 }
 
 static void test_linux_procfs(void)
