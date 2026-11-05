@@ -145,6 +145,8 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0; /* SCHED_OTHER (normal round-robin) */
 
     case __NR_sched_setscheduler:
+    case __NR_sched_getparam:
+    case __NR_sched_setparam:
         return 0; /* NOMMU scheduler stub */
 
     case __NR_exit:
