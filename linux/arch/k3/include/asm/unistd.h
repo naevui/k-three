@@ -20,6 +20,7 @@
 #define __NR_execve             11
 #define __NR_getpid             20
 #define __NR_pause              29
+#define __NR_sync               36
 #define __NR_kill               37
 #define __NR_pipe               42
 #define __NR_brk                45
