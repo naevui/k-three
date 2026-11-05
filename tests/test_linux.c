@@ -279,6 +279,7 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_gettimeofday, 3200, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_execve, 3300, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sync, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_readahead, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_k3_halt, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_prctl, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getpriority, 0, 0, 0), 0);
