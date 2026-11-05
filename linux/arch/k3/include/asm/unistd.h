@@ -53,6 +53,7 @@
 #define __NR_sched_yield        158
 #define __NR_sched_get_priority_max 159
 #define __NR_sched_get_priority_min 160
+#define __NR_sched_getscheduler 156
 #define __NR_nanosleep          162
 #define __NR_reboot             169
 #define __NR_k3_halt            199
