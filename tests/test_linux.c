@@ -244,6 +244,8 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getresuid, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_setresgid, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getresgid, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_setfsuid, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_setfsgid, 0, 0, 0), 0);
 
     /* 2. sys_uname() */
     int64_t ret = k3_dispatch_linux_syscall(&vm, __NR_uname, 3000, 0, 0);
