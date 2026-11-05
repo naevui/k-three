@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   71 +
+ arch/k3/include/asm/unistd.h        |   73 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  309 +
+ arch/k3/kernel/sys_k3.c             |  311 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2086 insertions(+)
+ 39 files changed, 2090 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,73 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1303,6 +1303,8 @@ index 0000000..1111111
 +#define __NR_sched_get_priority_min 160
 +#define __NR_sched_getscheduler 156
 +#define __NR_sched_setscheduler 155
++#define __NR_sched_getparam     154
++#define __NR_sched_setparam     153
 +#define __NR_nanosleep          162
 +#define __NR_reboot             169
 +#define __NR_k3_halt            199
@@ -1952,7 +1954,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,309 @@
+@@ -0,0 +1,311 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2100,6 +2102,8 @@ index 0000000..1111111
 +        return 0; /* SCHED_OTHER (normal round-robin) */
 +
 +    case __NR_sched_setscheduler:
++    case __NR_sched_getparam:
++    case __NR_sched_setparam:
 +        return 0; /* NOMMU scheduler stub */
 +
 +    case __NR_exit:
