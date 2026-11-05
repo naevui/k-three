@@ -285,6 +285,7 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_get_priority_max, 0, 0, 0), 99);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_get_priority_min, 0, 0, 0), 1);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_getscheduler, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_setscheduler, 0, 0, 0), 0);
 }
 
 static void test_linux_procfs(void)
