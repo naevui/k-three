@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   77 +
+ arch/k3/include/asm/unistd.h        |   78 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  327 +
+ arch/k3/kernel/sys_k3.c             |  328 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2110 insertions(+)
+ 39 files changed, 2112 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,78 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1311,6 +1311,7 @@ index 0000000..1111111
 +#define __NR_gettid             178
 +#define __NR_readahead          179
 +#define __NR_tkill              180
++#define __NR_tgkill             181
 +#define __NR_k3_halt            199
 +
 +/* K-Three Balanced Ternary Hardware Extensions */
@@ -1958,7 +1959,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,327 @@
+@@ -0,0 +1,328 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2184,9 +2185,10 @@ index 0000000..1111111
 +    }
 +
 +    case __NR_kill:
-+    case __NR_tkill: {
-+        /* Signal delivery stub: a0 = pid/tid, a1 = sig */
-+        if (a0 == (int64_t)k3_get_current_pid() && a1 == 9 /* SIGKILL */) {
++    case __NR_tkill:
++    case __NR_tgkill: {
++        /* Signal delivery stub: a0 = tgid/pid, a1 = tid/sig, a2 = sig (for tgkill) */
++        if (a0 == (int64_t)k3_get_current_pid() && (a1 == 9 || a2 == 9) /* SIGKILL */) {
 +            k3_exit_current_task(vm, 137);
 +        }
 +        return 0;
