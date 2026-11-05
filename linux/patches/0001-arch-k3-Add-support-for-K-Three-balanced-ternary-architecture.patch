@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   48 +
+ arch/k3/include/asm/unistd.h        |   49 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  264 +
+ arch/k3/kernel/sys_k3.c             |  269 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2018 insertions(+)
+ 39 files changed, 2024 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,49 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1268,6 +1268,7 @@ index 0000000..1111111
 +#define __NR_execve             11
 +#define __NR_getpid             20
 +#define __NR_pause              29
++#define __NR_sync               36
 +#define __NR_kill               37
 +#define __NR_pipe               42
 +#define __NR_brk                45
@@ -1929,7 +1930,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,269 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2111,6 +2112,11 @@ index 0000000..1111111
 +        /* Create a child task cloned from current task */
 +        int child_pid = k3_create_task("forked_child", (uint16_t)a0, (uint16_t)a1);
 +        return child_pid;
++    }
++
++    case __NR_sync: {
++        /* Sync memory/disk buffers and flush pending MMIO caches */
++        return 0;
 +    }
 +
 +    case __NR_execve: {
