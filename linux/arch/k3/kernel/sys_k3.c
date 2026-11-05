@@ -254,6 +254,47 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0;
     }
 
+    case __NR_clock_gettime: {
+        /* a0 = clock_id, a1 = struct timespec *tp (sec at a1, nsec at a1+1) */
+        bt_word w;
+        int64_t t = 0;
+        if (k3_io_mmio_read(NULL, vm, K3_MMIO_TIMER_L, &w)) {
+            bt_word_to_i64(&w, &t);
+        }
+        if (a1 > 0) {
+            bt_word w_sec, w_nsec;
+            bt_word_from_i64(t / 1000, &w_sec);
+            bt_word_from_i64((t % 1000) * 1000000, &w_nsec);
+            k3_vm_set_mem(vm, (uint16_t)a1, &w_sec);
+            k3_vm_set_mem(vm, (uint16_t)(a1 + 1), &w_nsec);
+        }
+        return 0;
+    }
+
+    case __NR_clock_settime: {
+        return 0;
+    }
+
+    case __NR_clock_getres: {
+        /* a0 = clock_id, a1 = struct timespec *res (10ms = 10000000ns) */
+        if (a1 > 0) {
+            bt_word w_sec, w_nsec;
+            bt_word_from_i64(0, &w_sec);
+            bt_word_from_i64(10000000, &w_nsec);
+            k3_vm_set_mem(vm, (uint16_t)a1, &w_sec);
+            k3_vm_set_mem(vm, (uint16_t)(a1 + 1), &w_nsec);
+        }
+        return 0;
+    }
+
+    case __NR_clock_nanosleep: {
+        /* a2 = delay ms or simulated nanosleep */
+        if (a2 > 0) {
+            for (volatile int64_t i = 0; i < a2 * 1000; ++i) { }
+        }
+        return 0;
+    }
+
     case __NR_nanosleep: {
         /* a0 = delay ms */
         if (a0 > 0) {
