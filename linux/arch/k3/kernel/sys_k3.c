@@ -126,7 +126,9 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0; /* root (UID 0, GID 0) in single-user NOMMU */
 
     case __NR_prctl:
-        /* prctl operations stub for NOMMU environment */
+    case __NR_getpriority:
+    case __NR_setpriority:
+        /* prctl / priority operations stub for NOMMU environment */
         return 0;
 
     case __NR_sched_yield:
