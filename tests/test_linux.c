@@ -283,6 +283,12 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_get_mempolicy, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_set_mempolicy, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_mbind, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getcpu, 3400, 0, 0), 0);
+    bt_word cpu_w;
+    int64_t cpu_val = -1;
+    CHECK(k3_vm_get_mem(&vm, 3400, &cpu_w));
+    CHECK(bt_word_to_i64(&cpu_w, &cpu_val));
+    CHECK_EQ_I64(cpu_val, 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_kill, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_tkill, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_tgkill, 0, 0, 0), 0);
