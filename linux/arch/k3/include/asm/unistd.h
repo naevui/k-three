@@ -66,6 +66,7 @@
 #define __NR_tgkill             181
 #define __NR_get_mempolicy      182
 #define __NR_set_mempolicy      183
+#define __NR_mbind              184
 #define __NR_k3_halt            199
 
 /* K-Three Balanced Ternary Hardware Extensions */
