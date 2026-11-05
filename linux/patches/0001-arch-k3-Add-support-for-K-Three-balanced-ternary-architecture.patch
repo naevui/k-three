@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   84 +
+ arch/k3/include/asm/unistd.h        |   88 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  339 +
+ arch/k3/kernel/sys_k3.c             |  380 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2129 insertions(+)
+ 39 files changed, 2174 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,88 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1318,6 +1318,10 @@ index 0000000..1111111
 +#define __NR_getcpu             185
 +#define __NR_ioprio_set         186
 +#define __NR_ioprio_get         187
++#define __NR_clock_gettime      188
++#define __NR_clock_settime      189
++#define __NR_clock_getres       190
++#define __NR_clock_nanosleep    191
 +#define __NR_k3_halt            199
 +
 +/* K-Three Balanced Ternary Hardware Extensions */
@@ -1965,7 +1969,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,339 @@
+@@ -0,0 +1,380 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2219,6 +2223,47 @@ index 0000000..1111111
 +    case __NR_execve: {
 +        /* a0 = filename addr, a1 = argv, a2 = envp */
 +        /* In NOMMU emulator: reset entry context and return 0 */
++        return 0;
++    }
++
++    case __NR_clock_gettime: {
++        /* a0 = clock_id, a1 = struct timespec *tp (sec at a1, nsec at a1+1) */
++        bt_word w;
++        int64_t t = 0;
++        if (k3_io_mmio_read(NULL, vm, K3_MMIO_TIMER_L, &w)) {
++            bt_word_to_i64(&w, &t);
++        }
++        if (a1 > 0) {
++            bt_word w_sec, w_nsec;
++            bt_word_from_i64(t / 1000, &w_sec);
++            bt_word_from_i64((t % 1000) * 1000000, &w_nsec);
++            k3_vm_set_mem(vm, (uint16_t)a1, &w_sec);
++            k3_vm_set_mem(vm, (uint16_t)(a1 + 1), &w_nsec);
++        }
++        return 0;
++    }
++
++    case __NR_clock_settime: {
++        return 0;
++    }
++
++    case __NR_clock_getres: {
++        /* a0 = clock_id, a1 = struct timespec *res (10ms = 10000000ns) */
++        if (a1 > 0) {
++            bt_word w_sec, w_nsec;
++            bt_word_from_i64(0, &w_sec);
++            bt_word_from_i64(10000000, &w_nsec);
++            k3_vm_set_mem(vm, (uint16_t)a1, &w_sec);
++            k3_vm_set_mem(vm, (uint16_t)(a1 + 1), &w_nsec);
++        }
++        return 0;
++    }
++
++    case __NR_clock_nanosleep: {
++        /* a2 = delay ms or simulated nanosleep */
++        if (a2 > 0) {
++            for (volatile int64_t i = 0; i < a2 * 1000; ++i) { }
++        }
 +        return 0;
 +    }
 +
