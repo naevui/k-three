@@ -60,6 +60,7 @@
 #define __NR_sched_rr_get_interval 161
 #define __NR_nanosleep          162
 #define __NR_reboot             169
+#define __NR_gettid             178
 #define __NR_k3_halt            199
 
 /* K-Three Balanced Ternary Hardware Extensions */
