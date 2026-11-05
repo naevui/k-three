@@ -232,8 +232,10 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0;
     }
 
-    case __NR_readahead: {
-        /* Readahead cache stub for NOMMU */
+    case __NR_readahead:
+    case __NR_get_mempolicy:
+    case __NR_set_mempolicy: {
+        /* NOMMU stub */
         return 0;
     }
 
