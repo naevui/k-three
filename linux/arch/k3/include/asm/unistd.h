@@ -33,6 +33,10 @@
 #define __NR_setregid           71
 #define __NR_getgroups          79
 #define __NR_setgroups          80
+#define __NR_setresuid          81
+#define __NR_getresuid          82
+#define __NR_setresgid          83
+#define __NR_getresgid          84
 #define __NR_getuid             102
 #define __NR_getgid             104
 #define __NR_geteuid            107
