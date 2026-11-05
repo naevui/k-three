@@ -295,6 +295,19 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0;
     }
 
+    case __NR_pipe:
+    case __NR_pipe2: {
+        /* a0 = int pipefd[2] address */
+        if (a0 > 0) {
+            bt_word rfd, wfd;
+            bt_word_from_i64(3, &rfd);
+            bt_word_from_i64(4, &wfd);
+            k3_vm_set_mem(vm, (uint16_t)a0, &rfd);
+            k3_vm_set_mem(vm, (uint16_t)(a0 + 1), &wfd);
+        }
+        return 0;
+    }
+
     case __NR_nanosleep: {
         /* a0 = delay ms */
         if (a0 > 0) {
