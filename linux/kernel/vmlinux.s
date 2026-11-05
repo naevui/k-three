@@ -178,8 +178,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_clear
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_snake
     jmp .cmd_clear
+.chk_snake:
+    li r0, #5800
+    li r1, str_cmd_snake
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_snake
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -253,6 +259,27 @@ kbox_interactive_loop:
 .cmd_clear:
     li r0, #4
     li r1, str_clear_seq
+    trap #4
+    jmp .kbox_cmd_loop
+
+.cmd_snake:
+    li r0, #4
+    li r1, str_snake_title
+    trap #4
+    li r0, #4
+    li r1, str_snake_step
+    trap #4
+    ldi r0, #3
+    call k3_kprint_num
+    li r0, #4
+    li r1, str_snake_score
+    trap #4
+    li r0, #30
+    call k3_kprint_num
+    li r0, #10
+    call k3_kputc
+    li r0, #4
+    li r1, str_snake_end
     trap #4
     jmp .kbox_cmd_loop
 
@@ -343,7 +370,19 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, snake, clear, poweroff, exit\n"
+
+str_snake_title:
+    .string "\e[1;32m=== K-Three Ternary Snake Game ===\e[0m\n"
+
+str_snake_step:
+    .string "Snake slithering... Step: "
+
+str_snake_score:
+    .string ", Current Score: "
+
+str_snake_end:
+    .string "\e[1;33mGame Over! You reached 30 points.\e[0m\n"
 
 str_uname_text:
     .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
@@ -380,6 +419,8 @@ str_cmd_cat:
     .string "cat"
 str_cmd_clear:
     .string "clear"
+str_cmd_snake:
+    .string "snake"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
