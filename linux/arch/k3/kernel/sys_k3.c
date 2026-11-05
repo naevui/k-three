@@ -100,6 +100,7 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
 {
     switch (nr) {
     case __NR_getpid:
+    case __NR_gettid:
         return k3_get_current_pid();
 
     case __NR_getppid:
