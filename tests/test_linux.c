@@ -272,7 +272,7 @@ static void test_linux_syscalls(void)
     int64_t stat = k3_dispatch_linux_syscall(&vm, __NR_k3_disk_dma, 0, 2500, 1);
     CHECK_EQ_I64(stat, 0);
 
-    /* 7. sys_nanosleep(), sys_reboot(), sys_gettimeofday(), sys_execve(), sys_sync(), sys_k3_halt(), sys_prctl(), sys_getpriority(), sys_setpriority() */
+    /* 7. sys_nanosleep(), sys_reboot(), sys_gettimeofday(), sys_execve(), sys_sync(), sys_k3_halt(), sys_prctl(), sys_getpriority(), sys_setpriority(), sys_sched_priority */
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_nanosleep, 1, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_reboot, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_gettimeofday, 3200, 0, 0), 0);
@@ -282,6 +282,8 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_prctl, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_getpriority, 0, 0, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_setpriority, 0, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_get_priority_max, 0, 0, 0), 99);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_sched_get_priority_min, 0, 0, 0), 1);
 }
 
 static void test_linux_procfs(void)
