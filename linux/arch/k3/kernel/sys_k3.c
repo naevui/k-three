@@ -121,6 +121,8 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
     case __NR_getresuid:
     case __NR_setresgid:
     case __NR_getresgid:
+    case __NR_setfsuid:
+    case __NR_setfsgid:
         return 0; /* root (UID 0, GID 0) in single-user NOMMU */
 
     case __NR_sched_yield:
