@@ -223,9 +223,10 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
     }
 
     case __NR_kill:
-    case __NR_tkill: {
-        /* Signal delivery stub: a0 = pid/tid, a1 = sig */
-        if (a0 == (int64_t)k3_get_current_pid() && a1 == 9 /* SIGKILL */) {
+    case __NR_tkill:
+    case __NR_tgkill: {
+        /* Signal delivery stub: a0 = tgid/pid, a1 = tid/sig, a2 = sig (for tgkill) */
+        if (a0 == (int64_t)k3_get_current_pid() && (a1 == 9 || a2 == 9) /* SIGKILL */) {
             k3_exit_current_task(vm, 137);
         }
         return 0;
