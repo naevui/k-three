@@ -235,8 +235,14 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
     case __NR_readahead:
     case __NR_get_mempolicy:
     case __NR_set_mempolicy:
-    case __NR_mbind: {
+    case __NR_mbind:
+    case __NR_getcpu: {
         /* NOMMU stub */
+        if (nr == __NR_getcpu && a0 > 0) {
+            bt_word zero;
+            bt_word_from_i64(0, &zero);
+            k3_vm_set_mem(vm, (uint16_t)a0, &zero);
+        }
         return 0;
     }
 
