@@ -184,8 +184,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_snake
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_calc
     jmp .cmd_snake
+.chk_calc:
+    li r0, #5800
+    li r1, str_cmd_calc
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_calc
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -283,6 +289,15 @@ kbox_interactive_loop:
     trap #4
     jmp .kbox_cmd_loop
 
+.cmd_calc:
+    li r0, #4
+    li r1, str_calc_title
+    trap #4
+    li r0, #4
+    li r1, str_calc_demo
+    trap #4
+    jmp .kbox_cmd_loop
+
 .cmd_exit:
     pop r6
     ret
@@ -370,7 +385,13 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, snake, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, clear, poweroff, exit\n"
+
+str_calc_title:
+    .string "\e[1;36m=== K-Three Balanced Ternary Calculator ===\e[0m\n"
+
+str_calc_demo:
+    .string "42 + 13 = 55 (ternary: 0000+-00+)\n42 * 13 = 546 (ternary: 00+-+-+-0)\n"
 
 str_snake_title:
     .string "\e[1;32m=== K-Three Ternary Snake Game ===\e[0m\n"
@@ -421,6 +442,8 @@ str_cmd_clear:
     .string "clear"
 str_cmd_snake:
     .string "snake"
+str_cmd_calc:
+    .string "calc"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
