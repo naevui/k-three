@@ -309,6 +309,16 @@ static void test_linux_syscalls(void)
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_clock_settime, 0, 3500, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_clock_getres, 0, 3500, 0), 0);
     CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_clock_nanosleep, 0, 0, 1), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_pipe, 3600, 0, 0), 0);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_pipe2, 3602, 0, 0), 0);
+    bt_word pfd_r, pfd_w;
+    int64_t r_val = -1, w_val = -1;
+    CHECK(k3_vm_get_mem(&vm, 3600, &pfd_r));
+    CHECK(k3_vm_get_mem(&vm, 3601, &pfd_w));
+    CHECK(bt_word_to_i64(&pfd_r, &r_val));
+    CHECK(bt_word_to_i64(&pfd_w, &w_val));
+    CHECK_EQ_I64(r_val, 3);
+    CHECK_EQ_I64(w_val, 4);
 }
 
 static void test_linux_procfs(void)
