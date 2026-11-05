@@ -47,6 +47,7 @@
 #define __NR_uname              122
 #define __NR_setfsuid           138
 #define __NR_setfsgid           139
+#define __NR_prctl              157
 #define __NR_sched_yield        158
 #define __NR_nanosleep          162
 #define __NR_reboot             169
