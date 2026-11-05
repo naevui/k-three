@@ -104,6 +104,8 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
 
     case __NR_getppid:
     case __NR_getpgrp:
+    case __NR_getpgid:
+    case __NR_setpgid:
     case __NR_setsid:
         return 0;
 
