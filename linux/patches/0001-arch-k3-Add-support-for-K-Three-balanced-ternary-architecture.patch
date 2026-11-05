@@ -60,7 +60,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/uaccess.h       |   72 +
- arch/k3/include/asm/unistd.h        |   50 +
+ arch/k3/include/asm/unistd.h        |   52 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -68,10 +68,10 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
- arch/k3/kernel/sys_k3.c             |  277 +
+ arch/k3/kernel/sys_k3.c             |  279 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2033 insertions(+)
+ 39 files changed, 2037 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1245,7 +1245,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/include/asm/unistd.h
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,52 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/include/asm/unistd.h
@@ -1273,6 +1273,8 @@ index 0000000..1111111
 +#define __NR_pipe               42
 +#define __NR_brk                45
 +#define __NR_getppid            64
++#define __NR_getpgrp            65
++#define __NR_setsid             66
 +#define __NR_getuid             102
 +#define __NR_getgid             104
 +#define __NR_geteuid            107
@@ -1931,7 +1933,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/sys_k3.c
-@@ -0,0 +1,277 @@
+@@ -0,0 +1,279 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/sys_k3.c
@@ -2037,6 +2039,8 @@ index 0000000..1111111
 +        return k3_get_current_pid();
 +
 +    case __NR_getppid:
++    case __NR_getpgrp:
++    case __NR_setsid:
 +        return 0;
 +
 +    case __NR_getuid:
