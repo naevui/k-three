@@ -437,6 +437,9 @@ void k3_vm_init(k3_vm *vm, const k3_vm_callbacks *callbacks)
     vm->active_irq = -1;
     vm->user_base = 0;
     vm->user_limit = K3_VM_MAX_ADDRESS;
+    vm->ext_memory = NULL;
+    vm->ext_memory_words = 0;
+    vm->ext_pc = 0;
 
     k3_vm_set_callbacks(vm, callbacks);
 }
@@ -537,6 +540,64 @@ bool k3_vm_set_mem(k3_vm *vm, uint16_t address, const bt_word *value)
     }
     vm->memory[address] = *value;
     return true;
+}
+
+bool k3_vm_enable_ext_memory(k3_vm *vm, size_t word_count)
+{
+    if (vm == NULL || word_count == 0) {
+        return false;
+    }
+    k3_vm_free_ext_memory(vm);
+    vm->ext_memory = (bt_word *)calloc(word_count, sizeof(bt_word));
+    if (vm->ext_memory == NULL) {
+        return false;
+    }
+    vm->ext_memory_words = word_count;
+    for (size_t i = 0; i < word_count; ++i) {
+        bt_word_zero(&vm->ext_memory[i]);
+    }
+    return true;
+}
+
+void k3_vm_free_ext_memory(k3_vm *vm)
+{
+    if (vm != NULL && vm->ext_memory != NULL) {
+        free(vm->ext_memory);
+        vm->ext_memory = NULL;
+        vm->ext_memory_words = 0;
+    }
+}
+
+bool k3_vm_get_ext_mem(const k3_vm *vm, uint32_t address, bt_word *out)
+{
+    if (vm == NULL || out == NULL) {
+        return false;
+    }
+    if (vm->ext_memory != NULL && (size_t)address < vm->ext_memory_words) {
+        *out = vm->ext_memory[address];
+        return true;
+    }
+    if (address <= K3_VM_MAX_ADDRESS) {
+        *out = vm->memory[address];
+        return true;
+    }
+    return false;
+}
+
+bool k3_vm_set_ext_mem(k3_vm *vm, uint32_t address, const bt_word *value)
+{
+    if (vm == NULL || value == NULL || !bt_valid(value->t, K3_TRITS)) {
+        return false;
+    }
+    if (vm->ext_memory != NULL && (size_t)address < vm->ext_memory_words) {
+        vm->ext_memory[address] = *value;
+        return true;
+    }
+    if (address <= K3_VM_MAX_ADDRESS) {
+        vm->memory[address] = *value;
+        return true;
+    }
+    return false;
 }
 
 uint16_t k3_vm_pc(const k3_vm *vm)
