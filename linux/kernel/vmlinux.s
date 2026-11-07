@@ -96,9 +96,44 @@ kinit_user_entry:
     ; 1. Setup user stack at 5999 (grows down towards 1458)
     li r7, #5999
 
-    ; 2. Print kinit startup banner
+    ; 2. systemd-style Service Manager & Target Dispatcher
     li r0, #4               ; K3_SYS_WRITE
-    li r1, str_kinit_start
+    li r1, str_systemd_banner
+    trap #4
+
+    ; [  OK  ] Mounted /proc (Virtual Kernel Process File System)
+    li r0, #4
+    li r1, str_unit_proc
+    trap #4
+
+    ; [  OK  ] Mounted /sys (SysFS Kernel Data Structure System)
+    li r0, #4
+    li r1, str_unit_sys
+    trap #4
+
+    ; [  OK  ] Mounted /dev (Device File System & MMIO Nodes)
+    li r0, #4
+    li r1, str_unit_dev
+    trap #4
+
+    ; [  OK  ] Started k3-udevd.service (Device Node Manager)
+    li r0, #4
+    li r1, str_unit_udev
+    trap #4
+
+    ; [  OK  ] Started k3-journald.service (System Logging Service)
+    li r0, #4
+    li r1, str_unit_journal
+    trap #4
+
+    ; [  OK  ] Started k3-networkd.service (Ternary Packet Interface)
+    li r0, #4
+    li r1, str_unit_net
+    trap #4
+
+    ; [  OK  ] Reached target graphical.target (Multi-User GUI Ready)
+    li r0, #4
+    li r1, str_unit_target
     trap #4
 
     ; 3. Probe and print hardware telemetry
@@ -449,6 +484,30 @@ k3_uart_getc_hw:
     ret
 
 ; --- Strings for kinit & kbox ---
+str_systemd_banner:
+    .string "\e[1;36m[systemd]\e[0m systemd 256.3-k3 running in system mode (+NOMMU +TERNARY)\n\e[1;36m[systemd]\e[0m Detected architecture: K-Three 9-Trit Balanced Ternary RISC\n"
+
+str_unit_proc:
+    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37mproc.mount\e[0m - Process File System (/proc).\n"
+
+str_unit_sys:
+    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37msysfs.mount\e[0m - System Control File System (/sys).\n"
+
+str_unit_dev:
+    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37mdevtmpfs.mount\e[0m - Dynamic Device Nodes (/dev).\n"
+
+str_unit_udev:
+    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-udevd.service\e[0m - Device Node & MMIO Manager.\n"
+
+str_unit_journal:
+    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-journald.service\e[0m - System Logging Service.\n"
+
+str_unit_net:
+    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-networkd.service\e[0m - Ternary Packet Network Engine.\n"
+
+str_unit_target:
+    .string "[\e[1;32m  OK  \e[0m] Reached target \e[1;35mgraphical.target\e[0m - Multi-User Graphic Mode Ready.\n"
+
 str_kinit_start:
     .string "\e[1;32m[kinit]\e[0m Starting K-Three Linux Init Service (PID 1)...\n\e[1;32m[kinit]\e[0m Mounting virtual filesystems: /proc, /sys, /dev...\n"
 
