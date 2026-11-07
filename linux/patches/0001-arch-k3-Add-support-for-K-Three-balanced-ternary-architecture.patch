@@ -41,6 +41,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/barrier.h       |   27 +
  arch/k3/include/asm/bitops.h        |   65 +
  arch/k3/include/asm/cacheflush.h    |   27 +
+ arch/k3/include/asm/checksum.h      |   27 +
  arch/k3/include/asm/delay.h         |   30 +
  arch/k3/include/asm/errno.h         |   34 +
  arch/k3/include/asm/fcntl.h         |   13 +
@@ -75,7 +76,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 43 files changed, 2313 insertions(+)
+ 44 files changed, 2340 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -626,6 +627,39 @@ index 0000000..1111111
 +#define flush_cache_vunmap(start, end)          do { } while (0)
 +
 +#endif /* _ASM_K3_CACHEFLUSH_H */
+diff --git a/arch/k3/include/asm/checksum.h b/arch/k3/include/asm/checksum.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/checksum.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/checksum.h
++ *
++ * IP / TCP / UDP packet checksum calculation routines for K-Three.
++ */
++
++#ifndef _ASM_K3_CHECKSUM_H
++#define _ASM_K3_CHECKSUM_H
++
++#include <linux/types.h>
++
++static inline __sum16 ip_fast_csum(const void *iph, unsigned int ihl)
++{
++    const unsigned short *w = iph;
++    unsigned int sum = 0;
++
++    while (ihl--) {
++        sum += *w++;
++        sum += *w++;
++    }
++    sum = (sum >> 16) + (sum & 0xffff);
++    sum += (sum >> 16);
++    return (__sum16)(~sum);
++}
++
++#endif /* _ASM_K3_CHECKSUM_H */
 diff --git a/arch/k3/include/asm/delay.h b/arch/k3/include/asm/delay.h
 new file mode 100644
 index 0000000..1111111
