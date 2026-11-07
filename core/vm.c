@@ -3,6 +3,7 @@
 #include "vm.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "isa.h"
 
 #define K3_USES_A 0x1u
