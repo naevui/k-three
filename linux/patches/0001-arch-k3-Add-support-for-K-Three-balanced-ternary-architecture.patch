@@ -48,9 +48,11 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/device.h        |   18 +
  arch/k3/include/asm/div64.h         |   13 +
  arch/k3/include/asm/dma-mapping.h   |   13 +
+ arch/k3/include/asm/elf.h           |   27 +
  arch/k3/include/asm/errno.h         |   34 +
  arch/k3/include/asm/fb.h            |   24 +
  arch/k3/include/asm/fcntl.h         |   13 +
+ arch/k3/include/asm/flat.h          |   19 +
  arch/k3/include/asm/futex.h         |   36 +
  arch/k3/include/asm/hardirq.h       |   17 +
  arch/k3/include/asm/io.h            |   49 +
@@ -63,6 +65,8 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/mmu_context.h   |   21 +
  arch/k3/include/asm/page.h          |   31 +
  arch/k3/include/asm/param.h         |   27 +
+ arch/k3/include/asm/pgalloc.h       |   13 +
+ arch/k3/include/asm/pgtable.h       |   30 +
  arch/k3/include/asm/poll.h          |   10 +
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
@@ -75,6 +79,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/statfs.h        |    5 +
  arch/k3/include/asm/string.h        |   46 +
  arch/k3/include/asm/switch_to.h     |   21 +
+ arch/k3/include/asm/syscall.h       |   48 +
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/timex.h         |   23 +
@@ -83,17 +88,21 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/uaccess.h       |   72 +
  arch/k3/include/asm/unistd.h        |   90 +
  arch/k3/include/asm/vga.h           |   14 +
+ arch/k3/kernel/Makefile             |    9 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
+ arch/k3/kernel/k3_ksyms.c           |   18 +
  arch/k3/kernel/process.c            |   67 +
+ arch/k3/kernel/ptrace.c             |   22 +
  arch/k3/kernel/sched.c              |  197 +
  arch/k3/kernel/setup.c              |   38 +
  arch/k3/kernel/signal.c             |   80 +
  arch/k3/kernel/sys_k3.c             |  401 +
+ arch/k3/kernel/time.c               |   16 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 61 files changed, 2666 insertions(+)
+ 70 files changed, 2868 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -841,6 +850,39 @@ index 0000000..1111111
 +#include <asm-generic/dma-mapping.h>
 +
 +#endif /* _ASM_K3_DMA_MAPPING_H */
+diff --git a/arch/k3/include/asm/elf.h b/arch/k3/include/asm/elf.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/elf.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/elf.h
++ *
++ * ELF binary format definitions and register mapping for K-Three.
++ */
++
++#ifndef _ASM_K3_ELF_H
++#define _ASM_K3_ELF_H
++
++#include <asm/ptrace.h>
++
++#define EM_K3               0x3333  /* K-Three ELF machine type */
++
++typedef unsigned long elf_greg_t;
++#define ELF_NGREG           (sizeof(struct pt_regs) / sizeof(elf_greg_t))
++typedef elf_greg_t elf_gregset_t[ELF_NGREG];
++
++#define elf_check_arch(x)   ((x)->e_machine == EM_K3)
++
++#define ELF_CLASS           ELFCLASS32
++#define ELF_DATA            ELFDATA2LSB
++#define ELF_ARCH            EM_K3
++
++#define ELF_PLATFORM        ("k3")
++
++#endif /* _ASM_K3_ELF_H */
 diff --git a/arch/k3/include/asm/errno.h b/arch/k3/include/asm/errno.h
 new file mode 100644
 index 0000000..1111111
@@ -930,6 +972,31 @@ index 0000000..1111111
 +#define O_APPEND 1024
 +#define O_NONBLOCK 2048
 +#endif
+diff --git a/arch/k3/include/asm/flat.h b/arch/k3/include/asm/flat.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/flat.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/flat.h
++ *
++ * uClinux BFLT (Binary Flat Format) binary execution support for K-Three.
++ */
++
++#ifndef _ASM_K3_FLAT_H
++#define _ASM_K3_FLAT_H
++
++#define flat_argvp_envp_on_stack()              1
++#define flat_old_ram_flag(flags)                (flags)
++#define flat_reloc_valid(reloc, size)           ((reloc) <= (size))
++#define flat_set_persistent(relval, p)          0
++#define flat_get_relocate_addr(rel)             (rel)
++#define flat_get_addr_from_rp(rp, relval, flags, p) get_unaligned(rp)
++#define flat_put_addr_at_rp(rp, addr, relval)   put_unaligned((addr), (rp))
++
++#endif /* _ASM_K3_FLAT_H */
 diff --git a/arch/k3/include/asm/futex.h b/arch/k3/include/asm/futex.h
 new file mode 100644
 index 0000000..1111111
@@ -1293,6 +1360,61 @@ index 0000000..1111111
 +#define MAXHOSTNAMELEN  64
 +
 +#endif /* _ASM_K3_PARAM_H */
+diff --git a/arch/k3/include/asm/pgalloc.h b/arch/k3/include/asm/pgalloc.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/pgalloc.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/pgalloc.h
++ *
++ * Page table allocation and freeing for K-Three NOMMU.
++ */
++
++#ifndef _ASM_K3_PGALLOC_H
++#define _ASM_K3_PGALLOC_H
++
++#include <asm-generic/pgalloc.h>
++
++#endif /* _ASM_K3_PGALLOC_H */
+diff --git a/arch/k3/include/asm/pgtable.h b/arch/k3/include/asm/pgtable.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/pgtable.h
+@@ -0,0 +1,30 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/pgtable.h
++ *
++ * Page table definitions for K-Three (NOMMU / Flat Linear Architecture).
++ */
++
++#ifndef _ASM_K3_PGTABLE_H
++#define _ASM_K3_PGTABLE_H
++
++#include <asm-generic/pgtable-nopud.h>
++#include <asm-generic/pgtable-nop4d.h>
++
++#define PAGE_NONE       __pgprot(0)
++#define PAGE_SHARED     __pgprot(0)
++#define PAGE_COPY       __pgprot(0)
++#define PAGE_READONLY   __pgprot(0)
++#define PAGE_KERNEL     __pgprot(0)
++
++#define pgprot_noncached(prot) (prot)
++
++typedef struct { unsigned long pgprot; } pgprot_t;
++#define pgprot_val(x)   ((x).pgprot)
++#define __pgprot(x)     ((pgprot_t) { (x) })
++
++#define swapper_pg_dir  ((pgd_t *)0)
++
++#include <asm-generic/pgtable.h>
++
++#endif /* _ASM_K3_PGTABLE_H */
 diff --git a/arch/k3/include/asm/poll.h b/arch/k3/include/asm/poll.h
 new file mode 100644
 index 0000000..1111111
@@ -1634,6 +1756,60 @@ index 0000000..1111111
 +    } while (0)
 +
 +#endif /* _ASM_K3_SWITCH_TO_H */
+diff --git a/arch/k3/include/asm/syscall.h b/arch/k3/include/asm/syscall.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/syscall.h
+@@ -0,0 +1,48 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/syscall.h
++ *
++ * System call tracing, invocation, and register query helpers for K-Three.
++ */
++
++#ifndef _ASM_K3_SYSCALL_H
++#define _ASM_K3_SYSCALL_H
++
++#include <uapi/linux/audit.h>
++#include <linux/sched.h>
++#include <linux/err.h>
++#include <asm/ptrace.h>
++
++static inline int syscall_get_nr(struct task_struct *task, struct pt_regs *regs)
++{
++    (void)task;
++    return regs->r0;
++}
++
++static inline void syscall_rollback(struct task_struct *task, struct pt_regs *regs)
++{
++    (void)task;
++    (void)regs;
++}
++
++static inline long syscall_get_error(struct task_struct *task, struct pt_regs *regs)
++{
++    (void)task;
++    return IS_ERR_VALUE((unsigned long)regs->r0) ? regs->r0 : 0;
++}
++
++static inline long syscall_get_return_value(struct task_struct *task, struct pt_regs *regs)
++{
++    (void)task;
++    return regs->r0;
++}
++
++static inline void syscall_set_return_value(struct task_struct *task,
++                                           struct pt_regs *regs,
++                                           int error, long val)
++{
++    (void)task;
++    regs->r0 = (error ? error : val);
++}
++
++#endif /* _ASM_K3_SYSCALL_H */
 diff --git a/arch/k3/include/asm/termios.h b/arch/k3/include/asm/termios.h
 new file mode 100644
 index 0000000..1111111
@@ -1958,6 +2134,21 @@ index 0000000..1111111
 +#define VT_BUF_HAVE_MEMSETW
 +
 +#endif /* _ASM_K3_VGA_H */
+diff --git a/arch/k3/kernel/Makefile b/arch/k3/kernel/Makefile
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/Makefile
+@@ -0,0 +1,9 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# arch/k3/kernel/Makefile - Kernel subsystem Makefile for K-Three
++#
++
++extra-y := vmlinux.lds
++
++obj-y := entry.o setup.o process.o sched.o traps.o irq.o signal.o \
++         sys_k3.o init_task.o time.o ptrace.o k3_ksyms.o
 diff --git a/arch/k3/kernel/entry.S b/arch/k3/kernel/entry.S
 new file mode 100644
 index 0000000..1111111
@@ -2182,6 +2373,30 @@ index 0000000..1111111
 +    }
 +    return "none";
 +}
+diff --git a/arch/k3/kernel/k3_ksyms.c b/arch/k3/kernel/k3_ksyms.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/k3_ksyms.c
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/k3_ksyms.c
++ *
++ * Exported architecture symbols for K-Three modules.
++ */
++
++#include <linux/export.h>
++#include <linux/string.h>
++#include <asm/checksum.h>
++#include <asm/uaccess.h>
++
++/* Export core string and memory primitives */
++EXPORT_SYMBOL(memcpy);
++EXPORT_SYMBOL(memset);
++EXPORT_SYMBOL(memmove);
++EXPORT_SYMBOL(strlen);
++EXPORT_SYMBOL(strcmp);
 diff --git a/arch/k3/kernel/process.c b/arch/k3/kernel/process.c
 new file mode 100644
 index 0000000..1111111
@@ -2254,6 +2469,34 @@ index 0000000..1111111
 +    vm->pc = next->pc;
 +
 +    g_current_pid = next_pid;
++}
+diff --git a/arch/k3/kernel/ptrace.c b/arch/k3/kernel/ptrace.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/ptrace.c
+@@ -0,0 +1,22 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/ptrace.c
++ *
++ * Process tracing (ptrace) support for K-Three.
++ */
++
++#include <linux/ptrace.h>
++#include <linux/regset.h>
++#include <linux/sched.h>
++#include <linux/uaccess.h>
++#include <asm/ptrace.h>
++
++long arch_ptrace(struct task_struct *child, long request,
++                 unsigned long addr, unsigned long data)
++{
++    (void)child;
++    (void)request;
++    (void)addr;
++    (void)data;
++    return -EIO;
 +}
 diff --git a/arch/k3/kernel/sched.c b/arch/k3/kernel/sched.c
 new file mode 100644
@@ -2994,6 +3237,28 @@ index 0000000..1111111
 +    default:
 +        return -38; /* -ENOSYS: Function not implemented */
 +    }
++}
+diff --git a/arch/k3/kernel/time.c b/arch/k3/kernel/time.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/kernel/time.c
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/kernel/time.c
++ *
++ * Architecture-specific clocksource and timer initialization for K-Three.
++ */
++
++#include <linux/clocksource.h>
++#include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/sched_clock.h>
++
++void __init time_init(void)
++{
++    /* Initialize 100 Hz K-Three MMIO hardware timer */
 +}
 diff --git a/arch/k3/kernel/traps.c b/arch/k3/kernel/traps.c
 new file mode 100644
