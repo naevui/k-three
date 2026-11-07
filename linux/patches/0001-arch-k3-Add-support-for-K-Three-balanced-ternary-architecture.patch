@@ -59,6 +59,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/string.h        |   46 +
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
+ arch/k3/include/asm/timex.h         |   23 +
  arch/k3/include/asm/uaccess.h       |   72 +
  arch/k3/include/asm/unistd.h        |   90 +
  arch/k3/kernel/entry.S              |   77 +
@@ -71,7 +72,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 39 files changed, 2213 insertions(+)
+ 40 files changed, 2236 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1177,6 +1178,35 @@ index 0000000..1111111
 +#define preempt_enable()        do { } while (0)
 +
 +#endif /* _ASM_K3_THREAD_INFO_H */
+diff --git a/arch/k3/include/asm/timex.h b/arch/k3/include/asm/timex.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/timex.h
+@@ -0,0 +1,23 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/timex.h
++ *
++ * Architecture-specific clock and cycle counter support for K-Three.
++ */
++
++#ifndef _ASM_K3_TIMEX_H
++#define _ASM_K3_TIMEX_H
++
++#include <asm/processor.h>
++
++#define CLOCK_TICK_RATE 100 /* 100 Hz timer tick */
++
++typedef unsigned long cycles_t;
++
++static inline cycles_t get_cycles(void)
++{
++    /* Return monotonic ticks count */
++    return 0;
++}
++
++#endif /* _ASM_K3_TIMEX_H */
 diff --git a/arch/k3/include/asm/uaccess.h b/arch/k3/include/asm/uaccess.h
 new file mode 100644
 index 0000000..1111111
