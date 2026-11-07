@@ -77,6 +77,7 @@
 #define K3_MMIO_VRAM_CTRL       6026
 #define K3_MMIO_VRAM_COLS       6027
 #define K3_MMIO_VRAM_ROWS       6028
+#define K3_MMIO_GUI_LAUNCH      6029
 #define K3_MMIO_VRAM_BASE       6030
 #define K3_MMIO_VRAM_SIZE       100
 #define K3_MMIO_VRAM_END        6129
