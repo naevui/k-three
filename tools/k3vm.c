@@ -111,7 +111,7 @@ static k3_vm_status run_program(k3_vm *vm, uint64_t max_steps, bool trace,
         return k3_vm_run(vm, max_steps, executed);
     }
 
-    while ((max_steps == 0 || steps < max_steps) && k3_vm_get_status(vm) == K3_VM_RUNNING) {
+    while (steps < max_steps && k3_vm_get_status(vm) == K3_VM_RUNNING) {
         trace_instruction(vm);
         (void)k3_vm_step(vm);
         ++steps;
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
     bool dump_mem = false;
     bool quiet = false;
     bool enable_io = true;
-    unsigned long long max_steps = 0; /* 0 = unlimited execution */
+    unsigned long long max_steps = 1000000;
     const char *path = NULL;
     bt_word words[K3_VM_MEMORY_WORDS];
     size_t count = 0;
