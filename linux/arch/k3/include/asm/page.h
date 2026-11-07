@@ -19,7 +19,12 @@
 #define K3_PAGE_SIZE        729     /* 3^6 words */
 #define K3_PAGE_MASK        (~(K3_PAGE_SIZE - 1))
 
-#define K3_TOTAL_PAGES      (K3_VM_MEMORY_WORDS / K3_PAGE_SIZE) /* 9 pages */
+#define K3_TOTAL_PAGES      (K3_VM_MEMORY_WORDS / K3_PAGE_SIZE) /* 9 pages in base mode */
+#define K3_EXT_TOTAL_PAGES  (K3_EXT_MEM_WORDS / K3_PAGE_SIZE)   /* 23013 pages in 16M extended mode */
+
+#define PAGE_SIZE           K3_PAGE_SIZE
+#define PAGE_SHIFT          K3_PAGE_SHIFT
+#define PAGE_MASK           K3_PAGE_MASK
 
 #define PAGE_ALIGN(addr)    (((addr) + K3_PAGE_SIZE - 1) & K3_PAGE_MASK)
 
