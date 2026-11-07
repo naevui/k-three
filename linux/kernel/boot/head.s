@@ -95,7 +95,7 @@ kinit_user_entry:
 ; Kernel Boot Messages
 ; ==============================================================================
 str_dmesg_header:
-    .string "\e[1;36m[    0.000000] Linux version 0.1-k3 (root@k3-build) (k3-elf-gcc) #1 PREEMPT\e[0m\n[    0.000000] Machine model: K-Three 9-Trit Balanced Ternary Processor\n[    0.000000] CPU features: 9-trit ALU, symmetric math, [-9841..+9841]\n"
+    .string "\e[1;36m[    0.000000] Linux version 6.12.38-k3 (root@k3-build) (k3-elf-gcc) #1 PREEMPT\e[0m\n[    0.000000] Machine model: K-Three 9-Trit Balanced Ternary Processor\n[    0.000000] CPU features: 9-trit ALU, symmetric math, [-9841..+9841]\n"
 
 str_dmesg_memory:
     .string "[    0.000000] Memory: "
