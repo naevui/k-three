@@ -392,6 +392,22 @@ static bool standard_peripheral_write(k3_vm *vm, uint16_t address, const bt_word
         }
         return true;
 
+    case K3_MMIO_GUI_LAUNCH:
+        if (val == 1) {
+            /* Spawn host native Wayland window asynchronously if display environment exists */
+            const char *wl_disp = getenv("WAYLAND_DISPLAY");
+            const char *x_disp = getenv("DISPLAY");
+            if (wl_disp || x_disp) {
+                pid_t pid = fork();
+                if (pid == 0) {
+                    /* Child process: launch python3 tools/k3_wayland.py */
+                    execlp("python3", "python3", "tools/k3_wayland.py", (char *)NULL);
+                    _exit(1);
+                }
+            }
+        }
+        return true;
+
     default:
         return false;
     }
