@@ -99,10 +99,6 @@ static bool standard_peripheral_read(k3_vm *vm, uint16_t address, bt_word *out)
             if (read(STDIN_FILENO, &c, 1) == 1) {
                 ch = (int)c;
             }
-        } else {
-            /* Throttle CPU slightly when idle waiting for input in interactive mode */
-            struct timespec req = { 0, 1000000 }; /* 1ms sleep */
-            nanosleep(&req, NULL);
         }
         val = (ch == EOF) ? -1 : (int64_t)ch;
         break;
