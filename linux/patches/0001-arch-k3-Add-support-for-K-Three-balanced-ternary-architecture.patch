@@ -61,6 +61,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
  arch/k3/include/asm/resource.h      |   14 +
+ arch/k3/include/asm/shmparam.h      |   13 +
  arch/k3/include/asm/siginfo.h       |    5 +
  arch/k3/include/asm/signal.h        |   67 +
  arch/k3/include/asm/stat.h          |   12 +
@@ -82,7 +83,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 50 files changed, 2484 insertions(+)
+ 51 files changed, 2497 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1249,6 +1250,25 @@ index 0000000..1111111
 +#define RLIMIT_MEMLOCK 8
 +#define RLIMIT_AS 9
 +#endif
+diff --git a/arch/k3/include/asm/shmparam.h b/arch/k3/include/asm/shmparam.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/shmparam.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/shmparam.h
++ *
++ * System V shared memory segment attachment alignment for K-Three.
++ */
++
++#ifndef _ASM_K3_SHMPARAM_H
++#define _ASM_K3_SHMPARAM_H
++
++#define SHMLBA 729     /* Align to ternary page size (3^6 words) */
++
++#endif /* _ASM_K3_SHMPARAM_H */
 diff --git a/arch/k3/include/asm/siginfo.h b/arch/k3/include/asm/siginfo.h
 new file mode 100644
 index 0000000..1111111
