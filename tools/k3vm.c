@@ -107,6 +107,10 @@ static k3_vm_status run_program(k3_vm *vm, uint64_t max_steps, bool trace,
     uint64_t before = k3_vm_instruction_count(vm);
     uint64_t steps = 0;
 
+    if (max_steps == 0) {
+        max_steps = UINT64_MAX; /* 0 means infinite / run until halt or exit */
+    }
+
     if (!trace) {
         return k3_vm_run(vm, max_steps, executed);
     }
