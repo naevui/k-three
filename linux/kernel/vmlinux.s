@@ -441,6 +441,11 @@ kbox_interactive_loop:
     li r0, #4
     li r1, str_hyprland_canvas
     trap #4
+
+    ; Trigger native host Wayland window via hardware MMIO 6029
+    li r1, #6029            ; K3_MMIO_GUI_LAUNCH
+    ldi r0, #1
+    store r0, [r1]
     jmp .kbox_cmd_loop
 
 .cmd_exit:
