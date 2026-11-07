@@ -56,6 +56,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/linkage.h       |   14 +
  arch/k3/include/asm/mman.h          |   12 +
  arch/k3/include/asm/page.h          |   31 +
+ arch/k3/include/asm/param.h         |   27 +
  arch/k3/include/asm/poll.h          |   10 +
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
@@ -81,7 +82,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 49 files changed, 2457 insertions(+)
+ 50 files changed, 2484 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1104,6 +1105,39 @@ index 0000000..1111111
 +#define PAGE_ALIGN(addr)    (((addr) + K3_PAGE_SIZE - 1) & K3_PAGE_MASK)
 +
 +#endif /* _ASM_K3_PAGE_H */
+diff --git a/arch/k3/include/asm/param.h b/arch/k3/include/asm/param.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/param.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/param.h
++ *
++ * Architecture-specific HZ, EXEC_PAGESIZE and NOGROUP constants for K-Three.
++ */
++
++#ifndef _ASM_K3_PARAM_H
++#define _ASM_K3_PARAM_H
++
++#define HZ              100
++#define USER_HZ         100
++#define CLOCKS_PER_SEC  USER_HZ
++
++#define EXEC_PAGESIZE   729     /* 3^6 ternary words per page */
++
++#ifndef NGROUPS
++#define NGROUPS         32
++#endif
++
++#ifndef NOGROUP
++#define NOGROUP         (-1)
++#endif
++
++#define MAXHOSTNAMELEN  64
++
++#endif /* _ASM_K3_PARAM_H */
 diff --git a/arch/k3/include/asm/poll.h b/arch/k3/include/asm/poll.h
 new file mode 100644
 index 0000000..1111111
