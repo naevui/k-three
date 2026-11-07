@@ -45,34 +45,44 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/checksum.h      |   27 +
  arch/k3/include/asm/cmpxchg.h       |   32 +
  arch/k3/include/asm/delay.h         |   30 +
+ arch/k3/include/asm/device.h        |   18 +
  arch/k3/include/asm/div64.h         |   13 +
+ arch/k3/include/asm/dma-mapping.h   |   13 +
  arch/k3/include/asm/errno.h         |   34 +
+ arch/k3/include/asm/fb.h            |   24 +
  arch/k3/include/asm/fcntl.h         |   13 +
  arch/k3/include/asm/futex.h         |   36 +
+ arch/k3/include/asm/hardirq.h       |   17 +
  arch/k3/include/asm/io.h            |   49 +
  arch/k3/include/asm/ioctl.h         |    8 +
  arch/k3/include/asm/irq.h           |   18 +
  arch/k3/include/asm/irqflags.h      |   43 +
  arch/k3/include/asm/linkage.h       |   14 +
  arch/k3/include/asm/mman.h          |   12 +
+ arch/k3/include/asm/mmu.h           |   15 +
+ arch/k3/include/asm/mmu_context.h   |   21 +
  arch/k3/include/asm/page.h          |   31 +
  arch/k3/include/asm/param.h         |   27 +
  arch/k3/include/asm/poll.h          |   10 +
  arch/k3/include/asm/processor.h     |   31 +
  arch/k3/include/asm/ptrace.h        |   32 +
  arch/k3/include/asm/resource.h      |   14 +
+ arch/k3/include/asm/sections.h      |   13 +
  arch/k3/include/asm/shmparam.h      |   13 +
  arch/k3/include/asm/siginfo.h       |    5 +
  arch/k3/include/asm/signal.h        |   67 +
  arch/k3/include/asm/stat.h          |   12 +
  arch/k3/include/asm/statfs.h        |    5 +
  arch/k3/include/asm/string.h        |   46 +
+ arch/k3/include/asm/switch_to.h     |   21 +
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/timex.h         |   23 +
  arch/k3/include/asm/tlbflush.h      |   20 +
+ arch/k3/include/asm/topology.h      |   13 +
  arch/k3/include/asm/uaccess.h       |   72 +
  arch/k3/include/asm/unistd.h        |   90 +
+ arch/k3/include/asm/vga.h           |   14 +
  arch/k3/kernel/entry.S              |   77 +
  arch/k3/kernel/init_task.c          |   37 +
  arch/k3/kernel/irq.c                |   92 +
@@ -83,7 +93,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 51 files changed, 2497 insertions(+)
+ 61 files changed, 2666 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -769,6 +779,30 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_DELAY_H */
+diff --git a/arch/k3/include/asm/device.h b/arch/k3/include/asm/device.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/device.h
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/device.h
++ *
++ * Architecture-specific device structure extensions for K-Three.
++ */
++
++#ifndef _ASM_K3_DEVICE_H
++#define _ASM_K3_DEVICE_H
++
++struct dev_archdata {
++    void *dma_data;
++};
++
++struct pdev_archdata {
++};
++
++#endif /* _ASM_K3_DEVICE_H */
 diff --git a/arch/k3/include/asm/div64.h b/arch/k3/include/asm/div64.h
 new file mode 100644
 index 0000000..1111111
@@ -788,6 +822,25 @@ index 0000000..1111111
 +#include <asm-generic/div64.h>
 +
 +#endif /* _ASM_K3_DIV64_H */
+diff --git a/arch/k3/include/asm/dma-mapping.h b/arch/k3/include/asm/dma-mapping.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/dma-mapping.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/dma-mapping.h
++ *
++ * Direct Memory Access (DMA) mapping definitions for K-Three.
++ */
++
++#ifndef _ASM_K3_DMA_MAPPING_H
++#define _ASM_K3_DMA_MAPPING_H
++
++#include <asm-generic/dma-mapping.h>
++
++#endif /* _ASM_K3_DMA_MAPPING_H */
 diff --git a/arch/k3/include/asm/errno.h b/arch/k3/include/asm/errno.h
 new file mode 100644
 index 0000000..1111111
@@ -828,6 +881,36 @@ index 0000000..1111111
 +#define EMLINK 31
 +#define EPIPE 32
 +#endif
+diff --git a/arch/k3/include/asm/fb.h b/arch/k3/include/asm/fb.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/fb.h
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/fb.h
++ *
++ * Framebuffer memory and page mapping helpers for K-Three.
++ */
++
++#ifndef _ASM_K3_FB_H
++#define _ASM_K3_FB_H
++
++#include <linux/fb.h>
++#include <linux/fs.h>
++
++static inline void fb_pgprotect(struct file *file, struct vm_area_struct *vma,
++                               unsigned long off)
++{
++    (void)file;
++    (void)vma;
++    (void)off;
++}
++
++#define fb_is_primary_device(info) 1
++
++#endif /* _ASM_K3_FB_H */
 diff --git a/arch/k3/include/asm/fcntl.h b/arch/k3/include/asm/fcntl.h
 new file mode 100644
 index 0000000..1111111
@@ -889,6 +972,29 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_FUTEX_H */
+diff --git a/arch/k3/include/asm/hardirq.h b/arch/k3/include/asm/hardirq.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/hardirq.h
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/hardirq.h
++ *
++ * Hardware and software interrupt tracking for K-Three.
++ */
++
++#ifndef _ASM_K3_HARDIRQ_H
++#define _ASM_K3_HARDIRQ_H
++
++#include <asm/irq.h>
++
++#define HARDIRQ_BITS 8
++
++#include <asm-generic/hardirq.h>
++
++#endif /* _ASM_K3_HARDIRQ_H */
 diff --git a/arch/k3/include/asm/io.h b/arch/k3/include/asm/io.h
 new file mode 100644
 index 0000000..1111111
@@ -1069,6 +1175,54 @@ index 0000000..1111111
 +#define MAP_FIXED 0x10
 +#define MAP_ANONYMOUS 0x20
 +#endif
+diff --git a/arch/k3/include/asm/mmu.h b/arch/k3/include/asm/mmu.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/mmu.h
+@@ -0,0 +1,15 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/mmu.h
++ *
++ * NOMMU memory context definition for K-Three.
++ */
++
++#ifndef _ASM_K3_MMU_H
++#define _ASM_K3_MMU_H
++
++typedef struct {
++    unsigned long end_brk;
++} mm_context_t;
++
++#endif /* _ASM_K3_MMU_H */
+diff --git a/arch/k3/include/asm/mmu_context.h b/arch/k3/include/asm/mmu_context.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/mmu_context.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/mmu_context.h
++ *
++ * NOMMU MMU context management operations for K-Three.
++ */
++
++#ifndef _ASM_K3_MMU_CONTEXT_H
++#define _ASM_K3_MMU_CONTEXT_H
++
++#include <linux/mm_types.h>
++#include <asm-generic/mm_hooks.h>
++
++#define init_new_context(tsk, mm)   0
++#define destroy_context(mm)         do { } while (0)
++#define activate_mm(prev, next)     do { } while (0)
++#define switch_mm(prev, next, tsk)  do { } while (0)
++#define deactivate_mm(tsk, mm)      do { } while (0)
++#define enter_lazy_tlb(mm, tsk)     do { } while (0)
++
++#endif /* _ASM_K3_MMU_CONTEXT_H */
 diff --git a/arch/k3/include/asm/page.h b/arch/k3/include/asm/page.h
 new file mode 100644
 index 0000000..1111111
@@ -1250,6 +1404,25 @@ index 0000000..1111111
 +#define RLIMIT_MEMLOCK 8
 +#define RLIMIT_AS 9
 +#endif
+diff --git a/arch/k3/include/asm/sections.h b/arch/k3/include/asm/sections.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/sections.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/sections.h
++ *
++ * Linker section boundaries and symbols for K-Three.
++ */
++
++#ifndef _ASM_K3_SECTIONS_H
++#define _ASM_K3_SECTIONS_H
++
++#include <asm-generic/sections.h>
++
++#endif /* _ASM_K3_SECTIONS_H */
 diff --git a/arch/k3/include/asm/shmparam.h b/arch/k3/include/asm/shmparam.h
 new file mode 100644
 index 0000000..1111111
@@ -1434,6 +1607,33 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_STRING_H */
+diff --git a/arch/k3/include/asm/switch_to.h b/arch/k3/include/asm/switch_to.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/switch_to.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/switch_to.h
++ *
++ * Process context switching definitions and primitives for K-Three.
++ */
++
++#ifndef _ASM_K3_SWITCH_TO_H
++#define _ASM_K3_SWITCH_TO_H
++
++struct task_struct;
++
++extern struct task_struct *__switch_to(struct task_struct *prev,
++                                       struct task_struct *next);
++
++#define switch_to(prev, next, last) \
++    do { \
++        ((last) = __switch_to((prev), (next))); \
++    } while (0)
++
++#endif /* _ASM_K3_SWITCH_TO_H */
 diff --git a/arch/k3/include/asm/termios.h b/arch/k3/include/asm/termios.h
 new file mode 100644
 index 0000000..1111111
@@ -1545,6 +1745,25 @@ index 0000000..1111111
 +#define flush_tlb_kernel_range(start, end) do { } while (0)
 +
 +#endif /* _ASM_K3_TLBFLUSH_H */
+diff --git a/arch/k3/include/asm/topology.h b/arch/k3/include/asm/topology.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/topology.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/topology.h
++ *
++ * Symmetric multiprocessing and NUMA topology definitions for K-Three.
++ */
++
++#ifndef _ASM_K3_TOPOLOGY_H
++#define _ASM_K3_TOPOLOGY_H
++
++#include <asm-generic/topology.h>
++
++#endif /* _ASM_K3_TOPOLOGY_H */
 diff --git a/arch/k3/include/asm/uaccess.h b/arch/k3/include/asm/uaccess.h
 new file mode 100644
 index 0000000..1111111
@@ -1719,6 +1938,26 @@ index 0000000..1111111
 +#define __NR_syscalls           256
 +
 +#endif /* _ASM_K3_UNISTD_H */
+diff --git a/arch/k3/include/asm/vga.h b/arch/k3/include/asm/vga.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/vga.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/vga.h
++ *
++ * VGA and text mode console buffer definitions for K-Three.
++ */
++
++#ifndef _ASM_K3_VGA_H
++#define _ASM_K3_VGA_H
++
++#define VT_BUF_HAVE_RW
++#define VT_BUF_HAVE_MEMSETW
++
++#endif /* _ASM_K3_VGA_H */
 diff --git a/arch/k3/kernel/entry.S b/arch/k3/kernel/entry.S
 new file mode 100644
 index 0000000..1111111
