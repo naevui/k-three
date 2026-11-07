@@ -60,23 +60,33 @@ config K3_MAX_TASKS
 
 menu "K-Three Machine Setup"
 
+config K3_EXTENDED_MEMORY
+	bool "Support Extended 18/27-Trit Linear RAM Pool (16MB+)"
+	default y
+	help
+	  Enable extended linear memory addressing for running full Linux kernel
+	  and userspace workloads beyond the base 6561-word footprint.
+
 config K3_RAM_WORDS
 	int "Physical RAM words"
+	default 16777216 if K3_EXTENDED_MEMORY
 	default 6561
 	help
-	  Total physical memory words (3^8 = 6561).
+	  Total physical memory words (default 16M words in extended mode, 6561 in legacy).
 
 config K3_KERNEL_WORDS
 	int "Kernel reserved memory words"
+	default 4194304 if K3_EXTENDED_MEMORY
 	default 1458
 	help
-	  Memory allocated to kernel code and data (Pages 0..1 = 1458 words).
+	  Memory allocated to kernel code and data.
 
 config K3_USER_WORDS
 	int "Userspace memory words"
+	default 12582912 if K3_EXTENDED_MEMORY
 	default 5103
 	help
-	  Memory allocated to userspace tasks (Pages 2..8 = 5103 words).
+	  Memory allocated to userspace tasks.
 
 config K3_HW_MMIO
 	bool "Hardware Memory-Mapped I/O support"
