@@ -40,6 +40,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/atomic.h        |   65 +
  arch/k3/include/asm/barrier.h       |   27 +
  arch/k3/include/asm/bitops.h        |   65 +
+ arch/k3/include/asm/bug.h           |   22 +
  arch/k3/include/asm/cacheflush.h    |   27 +
  arch/k3/include/asm/checksum.h      |   27 +
  arch/k3/include/asm/cmpxchg.h       |   32 +
@@ -80,7 +81,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 48 files changed, 2435 insertions(+)
+ 49 files changed, 2457 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -598,6 +599,34 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_BITOPS_H */
+diff --git a/arch/k3/include/asm/bug.h b/arch/k3/include/asm/bug.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/bug.h
+@@ -0,0 +1,22 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/bug.h
++ *
++ * Architecture BUG() and WARN() diagnostics for K-Three.
++ */
++
++#ifndef _ASM_K3_BUG_H
++#define _ASM_K3_BUG_H
++
++#include <linux/compiler.h>
++
++#define BUG() do { \
++    __builtin_trap(); \
++    unreachable(); \
++} while (0)
++
++#define HAVE_ARCH_BUG
++
++#include <asm-generic/bug.h>
++
++#endif /* _ASM_K3_BUG_H */
 diff --git a/arch/k3/include/asm/cacheflush.h b/arch/k3/include/asm/cacheflush.h
 new file mode 100644
 index 0000000..1111111
