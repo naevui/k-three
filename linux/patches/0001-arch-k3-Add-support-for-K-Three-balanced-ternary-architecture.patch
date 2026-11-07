@@ -70,8 +70,8 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/signal.c             |   80 +
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
- arch/k3/kernel/vmlinux.lds.S        |   60 +
- 39 files changed, 2212 insertions(+)
+ arch/k3/kernel/vmlinux.lds.S        |   61 +
+ 39 files changed, 2213 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -2458,7 +2458,7 @@ new file mode 100644
 index 0000000..1111111
 --- /dev/null
 +++ b/arch/k3/kernel/vmlinux.lds.S
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,61 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * arch/k3/kernel/vmlinux.lds.S
@@ -2471,6 +2471,7 @@ index 0000000..1111111
 +#define K3_PAGE_SIZE        729
 +#define K3_USER_START       (K3_KERNEL_PAGES * K3_PAGE_SIZE) /* 1458 */
 +#define K3_RAM_END          6560
++#define K3_EXT_RAM_END      16777215                         /* 16M words physical RAM */
 +
 +OUTPUT_ARCH(k3)
 +ENTRY(start)
