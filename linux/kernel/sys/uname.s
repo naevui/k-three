@@ -9,7 +9,7 @@ str_uname_sysname:
 str_uname_nodename:
     .string "k-three-box"
 str_uname_release:
-    .string "0.1.0-k3"
+    .string "6.12.38-k3"
 str_uname_version:
     .string "#1 PREEMPT Balanced Ternary 2026"
 str_uname_machine:
