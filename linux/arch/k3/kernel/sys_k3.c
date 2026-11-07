@@ -308,6 +308,14 @@ int64_t k3_dispatch_linux_syscall(k3_vm *vm, int64_t nr, int64_t a0, int64_t a1,
         return 0;
     }
 
+    case __NR_dup3: {
+        /* a0 = oldfd, a1 = newfd, a2 = flags */
+        if (a0 < 0 || a1 < 0 || a0 == a1) {
+            return -1;
+        }
+        return a1;
+    }
+
     case __NR_nanosleep: {
         /* a0 = delay ms */
         if (a0 > 0) {
