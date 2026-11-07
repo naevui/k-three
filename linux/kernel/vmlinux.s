@@ -607,7 +607,7 @@ str_hyprland_canvas:
     .string "\e[1;36m┌── Hyprland ─────────────────────────────────┐\n│ \e[1;32m[foot]\e[0m uname -a: Linux k3-box 9-trit RISC   │\n│ \e[1;34m[waybar]\e[0m CPU: 0% │ RAM: 1458w │ [1] [2]      │\n└─────────────────────────────────────────────┘\e[0m\n"
 
 str_uname_text:
-    .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
+    .string "Linux k3-box 6.12.38-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
 
 str_uptime_prefix:
     .string "Uptime: "
@@ -668,7 +668,7 @@ str_cmd_exit:
 ; Kernel Boot Messages
 ; ==============================================================================
 str_dmesg_header:
-    .string "\e[1;36m[    0.000000] Linux version 0.1-k3 (root@k3-build) (k3-elf-gcc) #1 PREEMPT\e[0m\n[    0.000000] Machine model: K-Three 9-Trit Balanced Ternary Processor\n[    0.000000] CPU features: 9-trit ALU, symmetric math, [-9841..+9841]\n"
+    .string "\e[1;36m[    0.000000] Linux version 6.12.38-k3 (root@k3-build) (k3-elf-gcc) #1 PREEMPT\e[0m\n[    0.000000] Machine model: K-Three 9-Trit Balanced Ternary Processor\n[    0.000000] CPU features: 9-trit ALU, symmetric math, [-9841..+9841]\n"
 
 str_dmesg_memory:
     .string "[    0.000000] Memory: "
