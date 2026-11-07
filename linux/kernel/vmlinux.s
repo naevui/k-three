@@ -261,8 +261,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_systemctl
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_hyprland
     jmp .cmd_systemctl
+.chk_hyprland:
+    li r0, #5800
+    li r1, str_cmd_hyprland
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_hyprland
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -428,6 +434,15 @@ kbox_interactive_loop:
     trap #4
     jmp .kbox_cmd_loop
 
+.cmd_hyprland:
+    li r0, #4
+    li r1, str_hyprland_launch
+    trap #4
+    li r0, #4
+    li r1, str_hyprland_canvas
+    trap #4
+    jmp .kbox_cmd_loop
+
 .cmd_exit:
     pop r6
     ret
@@ -497,28 +512,28 @@ k3_uart_getc_hw:
 
 ; --- Strings for kinit & kbox ---
 str_systemd_banner:
-    .string "\e[1;36m[systemd]\e[0m systemd 256.3-k3 running in system mode (+NOMMU +TERNARY)\n\e[1;36m[systemd]\e[0m Detected architecture: K-Three 9-Trit Balanced Ternary RISC\n"
+    .string "\e[1;36m[systemd]\e[0m systemd 256 running (+NOMMU +TERNARY)\n"
 
 str_unit_proc:
-    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37mproc.mount\e[0m - Process File System (/proc).\n"
+    .string "[\e[1;32m  OK  \e[0m] Mounted proc.mount\n"
 
 str_unit_sys:
-    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37msysfs.mount\e[0m - System Control File System (/sys).\n"
+    .string "[\e[1;32m  OK  \e[0m] Mounted sysfs.mount\n"
 
 str_unit_dev:
-    .string "[\e[1;32m  OK  \e[0m] Mounted \e[1;37mdevtmpfs.mount\e[0m - Dynamic Device Nodes (/dev).\n"
+    .string "[\e[1;32m  OK  \e[0m] Mounted devtmpfs.mount\n"
 
 str_unit_udev:
-    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-udevd.service\e[0m - Device Node & MMIO Manager.\n"
+    .string "[\e[1;32m  OK  \e[0m] Started k3-udevd.service\n"
 
 str_unit_journal:
-    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-journald.service\e[0m - System Logging Service.\n"
+    .string "[\e[1;32m  OK  \e[0m] Started k3-journald.service\n"
 
 str_unit_net:
-    .string "[\e[1;32m  OK  \e[0m] Started \e[1;32mk3-networkd.service\e[0m - Ternary Packet Network Engine.\n"
+    .string "[\e[1;32m  OK  \e[0m] Started k3-networkd.service\n"
 
 str_unit_target:
-    .string "[\e[1;32m  OK  \e[0m] Reached target \e[1;35mgraphical.target\e[0m - Multi-User Graphic Mode Ready.\n"
+    .string "[\e[1;32m  OK  \e[0m] Reached graphical.target\n"
 
 str_kinit_start:
     .string "\e[1;32m[kinit]\e[0m Starting K-Three Linux Init Service (PID 1)...\n\e[1;32m[kinit]\e[0m Mounting virtual filesystems: /proc, /sys, /dev...\n"
@@ -539,7 +554,7 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, ls, echo, systemctl, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, ls, echo, systemctl, hyprland, clear, poweroff, exit\n"
 
 str_ps_header:
     .string "  PID TTY          TIME CMD\n"
@@ -578,7 +593,13 @@ str_echo_default:
     .string "Hello from K-Three Balanced Ternary Linux!\n"
 
 str_systemctl_output:
-    .string "UNIT                     LOAD   ACTIVE SUB     DESCRIPTION\nproc.mount               loaded active mounted Process File System (/proc)\nsysfs.mount              loaded active mounted System Control FS (/sys)\ndevtmpfs.mount           loaded active mounted Dynamic Device Nodes (/dev)\nk3-udevd.service         loaded active running Device Node & MMIO Manager\nk3-journald.service      loaded active running System Logging Service\nk3-networkd.service      loaded active running Ternary Packet Network\ngraphical.target         loaded active active  Multi-User Graphic Mode\n"
+    .string "UNIT                 LOAD   ACTIVE SUB     DESCRIPTION\nproc.mount           loaded active mounted /proc\nsysfs.mount          loaded active mounted /sys\ndevtmpfs.mount       loaded active mounted /dev\nk3-udevd.service     loaded active running Device Manager\nk3-journald.service  loaded active running Logger\nk3-networkd.service  loaded active running Network\ngraphical.target     loaded active active  GUI Mode\n"
+
+str_hyprland_launch:
+    .string "\e[1;35m[Hyprland]\e[0m Wayland Compositor v0.42 (Ternary DRM)\n"
+
+str_hyprland_canvas:
+    .string "\e[1;36m┌── Hyprland ─────────────────────────────────┐\n│ \e[1;32m[foot]\e[0m uname -a: Linux k3-box 9-trit RISC   │\n│ \e[1;34m[waybar]\e[0m CPU: 0% │ RAM: 1458w │ [1] [2]      │\n└─────────────────────────────────────────────┘\e[0m\n"
 
 str_uname_text:
     .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
@@ -631,6 +652,8 @@ str_cmd_echo:
     .string "echo"
 str_cmd_systemctl:
     .string "systemctl"
+str_cmd_hyprland:
+    .string "hyprland"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
