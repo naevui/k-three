@@ -10,6 +10,7 @@
 #define K3_PAGE_SIZE        729
 #define K3_USER_START       (K3_KERNEL_PAGES * K3_PAGE_SIZE) /* 1458 */
 #define K3_RAM_END          6560
+#define K3_EXT_RAM_END      16777215                         /* 16M words physical RAM */
 
 OUTPUT_ARCH(k3)
 ENTRY(start)
