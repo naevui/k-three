@@ -255,8 +255,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_echo
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_systemctl
     jmp .cmd_echo
+.chk_systemctl:
+    li r0, #5800
+    li r1, str_cmd_systemctl
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_systemctl
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -416,6 +422,12 @@ kbox_interactive_loop:
     trap #4
     jmp .kbox_cmd_loop
 
+.cmd_systemctl:
+    li r0, #4
+    li r1, str_systemctl_output
+    trap #4
+    jmp .kbox_cmd_loop
+
 .cmd_exit:
     pop r6
     ret
@@ -527,7 +539,7 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, ls, echo, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, ls, echo, systemctl, clear, poweroff, exit\n"
 
 str_ps_header:
     .string "  PID TTY          TIME CMD\n"
@@ -564,6 +576,9 @@ str_ls_output:
 
 str_echo_default:
     .string "Hello from K-Three Balanced Ternary Linux!\n"
+
+str_systemctl_output:
+    .string "UNIT                     LOAD   ACTIVE SUB     DESCRIPTION\nproc.mount               loaded active mounted Process File System (/proc)\nsysfs.mount              loaded active mounted System Control FS (/sys)\ndevtmpfs.mount           loaded active mounted Dynamic Device Nodes (/dev)\nk3-udevd.service         loaded active running Device Node & MMIO Manager\nk3-journald.service      loaded active running System Logging Service\nk3-networkd.service      loaded active running Ternary Packet Network\ngraphical.target         loaded active active  Multi-User Graphic Mode\n"
 
 str_uname_text:
     .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
@@ -614,6 +629,8 @@ str_cmd_ls:
     .string "ls"
 str_cmd_echo:
     .string "echo"
+str_cmd_systemctl:
+    .string "systemctl"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
