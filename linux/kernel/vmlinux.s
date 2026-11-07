@@ -208,8 +208,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_kill
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_ls
     jmp .cmd_kill
+.chk_ls:
+    li r0, #5800
+    li r1, str_cmd_ls
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_ls
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -357,6 +363,12 @@ kbox_interactive_loop:
     trap #4
     jmp .kbox_cmd_loop
 
+.cmd_ls:
+    li r0, #4
+    li r1, str_ls_output
+    trap #4
+    jmp .kbox_cmd_loop
+
 .cmd_exit:
     pop r6
     ret
@@ -444,7 +456,7 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, ps, kill, ls, clear, poweroff, exit\n"
 
 str_ps_header:
     .string "  PID TTY          TIME CMD\n"
@@ -475,6 +487,9 @@ str_snake_end:
 
 str_kill_msg:
     .string "kill: usage: kill <pid> (simulated)\n"
+
+str_ls_output:
+    .string "bin   dev   etc   proc  sbin  sys   usr   var\n"
 
 str_uname_text:
     .string "Linux k3-box 0.1.0-k3 #1 PREEMPT 9-trit balanced-ternary RISC\n"
@@ -521,6 +536,8 @@ str_cmd_ps:
     .string "ps"
 str_cmd_kill:
     .string "kill"
+str_cmd_ls:
+    .string "ls"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
