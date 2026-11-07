@@ -75,6 +75,7 @@
 #define __NR_clock_getres       190
 #define __NR_clock_nanosleep    191
 #define __NR_pipe2              192
+#define __NR_dup3               193
 #define __NR_k3_halt            199
 
 /* K-Three Balanced Ternary Hardware Extensions */
