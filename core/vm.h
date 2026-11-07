@@ -19,6 +19,13 @@
 #define K3_VM_MEMORY_WORDS 6561
 #define K3_VM_MAX_ADDRESS (K3_VM_MEMORY_WORDS - 1)
 
+/*
+ * K-Three Extended Memory Pool (Tier 2 / Linux Physical RAM Pool)
+ * 16 MB+ linear physical memory space (5755600 words x 9 trits)
+ */
+#define K3_EXT_MEM_WORDS 16777216 /* 16M words for real Linux Kernel & initramfs */
+#define K3_EXT_MEM_MAX_ADDRESS (K3_EXT_MEM_WORDS - 1)
+
 typedef enum k3_vm_status {
     K3_VM_RUNNING = 0,
     K3_VM_HALTED = 1,
@@ -114,6 +121,11 @@ struct k3_vm {
     uint16_t user_base;        /* Lowest valid address in user mode (default 0) */
     uint16_t user_limit;       /* Highest valid address in user mode (default K3_VM_MAX_ADDRESS) */
 
+    /* Extended 18/27-Trit Linear Memory Pool for Linux */
+    bt_word *ext_memory;       /* Optional 16MB+ linear physical RAM */
+    size_t ext_memory_words;   /* Allocated words (0 = standard 6561w mode) */
+    uint32_t ext_pc;           /* Extended 32-bit/18-trit linear PC */
+
     k3_vm_callbacks callbacks;
 };
 
@@ -146,6 +158,12 @@ bool k3_vm_get_reg(const k3_vm *vm, uint8_t index, bt_word *out);
 bool k3_vm_set_reg(k3_vm *vm, uint8_t index, const bt_word *value);
 bool k3_vm_get_mem(const k3_vm *vm, uint16_t address, bt_word *out);
 bool k3_vm_set_mem(k3_vm *vm, uint16_t address, const bt_word *value);
+
+/* Extended Linear Memory Management (for Linux kernel & userland) */
+bool k3_vm_enable_ext_memory(k3_vm *vm, size_t word_count);
+void k3_vm_free_ext_memory(k3_vm *vm);
+bool k3_vm_get_ext_mem(const k3_vm *vm, uint32_t address, bt_word *out);
+bool k3_vm_set_ext_mem(k3_vm *vm, uint32_t address, const bt_word *value);
 
 uint16_t k3_vm_pc(const k3_vm *vm);
 bool k3_vm_set_pc(k3_vm *vm, uint16_t pc);
