@@ -51,6 +51,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/ioctl.h         |    8 +
  arch/k3/include/asm/irq.h           |   18 +
  arch/k3/include/asm/irqflags.h      |   43 +
+ arch/k3/include/asm/linkage.h       |   14 +
  arch/k3/include/asm/mman.h          |   12 +
  arch/k3/include/asm/page.h          |   31 +
  arch/k3/include/asm/poll.h          |   10 +
@@ -78,7 +79,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 46 files changed, 2408 insertions(+)
+ 47 files changed, 2422 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -979,6 +980,26 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_IRQFLAGS_H */
+diff --git a/arch/k3/include/asm/linkage.h b/arch/k3/include/asm/linkage.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/linkage.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/linkage.h
++ *
++ * Assembly linkage macros and symbol visibility for K-Three.
++ */
++
++#ifndef _ASM_K3_LINKAGE_H
++#define _ASM_K3_LINKAGE_H
++
++#define __ALIGN .align 4
++#define __ALIGN_STR ".align 4"
++
++#endif /* _ASM_K3_LINKAGE_H */
 diff --git a/arch/k3/include/asm/mman.h b/arch/k3/include/asm/mman.h
 new file mode 100644
 index 0000000..1111111
