@@ -275,6 +275,16 @@ static void test_init_and_accessors(void)
     CHECK_EQ_I64(word_i64(&out), 123);
     CHECK(!k3_vm_set_mem(&vm, 0, &bad));
 
+    /* Test 16MB+ Extended Linear Memory Pool */
+    CHECK(k3_vm_enable_ext_memory(&vm, 1000000));
+    bt_word ext_val = make_word(9841);
+    CHECK(k3_vm_set_ext_mem(&vm, 999999, &ext_val));
+    bt_word ext_out;
+    CHECK(k3_vm_get_ext_mem(&vm, 999999, &ext_out));
+    CHECK_EQ_I64(word_i64(&ext_out), 9841);
+    CHECK(!k3_vm_get_ext_mem(&vm, 1000000, &ext_out));
+    k3_vm_free_ext_memory(&vm);
+
     CHECK(k3_vm_set_pc(&vm, K3_VM_MAX_ADDRESS));
     CHECK_EQ_I64(k3_vm_pc(&vm), K3_VM_MAX_ADDRESS);
     CHECK(!k3_vm_set_pc(&vm, K3_VM_MEMORY_WORDS));
