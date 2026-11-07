@@ -190,8 +190,14 @@ kbox_interactive_loop:
     li r0, #5800
     li r1, str_cmd_calc
     call k3_kstrcmp
-    brnz r0, .chk_poweroff
+    brnz r0, .chk_dmesg
     jmp .cmd_calc
+.chk_dmesg:
+    li r0, #5800
+    li r1, str_cmd_dmesg
+    call k3_kstrcmp
+    brnz r0, .chk_poweroff
+    jmp .cmd_dmesg
 .chk_poweroff:
     li r0, #5800
     li r1, str_cmd_poweroff
@@ -298,6 +304,29 @@ kbox_interactive_loop:
     trap #4
     jmp .kbox_cmd_loop
 
+.cmd_dmesg:
+    li r0, #4
+    li r1, str_dmesg_header
+    trap #4
+    li r0, #4
+    li r1, str_dmesg_memory
+    trap #4
+    li r0, #K3_MEM_TOTAL
+    call k3_kprint_num
+    li r0, #4
+    li r1, str_dmesg_mem_suffix
+    trap #4
+    li r0, #4
+    li r1, str_dmesg_timer
+    trap #4
+    li r0, #4
+    li r1, str_dmesg_sched
+    trap #4
+    li r0, #4
+    li r1, str_dmesg_vfs
+    trap #4
+    jmp .kbox_cmd_loop
+
 .cmd_exit:
     pop r6
     ret
@@ -385,7 +414,7 @@ str_kbox_unknown:
     .string "kbox: command not found. Type 'help'.\n"
 
 str_help_text:
-    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, clear, poweroff, exit\n"
+    .string "Built-in commands: help, uname, uptime, free, rand, cat, calc, snake, dmesg, clear, poweroff, exit\n"
 
 str_calc_title:
     .string "\e[1;36m=== K-Three Balanced Ternary Calculator ===\e[0m\n"
@@ -444,6 +473,8 @@ str_cmd_snake:
     .string "snake"
 str_cmd_calc:
     .string "calc"
+str_cmd_dmesg:
+    .string "dmesg"
 str_cmd_poweroff:
     .string "poweroff"
 str_cmd_exit:
