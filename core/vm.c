@@ -640,7 +640,7 @@ k3_vm_status k3_vm_run(k3_vm *vm, uint64_t max_steps, uint64_t *executed)
         return vm->status;
     }
 
-    while ((max_steps == 0 || vm->instruction_count - before < max_steps) &&
+    while (vm->instruction_count - before < max_steps &&
            vm->status == K3_VM_RUNNING) {
         (void)k3_vm_step(vm);
     }
