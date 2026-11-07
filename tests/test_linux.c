@@ -319,6 +319,8 @@ static void test_linux_syscalls(void)
     CHECK(bt_word_to_i64(&pfd_w, &w_val));
     CHECK_EQ_I64(r_val, 3);
     CHECK_EQ_I64(w_val, 4);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_dup3, 0, 10, 0), 10);
+    CHECK_EQ_I64(k3_dispatch_linux_syscall(&vm, __NR_dup3, 5, 5, 0), -1);
 }
 
 static void test_linux_procfs(void)
