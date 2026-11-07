@@ -62,6 +62,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/include/asm/termios.h       |    8 +
  arch/k3/include/asm/thread_info.h   |   36 +
  arch/k3/include/asm/timex.h         |   23 +
+ arch/k3/include/asm/tlbflush.h      |   20 +
  arch/k3/include/asm/uaccess.h       |   72 +
  arch/k3/include/asm/unistd.h        |   90 +
  arch/k3/kernel/entry.S              |   77 +
@@ -74,7 +75,7 @@ Signed-off-by: naevui <deniz@neutronyazilim.com.tr>
  arch/k3/kernel/sys_k3.c             |  401 +
  arch/k3/kernel/traps.c              |   59 +
  arch/k3/kernel/vmlinux.lds.S        |   61 +
- 42 files changed, 2293 insertions(+)
+ 43 files changed, 2313 insertions(+)
 
 diff --git a/arch/Kconfig b/arch/Kconfig
 index 0000000..1111111 100644
@@ -1278,6 +1279,32 @@ index 0000000..1111111
 +}
 +
 +#endif /* _ASM_K3_TIMEX_H */
+diff --git a/arch/k3/include/asm/tlbflush.h b/arch/k3/include/asm/tlbflush.h
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/arch/k3/include/asm/tlbflush.h
+@@ -0,0 +1,20 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * arch/k3/include/asm/tlbflush.h
++ *
++ * TLB flushing routines for K-Three.
++ *
++ * In flat NOMMU K-Three, hardware uses physical addresses; TLB flushes are no-ops.
++ */
++
++#ifndef _ASM_K3_TLBFLUSH_H
++#define _ASM_K3_TLBFLUSH_H
++
++#define flush_tlb()                     do { } while (0)
++#define flush_tlb_all()                 do { } while (0)
++#define flush_tlb_mm(mm)                do { } while (0)
++#define flush_tlb_range(vma, start, end) do { } while (0)
++#define flush_tlb_page(vma, vmaddr)     do { } while (0)
++#define flush_tlb_kernel_range(start, end) do { } while (0)
++
++#endif /* _ASM_K3_TLBFLUSH_H */
 diff --git a/arch/k3/include/asm/uaccess.h b/arch/k3/include/asm/uaccess.h
 new file mode 100644
 index 0000000..1111111
